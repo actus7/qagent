@@ -21,6 +21,10 @@ export default class BrowserContext {
     this._config = { ...DEFAULT_BROWSER_CONTEXT_CONFIG, ...config };
   }
 
+  public get currentTabId(): number | null {
+    return this._currentTabId;
+  }
+
   public getConfig(): BrowserContextConfig {
     return this._config;
   }

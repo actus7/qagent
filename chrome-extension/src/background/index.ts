@@ -24,6 +24,7 @@ const logger = createLogger('background');
 const browserContext = new BrowserContext({});
 let currentExecutor: Executor | null = null;
 let currentPort: chrome.runtime.Port | null = null;
+let lastOverlayStatus: string | null = null;
 const SIDE_PANEL_URL = chrome.runtime.getURL('side-panel/index.html');
 
 // Setup side panel behavior
@@ -32,6 +33,20 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(error 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (tabId && changeInfo.status === 'complete' && tab.url?.startsWith('http')) {
     await injectBuildDomTreeScripts(tabId);
+
+    // Re-inject overlay if this tab is being controlled by an active agent
+    if (currentExecutor && browserContext.currentTabId === tabId) {
+      // Wait a bit for the content script to be ready
+      setTimeout(() => {
+        sendOverlayMessage(tabId, { type: 'qagent:overlay:show' });
+        if (lastOverlayStatus) {
+          sendOverlayMessage(tabId, {
+            type: 'qagent:overlay:status',
+            text: lastOverlayStatus,
+          });
+        }
+      }, 500);
+    }
   }
 });
 
@@ -66,11 +81,16 @@ analyticsSettingsStore.subscribe(() => {
   });
 });
 
-// Listen for simple messages (e.g., from options page)
-chrome.runtime.onMessage.addListener(() => {
-  // Handle other message types if needed in the future
-  // Return false if response is not sent asynchronously
-  // return false;
+// Listen for simple messages (e.g., from options page or overlay cancel button)
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === 'qagent:cancel') {
+    if (currentExecutor) {
+      currentExecutor.cancel();
+      logger.info('Task cancelled via overlay stop button');
+    }
+    sendResponse({ ok: true });
+  }
+  return false;
 });
 
 // Setup connection listener for long-lived connections (e.g., side panel)
@@ -100,6 +120,11 @@ chrome.runtime.onConnect.addListener(port => {
             if (!message.tabId) return port.postMessage({ type: 'error', error: t('bg_errors_noTabId') });
 
             logger.info('new_task', message.tabId, message.task);
+
+            // Ensure we attach to the correct tab before starting
+            // This sets _currentTabId so overlay messages go to the right place
+            await browserContext.switchTab(message.tabId);
+
             currentExecutor = await setupExecutor(message.taskId, message.task, browserContext);
             subscribeToExecutorEvents(currentExecutor);
 
@@ -335,10 +360,24 @@ async function setupExecutor(taskId: string, task: string, browserContext: Brows
   return executor;
 }
 
+// Send a message to the active tab's content script for overlay updates
+function sendOverlayMessage(tabId: number | null, message: Record<string, unknown>) {
+  if (!tabId) {
+    logger.warning('sendOverlayMessage: No tabId');
+    return;
+  }
+  chrome.tabs.sendMessage(tabId, message).catch((err) => {
+    logger.warning('sendOverlayMessage: Failed to send', err);
+  });
+}
+
 // Update subscribeToExecutorEvents to use port
 async function subscribeToExecutorEvents(executor: Executor) {
   // Clear previous event listeners to prevent multiple subscriptions
   executor.clearExecutionEvents();
+
+  // Reset overlay status for new task
+  lastOverlayStatus = null;
 
   // Subscribe to new events
   executor.subscribeExecutionEvents(async event => {
@@ -348,6 +387,29 @@ async function subscribeToExecutorEvents(executor: Executor) {
       }
     } catch (error) {
       logger.error('Failed to send message to side panel:', error);
+    }
+
+    // Forward relevant events to the content script overlay
+    const tabId = browserContext.currentTabId;
+
+    switch (event.state) {
+      case ExecutionState.TASK_START:
+        sendOverlayMessage(tabId, { type: 'qagent:overlay:show' });
+        break;
+      case ExecutionState.TASK_OK:
+      case ExecutionState.TASK_FAIL:
+      case ExecutionState.TASK_CANCEL:
+        sendOverlayMessage(tabId, { type: 'qagent:overlay:hide' });
+        lastOverlayStatus = null;
+        break;
+      case ExecutionState.ACT_START:
+        const statusText = event.data?.details || 'Working…';
+        lastOverlayStatus = statusText;
+        sendOverlayMessage(tabId, {
+          type: 'qagent:overlay:status',
+          text: statusText,
+        });
+        break;
     }
 
     if (

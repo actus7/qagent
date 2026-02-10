@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FiSettings } from 'react-icons/fi';
+import { FiSettings, FiSun, FiMoon, FiMonitor } from 'react-icons/fi';
 import { PiPlusBold } from 'react-icons/pi';
 import { GrHistory } from 'react-icons/gr';
 import { type Message, Actors, chatHistoryStore, agentModelStore, generalSettingsStore } from '@extension/storage';
@@ -11,7 +11,10 @@ import ChatInput from './components/ChatInput';
 import ChatHistoryList from './components/ChatHistoryList';
 import BookmarkList from './components/BookmarkList';
 import { EventType, type AgentEvent, ExecutionState } from './types/event';
-import './SidePanel.css';
+import { Button } from '@src/components/ui/button';
+import { ScrollArea } from '@src/components/ui/scroll-area';
+import { Separator } from '@src/components/ui/separator';
+import { useTheme } from '@src/hooks/useTheme';
 
 // Declare chrome API types
 declare global {
@@ -30,7 +33,6 @@ const SidePanel = () => {
   const [chatSessions, setChatSessions] = useState<Array<{ id: string; title: string; createdAt: number }>>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [isHistoricalSession, setIsHistoricalSession] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [favoritePrompts, setFavoritePrompts] = useState<FavoritePrompt[]>([]);
   const [hasConfiguredModels, setHasConfiguredModels] = useState<boolean | null>(null); // null = loading, false = no models, true = has models
   const [isRecording, setIsRecording] = useState(false);
@@ -47,18 +49,9 @@ const SidePanel = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
 
-  // Check for dark mode preference
-  useEffect(() => {
-    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setIsDarkMode(darkModeMediaQuery.matches);
+  const { theme, cycleTheme } = useTheme();
 
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches);
-    };
-
-    darkModeMediaQuery.addEventListener('change', handleChange);
-    return () => darkModeMediaQuery.removeEventListener('change', handleChange);
-  }, []);
+  const ThemeIcon = theme === 'dark' ? FiMoon : theme === 'light' ? FiSun : FiMonitor;
 
   // Check if models are configured
   const checkModelConfiguration = useCallback(async () => {
@@ -1000,55 +993,60 @@ const SidePanel = () => {
 
   return (
     <div>
-      <div
-        className={`flex h-screen flex-col ${isDarkMode ? 'bg-slate-900' : "bg-[url('/bg.jpg')] bg-cover bg-no-repeat"} overflow-hidden border ${isDarkMode ? 'border-emerald-800' : 'border-[rgb(167,243,208)]'} rounded-2xl`}>
-        <header className="header relative">
-          <div className="header-logo">
+      <div className="flex h-screen flex-col overflow-hidden rounded-2xl border border-border bg-background">
+        <header className="flex items-center justify-between border-b border-border px-3 py-2">
+          <div className="flex items-center">
             {showHistory ? (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => handleBackToChat(false)}
-                className={`${isDarkMode ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-400 hover:text-emerald-500'} cursor-pointer`}
+                className="text-primary hover:text-primary/80"
                 aria-label={t('nav_back_a11y')}>
                 {t('nav_back')}
-              </button>
+              </Button>
             ) : (
               <img src="/icon-128.png" alt="Extension Logo" className="size-6" />
             )}
           </div>
-          <div className="header-icons">
+          <div className="flex items-center gap-1">
             {!showHistory && (
               <>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={handleNewChat}
-                  onKeyDown={e => e.key === 'Enter' && handleNewChat()}
-                  className={`header-icon ${isDarkMode ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-400 hover:text-emerald-500'} cursor-pointer`}
-                  aria-label={t('nav_newChat_a11y')}
-                  tabIndex={0}>
-                  <PiPlusBold size={20} />
-                </button>
-                <button
-                  type="button"
+                  className="size-8 text-primary hover:text-primary/80"
+                  aria-label={t('nav_newChat_a11y')}>
+                  <PiPlusBold size={18} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={handleLoadHistory}
-                  onKeyDown={e => e.key === 'Enter' && handleLoadHistory()}
-                  className={`header-icon ${isDarkMode ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-400 hover:text-emerald-500'} cursor-pointer`}
-                  aria-label={t('nav_loadHistory_a11y')}
-                  tabIndex={0}>
-                  <GrHistory size={20} />
-                </button>
+                  className="size-8 text-primary hover:text-primary/80"
+                  aria-label={t('nav_loadHistory_a11y')}>
+                  <GrHistory size={18} />
+                </Button>
               </>
             )}
-
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={cycleTheme}
+              className="size-8 text-primary hover:text-primary/80"
+              aria-label={`Theme: ${theme}`}
+              title={`Theme: ${theme}`}>
+              <ThemeIcon size={18} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => chrome.runtime.openOptionsPage()}
-              onKeyDown={e => e.key === 'Enter' && chrome.runtime.openOptionsPage()}
-              className={`header-icon ${isDarkMode ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-400 hover:text-emerald-500'} cursor-pointer`}
-              aria-label={t('nav_settings_a11y')}
-              tabIndex={0}>
-              <FiSettings size={20} />
-            </button>
+              className="size-8 text-primary hover:text-primary/80"
+              aria-label={t('nav_settings_a11y')}>
+              <FiSettings size={18} />
+            </Button>
           </div>
         </header>
         {showHistory ? (
@@ -1059,50 +1057,44 @@ const SidePanel = () => {
               onSessionDelete={handleSessionDelete}
               onSessionBookmark={handleSessionBookmark}
               visible={true}
-              isDarkMode={isDarkMode}
             />
           </div>
         ) : (
           <>
-            {/* Show loading state while checking model configuration */}
+            {/* Loading state */}
             {hasConfiguredModels === null && (
-              <div
-                className={`flex flex-1 items-center justify-center p-8 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>
+              <div className="flex flex-1 items-center justify-center p-8 text-primary">
                 <div className="text-center">
-                  <div className="mx-auto mb-4 size-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent"></div>
+                  <div className="mx-auto mb-4 size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   <p>{t('status_checkingConfig')}</p>
                 </div>
               </div>
             )}
 
-            {/* Show setup message when no models are configured */}
+            {/* Setup message */}
             {hasConfiguredModels === false && (
-              <div
-                className={`flex flex-1 items-center justify-center p-8 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>
+              <div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">
                 <div className="max-w-md text-center">
                   <img src="/icon-128.png" alt="QAgent Logo" className="mx-auto mb-4 size-12" />
-                  <h3 className={`mb-2 text-lg font-semibold ${isDarkMode ? 'text-emerald-200' : 'text-emerald-700'}`}>
+                  <h3 className="mb-2 text-lg font-semibold text-foreground">
                     {t('welcome_title')}
                   </h3>
                   <p className="mb-4">{t('welcome_instruction')}</p>
-                  <button
+                  <Button
                     onClick={() => chrome.runtime.openOptionsPage()}
-                    className={`my-4 rounded-lg px-4 py-2 font-medium transition-colors ${isDarkMode ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                      }`}>
+                    className="my-4">
                     {t('welcome_openSettings')}
-                  </button>
-
+                  </Button>
                 </div>
               </div>
             )}
 
-            {/* Show normal chat interface when models are configured */}
+            {/* Chat interface */}
             {hasConfiguredModels === true && (
               <>
                 {messages.length === 0 && (
                   <>
-                    <div
-                      className={`border-t ${isDarkMode ? 'border-emerald-900' : 'border-emerald-100'} mb-2 p-2 shadow-sm backdrop-blur-sm`}>
+                    <div className="mb-2 border-t border-border p-2">
                       <ChatInput
                         onSendMessage={handleSendMessage}
                         onStopTask={handleStopTask}
@@ -1114,33 +1106,29 @@ const SidePanel = () => {
                         setContent={setter => {
                           setInputTextRef.current = setter;
                         }}
-                        isDarkMode={isDarkMode}
                         historicalSessionId={isHistoricalSession && replayEnabled ? currentSessionId : null}
                         onReplay={handleReplay}
                       />
                     </div>
-                    <div className="flex-1 overflow-y-auto">
+                    <ScrollArea className="flex-1">
                       <BookmarkList
                         bookmarks={favoritePrompts}
                         onBookmarkSelect={handleBookmarkSelect}
                         onBookmarkUpdateTitle={handleBookmarkUpdateTitle}
                         onBookmarkDelete={handleBookmarkDelete}
                         onBookmarkReorder={handleBookmarkReorder}
-                        isDarkMode={isDarkMode}
                       />
-                    </div>
+                    </ScrollArea>
                   </>
                 )}
                 {messages.length > 0 && (
-                  <div
-                    className={`scrollbar-gutter-stable flex-1 overflow-x-hidden overflow-y-scroll scroll-smooth p-2 ${isDarkMode ? 'bg-slate-900/80' : ''}`}>
-                    <MessageList messages={messages} isDarkMode={isDarkMode} />
+                  <ScrollArea className="flex-1 p-2">
+                    <MessageList messages={messages} />
                     <div ref={messagesEndRef} />
-                  </div>
+                  </ScrollArea>
                 )}
                 {messages.length > 0 && (
-                  <div
-                    className={`border-t ${isDarkMode ? 'border-emerald-900' : 'border-emerald-100'} p-2 shadow-sm backdrop-blur-sm`}>
+                  <div className="border-t border-border p-2">
                     <ChatInput
                       onSendMessage={handleSendMessage}
                       onStopTask={handleStopTask}
@@ -1152,7 +1140,6 @@ const SidePanel = () => {
                       setContent={setter => {
                         setInputTextRef.current = setter;
                       }}
-                      isDarkMode={isDarkMode}
                       historicalSessionId={isHistoricalSession && replayEnabled ? currentSessionId : null}
                       onReplay={handleReplay}
                     />

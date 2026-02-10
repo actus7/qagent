@@ -48,7 +48,7 @@ export class Action {
     public readonly schema: ActionSchema,
     // Whether this action has an index argument
     public readonly hasIndex: boolean = false,
-  ) {}
+  ) { }
 
   async call(input: unknown): Promise<ActionResult> {
     // Validate input before calling the handler
@@ -246,6 +246,19 @@ export class ActionBuilder {
         try {
           const initialTabIds = await this.context.browserContext.getAllTabIds();
           await page.clickElementNode(this.context.options.useVision, elementNode);
+
+          // Send ripple effect to overlay
+          if (elementNode.viewportCoordinates?.center) {
+            const tabId = this.context.browserContext.currentTabId;
+            if (tabId) {
+              chrome.tabs.sendMessage(tabId, {
+                type: 'qagent:overlay:ripple',
+                x: elementNode.viewportCoordinates.center.x,
+                y: elementNode.viewportCoordinates.center.y,
+              }).catch(() => { });
+            }
+          }
+
           let msg = t('act_click_ok', [input.index.toString(), elementNode.getAllTextTillNextClickableElement(2)]);
           logger.info(msg);
 
