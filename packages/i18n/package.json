@@ -21,7 +21,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "pnpm lint --fix",
     "prettier": "prettier . --write --ignore-path ../../.prettierignore",
-    "type-check": "tsc --noEmit"
+    "type-check": "node --input-type=commonjs -e \"require('fs').cpSync('lib/i18n-dev.ts','lib/i18n.ts')\" && tsc --noEmit"
   },
   "devDependencies": {
     "@extension/tsconfig": "workspace:*",
