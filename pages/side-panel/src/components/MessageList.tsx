@@ -12,7 +12,7 @@ export default memo(function MessageList({ messages }: MessageListProps) {
     <div className="max-w-full space-y-4">
       {messages.map((message, index) => (
         <MessageBlock
-          key={`${message.actor}-${message.timestamp}-${index}`}
+          key={`${message.actor}-${message.timestamp}-${message.content}`}
           message={message}
           isSameActor={index > 0 ? messages[index - 1].actor === message.actor : false}
         />
@@ -38,7 +38,7 @@ function MessageBlock({ message, isSameActor }: MessageBlockProps) {
     <div className={`flex max-w-full gap-3 ${!isSameActor ? 'mt-4 pt-4 first:mt-0 first:pt-0' : ''}`}>
       {!isSameActor && (
         <>
-          {isSameActor ? null : <Separator className="absolute left-0 right-0 -top-0 bg-border/50" />}
+          <Separator className="bg-border/50 absolute inset-x-0 -top-0" />
           <div
             className="flex size-8 shrink-0 items-center justify-center rounded-full"
             style={{ backgroundColor: actor.iconBackground }}>
@@ -46,7 +46,7 @@ function MessageBlock({ message, isSameActor }: MessageBlockProps) {
           </div>
         </>
       )}
-      {isSameActor && <div className="w-8" />}
+      {isSameActor ? <div className="w-8" /> : null}
 
       <div className="min-w-0 flex-1">
         {!isSameActor && (
@@ -56,7 +56,7 @@ function MessageBlock({ message, isSameActor }: MessageBlockProps) {
         )}
 
         <div className="space-y-0.5">
-          <div className="whitespace-pre-wrap break-words text-sm text-foreground/80">
+          <div className="text-foreground/80 whitespace-pre-wrap break-words text-sm">
             {isProgress ? (
               <div className="h-1 overflow-hidden rounded bg-muted">
                 <div className="h-full animate-progress bg-primary" />

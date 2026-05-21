@@ -5,7 +5,8 @@ interface OverlayMessage {
     | 'qagent:overlay:show'
     | 'qagent:overlay:hide'
     | 'qagent:overlay:status'
-    | 'qagent:overlay:ripple';
+    | 'qagent:overlay:ripple'
+    | 'qagent:overlay:state';
     text?: string;
     x?: number;
     y?: number;
@@ -64,7 +65,7 @@ function createOverlay(): void {
     // Status text
     statusTextEl = document.createElement('span');
     statusTextEl.className = 'qagent-status-text';
-    statusTextEl.textContent = 'QAgent is working…';
+    statusTextEl.textContent = '';
     statusBar.appendChild(statusTextEl);
 
     // Stop button
@@ -121,6 +122,31 @@ function createRipple(x: number, y: number): void {
     }, 700);
 }
 
+interface OverlayStateResponse {
+    active?: boolean;
+    statusText?: string | null;
+}
+
+async function syncOverlayStateFromBackground(): Promise<void> {
+    try {
+        const response = (await chrome.runtime.sendMessage({
+            type: 'qagent:overlay:state',
+        } as OverlayMessage)) as OverlayStateResponse | undefined;
+
+        if (!response?.active) {
+            destroyOverlay();
+            return;
+        }
+
+        createOverlay();
+        if (response.statusText) {
+            updateStatus(response.statusText);
+        }
+    } catch {
+        // Background may be unavailable momentarily while service worker spins up.
+    }
+}
+
 // Listen for messages from the background service
 chrome.runtime.onMessage.addListener(
     (message: OverlayMessage, _sender, sendResponse) => {
@@ -146,5 +172,7 @@ chrome.runtime.onMessage.addListener(
         return false;
     },
 );
+
+void syncOverlayStateFromBackground();
 
 console.log('[QAgent] Content script loaded');

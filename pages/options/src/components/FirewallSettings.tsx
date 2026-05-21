@@ -1,33 +1,73 @@
 import { useState, useEffect, useCallback } from 'react';
-import { firewallStore } from '@extension/storage';
+import { firewallStore, type FirewallConfig } from '@extension/storage';
 import { Button } from '@extension/ui';
 import { t } from '@extension/i18n';
+import { useTheme } from '@extension/shared';
 
-interface FirewallSettingsProps {
-  isDarkMode: boolean;
-}
-
-export const FirewallSettings = ({ isDarkMode }: FirewallSettingsProps) => {
+export const FirewallSettings = () => {
+  const { resolvedTheme } = useTheme();
+  const isDarkMode = resolvedTheme === 'dark';
   const [isEnabled, setIsEnabled] = useState(true);
   const [allowList, setAllowList] = useState<string[]>([]);
   const [denyList, setDenyList] = useState<string[]>([]);
   const [newUrl, setNewUrl] = useState('');
   const [activeList, setActiveList] = useState<'allow' | 'deny'>('allow');
 
-  const loadFirewallSettings = useCallback(async () => {
-    const settings = await firewallStore.getFirewall();
+  const applyFirewallConfig = useCallback((settings: FirewallConfig) => {
     setIsEnabled(settings.enabled);
     setAllowList(settings.allowList);
     setDenyList(settings.denyList);
   }, []);
 
+  const loadFirewallSettings = useCallback(async () => {
+    const settings = await firewallStore.getFirewall();
+    applyFirewallConfig(settings);
+  }, [applyFirewallConfig]);
+
   useEffect(() => {
-    loadFirewallSettings();
-  }, [loadFirewallSettings]);
+    let active = true;
+
+    const load = async () => {
+      try {
+        const settings = await firewallStore.getFirewall();
+        if (!active) {
+          return;
+        }
+        applyFirewallConfig(settings);
+      } catch (error) {
+        console.error('Failed to load firewall settings:', error);
+      }
+    };
+
+    const unsubscribe = firewallStore.subscribe(() => {
+      if (!active) {
+        return;
+      }
+      const snapshot = firewallStore.getSnapshot();
+      if (!snapshot) {
+        return;
+      }
+      applyFirewallConfig(snapshot);
+    });
+
+    void load();
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [applyFirewallConfig]);
 
   const handleToggleFirewall = async () => {
-    await firewallStore.updateFirewall({ enabled: !isEnabled });
-    await loadFirewallSettings();
+    const nextEnabled = !isEnabled;
+    setIsEnabled(nextEnabled);
+
+    try {
+      await firewallStore.updateFirewall({ enabled: nextEnabled });
+    } catch (error) {
+      console.error('Failed to toggle firewall:', error);
+      await loadFirewallSettings();
+    }
   };
 
   const handleAddUrl = async () => {
@@ -40,7 +80,6 @@ export const FirewallSettings = ({ isDarkMode }: FirewallSettingsProps) => {
     } else {
       await firewallStore.addToDenyList(cleanUrl);
     }
-    await loadFirewallSettings();
     setNewUrl('');
   };
 
@@ -50,7 +89,6 @@ export const FirewallSettings = ({ isDarkMode }: FirewallSettingsProps) => {
     } else {
       await firewallStore.removeFromDenyList(url);
     }
-    await loadFirewallSettings();
   };
 
   return (

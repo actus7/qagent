@@ -1,7 +1,24 @@
 import { StorageEnum } from '../base/enums';
 import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
-import { AgentNameEnum, llmProviderParameters } from './types';
+import { AgentNameEnum, getDefaultModelRequestsPerMinute, llmProviderParameters } from './types';
+
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
+const LEGACY_REASONING_EFFORT = 'minimal/none';
+
+export function normalizeReasoningEffort(value: unknown): ReasoningEffort | undefined {
+  switch (value) {
+    case 'minimal':
+    case 'low':
+    case 'medium':
+    case 'high':
+      return value;
+    case LEGACY_REASONING_EFFORT:
+      return 'minimal';
+    default:
+      return undefined;
+  }
+}
 
 // Interface for a single model configuration
 export interface ModelConfig {
@@ -9,7 +26,8 @@ export interface ModelConfig {
   provider: string;
   modelName: string;
   parameters?: Record<string, unknown>;
-  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high'; // For o-series models (OpenAI and Azure)
+  requestsPerMinute?: number;
+  reasoningEffort?: ReasoningEffort; // For o-series models (OpenAI and Azure)
 }
 
 // Interface for storing multiple agent model configurations
@@ -47,10 +65,22 @@ function getModelParameters(agent: AgentNameEnum, provider: string): Record<stri
   return providerParams ?? { temperature: 0.1, topP: 0.1 };
 }
 
+function normalizeRequestsPerMinute(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return undefined;
+  }
+  const normalized = Math.round(value);
+  if (normalized <= 0) {
+    return undefined;
+  }
+  return normalized;
+}
+
 export const agentModelStore: AgentModelStorage = {
   ...storage,
   setAgentModel: async (agent: AgentNameEnum, config: ModelConfig) => {
     validateModelConfig(config);
+    const normalizedReasoningEffort = normalizeReasoningEffort(config.reasoningEffort);
     // Merge default parameters with provided parameters
     const defaultParams = getModelParameters(agent, config.provider);
     const mergedConfig = {
@@ -59,6 +89,10 @@ export const agentModelStore: AgentModelStorage = {
         ...defaultParams,
         ...config.parameters,
       },
+      requestsPerMinute:
+        normalizeRequestsPerMinute(config.requestsPerMinute) ??
+        getDefaultModelRequestsPerMinute(config.provider, config.modelName),
+      reasoningEffort: normalizedReasoningEffort,
     };
     await storage.set(current => ({
       agents: {
@@ -74,12 +108,17 @@ export const agentModelStore: AgentModelStorage = {
 
     // Merge default parameters with stored parameters
     const defaultParams = getModelParameters(agent, config.provider);
+    const normalizedReasoningEffort = normalizeReasoningEffort(config.reasoningEffort);
     return {
       ...config,
       parameters: {
         ...defaultParams,
         ...config.parameters,
       },
+      requestsPerMinute:
+        normalizeRequestsPerMinute(config.requestsPerMinute) ??
+        getDefaultModelRequestsPerMinute(config.provider, config.modelName),
+      reasoningEffort: normalizedReasoningEffort,
     };
   },
   resetAgentModel: async (agent: AgentNameEnum) => {
@@ -106,7 +145,13 @@ export const agentModelStore: AgentModelStorage = {
     const filteredAgents: Partial<Record<AgentNameEnum, ModelConfig>> = {};
     for (const [agentKey, config] of Object.entries(data.agents)) {
       if (agentKey !== 'validator' && Object.values(AgentNameEnum).includes(agentKey as AgentNameEnum)) {
-        filteredAgents[agentKey as AgentNameEnum] = config;
+        filteredAgents[agentKey as AgentNameEnum] = {
+          ...config,
+          requestsPerMinute:
+            normalizeRequestsPerMinute(config.requestsPerMinute) ??
+            getDefaultModelRequestsPerMinute(config.provider, config.modelName),
+          reasoningEffort: normalizeReasoningEffort(config.reasoningEffort),
+        };
       }
     }
     return filteredAgents as Record<AgentNameEnum, ModelConfig>;

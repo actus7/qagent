@@ -9,3 +9,53 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --options-input-foreground: var(--foreground, rgb(55 65 81));
+    --options-input-placeholder: var(--muted-foreground, rgb(107 114 128));
+    --options-input-bg: var(--card, rgb(255 255 255));
+  }
+
+  .dark {
+    color-scheme: dark;
+    --options-input-foreground: var(--foreground, rgb(226 232 240));
+    --options-input-placeholder: var(--muted-foreground, rgb(148 163 184));
+    --options-input-bg: var(--card, rgb(51 65 85));
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    color: var(--options-input-foreground);
+    caret-color: var(--options-input-foreground);
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range'])::placeholder,
+  textarea::placeholder {
+    color: var(--options-input-placeholder);
+    opacity: 1;
+  }
+
+  .dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  .dark select,
+  .dark textarea {
+    -webkit-text-fill-color: var(--options-input-foreground);
+  }
+
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark textarea:-webkit-autofill,
+  .dark select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px var(--options-input-bg) inset;
+    -webkit-text-fill-color: var(--options-input-foreground);
+    caret-color: var(--options-input-foreground);
+  }
+
+  .dark select option {
+    background-color: var(--options-input-bg);
+    color: var(--options-input-foreground);
+  }
+}

@@ -1,11 +1,11 @@
 {
   "app_metadata_description": {
     "description": "Descrição da extensão",
-    "message": "Automatize testes e tarefas de QA na web com IA! QAgent é um agente de navegador de código aberto para QA que permite executar casos de teste, verificar elementos de UI e reportar bugs."
+    "message": "Automatize QA na web com IA. Execute casos de teste, valide elementos de UI e reporte bugs com o QAgent."
   },
   "app_metadata_name": {
     "description": "Nome da extensão",
-    "message": "QAgent: Agente de QA e Automação de Testes com IA"
+    "message": "QAgent: Agente de QA e Testes com IA"
   },
   "errors_unknown": {
     "message": "Ocorreu um erro desconhecido"
@@ -41,7 +41,16 @@
     "message": "Bem-vindo ao QAgent!"
   },
   "welcome_instruction": {
-    "message": "Para começar, por favor, configure suas chaves de API na página de configurações."
+    "message": "Para começar, configure suas chaves de API e selecione os modelos na página de configurações."
+  },
+  "setup_modal_title": {
+    "message": "Configuração necessária"
+  },
+  "setup_modal_description": {
+    "message": "Para liberar o chat, configure um provedor LLM e selecione os modelos em Configurações."
+  },
+  "setup_modal_close_a11y": {
+    "message": "Fechar aviso de configuração"
   },
   "welcome_openSettings": {
     "message": "Abrir Configurações"
@@ -72,6 +81,18 @@
   },
   "chat_input_editor": {
     "message": "Entrada de mensagem"
+  },
+  "chat_input_placeholder_withAttachments": {
+    "message": "Adicione uma mensagem (opcional)..."
+  },
+  "chat_input_attachFiles": {
+    "message": "Anexar arquivos"
+  },
+  "chat_input_attachFiles_title": {
+    "message": "Anexar arquivos de texto (txt, md, json, csv, etc.)"
+  },
+  "chat_input_removeFile": {
+    "message": "Remover $1"
   },
   "chat_history_title": {
     "message": "Histórico de Chat"
@@ -270,6 +291,12 @@
   },
   "options_general_replayHistoricalTasks_desc": {
     "message": "Ativar o armazenamento e a reprodução do histórico de passos do agente (experimental, pode ter problemas)"
+  },
+  "options_general_chatDebugMode": {
+    "message": "Modo Debug no Chat"
+  },
+  "options_general_chatDebugMode_desc": {
+    "message": "Exibe todos os eventos e payloads da execução diretamente no chat para diagnóstico."
   },
   "options_models_providers_header": {
     "message": "Provedores de LLM"
@@ -513,6 +540,9 @@
   },
   "exec_errors_maxFailuresReached": {
     "message": "Máximo de falhas atingido"
+  },
+  "exec_errors_loopDetected": {
+    "message": "Loop de navegação detectado. Refine a tarefa com instruções mais específicas."
   },
   "exec_task_cancel": {
     "message": "Tarefa cancelada"
@@ -968,5 +998,26 @@
         "example": "Opção não encontrada"
       }
     }
+  },
+  "settings_title": {
+    "message": "Configurações"
+  },
+  "settings_language": {
+    "message": "Idioma"
+  },
+  "settings_language_auto": {
+    "message": "Automático (Padrão do Navegador)"
+  },
+  "settings_advanced": {
+    "message": "Configurações Avançadas"
+  },
+  "settings_debugMode": {
+    "message": "Modo Debug"
+  },
+  "settings_debugMode_desc": {
+    "message": "Exibe todos os eventos de execução diretamente no chat."
+  },
+  "settings_version": {
+    "message": "Versão"
   }
 }

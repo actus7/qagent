@@ -1,4 +1,10 @@
-import { type ProviderConfig, type ModelConfig, ProviderTypeEnum } from '@extension/storage';
+import {
+  type ProviderConfig,
+  type ModelConfig,
+  ProviderTypeEnum,
+  normalizeReasoningEffort,
+  type ReasoningEffort,
+} from '@extension/storage';
 import { ChatOpenAI, AzureChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
@@ -11,41 +17,76 @@ import { ChatDeepSeek } from '@langchain/deepseek';
 
 const maxTokens = 1024 * 4;
 
+type ChatOpenAIArgs = ConstructorParameters<typeof ChatOpenAI>[0];
+
+interface LlamaMetric {
+  metric?: string;
+  value?: number;
+}
+
+interface LlamaCompletionMessage {
+  content?: {
+    text?: string;
+  };
+  stop_reason?: string;
+}
+
+interface LlamaApiResponse {
+  id?: string;
+  completion_message?: LlamaCompletionMessage;
+  metrics?: LlamaMetric[];
+}
+
+interface LlamaCompletionRequest {
+  model?: string;
+}
+
+type CompletionWithRetryFn = (this: ChatOpenAI, request: unknown, options?: unknown) => Promise<unknown>;
+
+const chatOpenAICompletionWithRetry = (
+  ChatOpenAI.prototype as unknown as { completionWithRetry: CompletionWithRetryFn }
+).completionWithRetry;
+
 // Custom ChatLlama class to handle Llama API response format
 class ChatLlama extends ChatOpenAI {
-  constructor(args: any) {
+  constructor(args: ChatOpenAIArgs) {
     super(args);
   }
 
   // Override the completionWithRetry method to intercept and transform the response
-  async completionWithRetry(request: any, options?: any): Promise<any> {
+  async completionWithRetry(request: unknown, options?: unknown): Promise<unknown> {
     try {
       // Make the request using the parent's implementation
-      // @ts-ignore - completionWithRetry is protected in ChatOpenAI
-      const response = await super.completionWithRetry(request, options);
+      const response = await chatOpenAICompletionWithRetry.call(this, request, options);
+      const llamaResponse = response as LlamaApiResponse;
+      const llamaRequest = request as LlamaCompletionRequest;
+      const completionText = llamaResponse.completion_message?.content?.text;
 
       // Check if this is a Llama API response format
-      if (response?.completion_message?.content?.text) {
+      if (completionText) {
+        const metrics = llamaResponse.metrics || [];
+        const metricValue = (metricName: string) => metrics.find(metric => metric.metric === metricName)?.value || 0;
+
         // Transform Llama API response to OpenAI format
         const transformedResponse = {
-          id: response.id || 'llama-response',
+          id: llamaResponse.id || 'llama-response',
           object: 'chat.completion',
           created: Date.now(),
-          model: request.model,
+          model: llamaRequest.model,
           choices: [
             {
               index: 0,
               message: {
                 role: 'assistant',
-                content: response.completion_message.content.text,
+                content: completionText,
               },
-              finish_reason: response.completion_message.stop_reason || 'stop',
+              finish_reason: llamaResponse.completion_message?.stop_reason || 'stop',
             },
           ],
           usage: {
-            prompt_tokens: response.metrics?.find((m: any) => m.metric === 'num_prompt_tokens')?.value || 0,
-            completion_tokens: response.metrics?.find((m: any) => m.metric === 'num_completion_tokens')?.value || 0,
-            total_tokens: response.metrics?.find((m: any) => m.metric === 'num_total_tokens')?.value || 0,
+            prompt_tokens: metricValue('num_prompt_tokens'),
+            completion_tokens: metricValue('num_completion_tokens'),
+            total_tokens: metricValue('num_total_tokens'),
           },
         };
 
@@ -53,7 +94,7 @@ class ChatLlama extends ChatOpenAI {
       }
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`[ChatLlama] Error during API call:`, error);
       throw error;
     }
@@ -72,25 +113,21 @@ function isOpenAIReasoningModel(modelName: string): boolean {
   );
 }
 
-// Function to check if a model is an Anthropic Opus model
-function isAnthropicOpusModel(modelName: string): boolean {
-  // Extract the model name without provider prefix if present
-  let modelNameWithoutProvider = modelName;
-  if (modelName.startsWith('anthropic/')) {
-    modelNameWithoutProvider = modelName.substring(10);
+function resolveReasoningEffortForModel(
+  modelName: string,
+  reasoningEffort: unknown,
+): 'none' | ReasoningEffort | undefined {
+  const normalizedReasoningEffort = normalizeReasoningEffort(reasoningEffort);
+  if (!normalizedReasoningEffort) {
+    return undefined;
   }
-  return modelNameWithoutProvider.startsWith('claude-opus');
-}
 
-// check if a model is sonnet-4-5 or haiku-4-5
-function isAnthropic4_5Model(modelName: string): boolean {
-  let modelNameWithoutProvider = modelName;
-  if (modelName.startsWith('anthropic/')) {
-    modelNameWithoutProvider = modelName.substring(10);
+  // GPT-5.1 only accepts "none" instead of "minimal"
+  if (modelName.includes('gpt-5.1') && normalizedReasoningEffort === 'minimal') {
+    return 'none';
   }
-  return (
-    modelNameWithoutProvider.startsWith('claude-sonnet-4-5') || modelNameWithoutProvider.startsWith('claude-haiku-4-5')
-  );
+
+  return normalizedReasoningEffort;
 }
 
 function createOpenAIChatModel(
@@ -137,13 +174,9 @@ function createOpenAIChatModel(
     };
 
     // Add reasoning_effort parameter for o-series models if specified
-    if (modelConfig.reasoningEffort) {
-      // if it's gpt-5.1, we need to convert minimal to none, it doesn't support minimal
-      if (modelConfig.modelName.includes('gpt-5.1') && modelConfig.reasoningEffort === 'minimal') {
-        args.modelKwargs.reasoning_effort = 'none';
-      } else {
-        args.modelKwargs.reasoning_effort = modelConfig.reasoningEffort;
-      }
+    const resolvedReasoningEffort = resolveReasoningEffortForModel(modelConfig.modelName, modelConfig.reasoningEffort);
+    if (resolvedReasoningEffort) {
+      args.modelKwargs.reasoning_effort = resolvedReasoningEffort;
     }
   } else {
     args.topP = (modelConfig.parameters?.topP ?? 0.1) as number;
@@ -199,7 +232,7 @@ function createAzureChatModel(providerConfig: ProviderConfig, modelConfig: Model
   if (!providerConfig.azureDeploymentNames.includes(deploymentName)) {
     console.warn(
       `[createChatModel] Selected deployment "${deploymentName}" not found in available deployments. ` +
-      `Available: ${JSON.stringify(providerConfig.azureDeploymentNames)}. Using the model anyway.`,
+        `Available: ${JSON.stringify(providerConfig.azureDeploymentNames)}. Using the model anyway.`,
     );
   }
 
@@ -213,6 +246,7 @@ function createAzureChatModel(providerConfig: ProviderConfig, modelConfig: Model
 
   // Check if the Azure deployment is using an "o" series model (GPT-4o, etc.)
   const isOSeriesModel = isOpenAIReasoningModel(deploymentName);
+  const resolvedReasoningEffort = resolveReasoningEffortForModel(deploymentName, modelConfig.reasoningEffort);
 
   // Use AzureChatOpenAI with specific parameters
   const args = {
@@ -225,17 +259,17 @@ function createAzureChatModel(providerConfig: ProviderConfig, modelConfig: Model
     // For O series models, use modelKwargs instead of temperature/topP
     ...(isOSeriesModel
       ? {
-        modelKwargs: {
-          max_completion_tokens: maxTokens,
-          // Add reasoning_effort parameter for Azure o-series models if specified
-          ...(modelConfig.reasoningEffort ? { reasoning_effort: modelConfig.reasoningEffort } : {}),
-        },
-      }
+          modelKwargs: {
+            max_completion_tokens: maxTokens,
+            // Add reasoning_effort parameter for Azure o-series models if specified
+            ...(resolvedReasoningEffort ? { reasoning_effort: resolvedReasoningEffort } : {}),
+          },
+        }
       : {
-        temperature,
-        topP,
-        maxTokens,
-      }),
+          temperature,
+          topP,
+          maxTokens,
+        }),
     // DO NOT pass baseUrl or configuration here
   };
   // console.log('[createChatModel] Azure args passed to AzureChatOpenAI:', args);
@@ -349,7 +383,6 @@ export function createChatModel(providerConfig: ProviderConfig, modelConfig: Mod
     }
     case ProviderTypeEnum.OpenRouter: {
       // Call the helper function, passing OpenRouter headers via the third argument
-      console.log('[createChatModel] Calling createOpenAIChatModel for OpenRouter');
       return createOpenAIChatModel(providerConfig, modelConfig, {
         headers: {
           'HTTP-Referer': 'https://qagent.ai',

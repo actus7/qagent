@@ -23,6 +23,12 @@ import { ClickableElementProcessor } from './dom/clickable/service';
 import { isUrlAllowed } from './util';
 
 const logger = createLogger('Page');
+const REF_SELECTOR_REGEX = /^@e(\d+)$/i;
+const LEGACY_INDEX_SELECTOR_REGEX = /^\[(\d+)\]$/;
+
+interface InputTextBySelectorOptions {
+  clearBeforeTyping?: boolean;
+}
 
 export function build_initial_state(tabId?: number, url?: string, title?: string): PageState {
   return {
@@ -164,12 +170,18 @@ export default class Page {
 
   async detachPuppeteer(): Promise<void> {
     if (this._browser) {
-      await this._browser.disconnect();
-      this._browser = null;
-      this._puppeteerPage = null;
-      // reset the state
-      this._state = build_initial_state(this._tabId);
+      try {
+        await this._browser.disconnect();
+      } catch (error) {
+        logger.warning('Failed to disconnect browser while detaching page:', error);
+      }
     }
+
+    this._browser = null;
+    this._puppeteerPage = null;
+    this._state = build_initial_state(this._tabId);
+    this._cachedState = null;
+    this._cachedStateClickableElementsHashes = null;
   }
 
   async removeHighlight(): Promise<void> {
@@ -1353,6 +1365,222 @@ export default class Page {
   getDomElementByIndex(index: number): DOMElementNode | null {
     const selectorMap = this.getSelectorMap();
     return selectorMap.get(index) || null;
+  }
+
+  private selectorToIndex(selector: string): number | null {
+    const trimmedSelector = selector.trim();
+    const refMatch = REF_SELECTOR_REGEX.exec(trimmedSelector);
+    if (refMatch) {
+      return Number.parseInt(refMatch[1], 10);
+    }
+
+    const legacyIndexMatch = LEGACY_INDEX_SELECTOR_REGEX.exec(trimmedSelector);
+    if (legacyIndexMatch) {
+      return Number.parseInt(legacyIndexMatch[1], 10);
+    }
+
+    return null;
+  }
+
+  getDomElementBySelector(
+    selector: string,
+    selectorMap: Map<number, DOMElementNode> = this.getSelectorMap(),
+  ): DOMElementNode | null {
+    const index = this.selectorToIndex(selector);
+    if (index === null) {
+      return null;
+    }
+    return selectorMap.get(index) || null;
+  }
+
+  private async queryElementBySelector(selector: string): Promise<ElementHandle | null> {
+    if (!this._puppeteerPage) {
+      return null;
+    }
+
+    const normalizedSelector = selector.trim();
+    if (!normalizedSelector) {
+      return null;
+    }
+
+    // Keep lightweight support for common selector formats.
+    if (normalizedSelector.startsWith('xpath=')) {
+      const xpath = normalizedSelector.slice('xpath='.length).trim();
+      if (!xpath) {
+        return null;
+      }
+      const fullXpath = xpath.startsWith('/') ? xpath : `/${xpath}`;
+      return await this._puppeteerPage.$(`::-p-xpath(${fullXpath})`);
+    }
+
+    if (normalizedSelector.startsWith('text=')) {
+      const text = normalizedSelector.slice('text='.length).trim().replace(/"/g, '\\"');
+      if (!text) {
+        return null;
+      }
+      return await this._puppeteerPage.$(
+        `::-p-xpath(//*[contains(normalize-space(translate(string(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')), "${text.toLowerCase()}")])`,
+      );
+    }
+
+    return await this._puppeteerPage.$(normalizedSelector);
+  }
+
+  async getElementBySelector(
+    selector: string,
+    selectorMap: Map<number, DOMElementNode> = this.getSelectorMap(),
+  ): Promise<ElementHandle | null> {
+    const domElement = this.getDomElementBySelector(selector, selectorMap);
+    if (domElement) {
+      return await this.locateElement(domElement);
+    }
+    return await this.queryElementBySelector(selector);
+  }
+
+  async clickBySelector(useVision: boolean, selector: string, elementNode?: DOMElementNode | null): Promise<void> {
+    const domElement = elementNode ?? this.getDomElementBySelector(selector);
+    if (domElement) {
+      await this.clickElementNode(useVision, domElement);
+      return;
+    }
+
+    const element = await this.getElementBySelector(selector);
+    if (!element) {
+      throw new Error(`Element not found for selector: ${selector}`);
+    }
+
+    await this._scrollIntoViewIfNeeded(element);
+
+    try {
+      await Promise.race([
+        element.click(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Click timeout')), 2000)),
+      ]);
+      await this._checkAndHandleNavigation();
+    } catch (error) {
+      if (error instanceof URLNotAllowedError) {
+        throw error;
+      }
+
+      try {
+        await element.evaluate(el => (el as HTMLElement).click());
+        await this._checkAndHandleNavigation();
+      } catch (secondError) {
+        if (secondError instanceof URLNotAllowedError) {
+          throw secondError;
+        }
+
+        throw new Error(
+          `Failed to click selector "${selector}": ${secondError instanceof Error ? secondError.message : String(secondError)}`,
+        );
+      }
+    }
+  }
+
+  async inputTextBySelector(
+    useVision: boolean,
+    selector: string,
+    text: string,
+    options: InputTextBySelectorOptions = {},
+  ): Promise<void> {
+    const { clearBeforeTyping = true } = options;
+    const domElement = this.getDomElementBySelector(selector);
+
+    if (domElement && clearBeforeTyping) {
+      await this.inputTextElementNode(useVision, domElement, text);
+      return;
+    }
+
+    const element = domElement ? await this.locateElement(domElement) : await this.getElementBySelector(selector);
+    if (!element) {
+      throw new Error(`Element not found for selector: ${selector}`);
+    }
+
+    try {
+      await this._waitForElementStability(element, 1500);
+      await this._scrollIntoViewIfNeeded(element, 1500);
+    } catch (error) {
+      logger.debug(`Non-critical error preparing selector ${selector}: ${error}`);
+    }
+
+    if (clearBeforeTyping) {
+      await element.evaluate(el => {
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          el.value = '';
+        } else if (el instanceof HTMLElement && el.isContentEditable) {
+          el.textContent = '';
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+
+    try {
+      await element.type(text, { delay: 50 });
+    } catch (error) {
+      await element.evaluate(
+        (el, payload) => {
+          if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+            el.value = payload.clearBeforeTyping ? payload.text : `${el.value}${payload.text}`;
+          } else if (el instanceof HTMLElement && el.isContentEditable) {
+            const current = el.textContent || '';
+            el.textContent = payload.clearBeforeTyping ? payload.text : `${current}${payload.text}`;
+          } else if (el instanceof HTMLElement) {
+            el.textContent = payload.clearBeforeTyping ? payload.text : `${el.textContent || ''}${payload.text}`;
+          }
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        },
+        { text, clearBeforeTyping },
+      );
+      logger.debug(`Type fallback used for selector ${selector}:`, error);
+    }
+
+    await this.waitForPageAndFramesLoad();
+  }
+
+  async scrollByDirection(direction: 'up' | 'down' | 'left' | 'right', pixels: number): Promise<void> {
+    if (!this._puppeteerPage) {
+      throw new Error('Puppeteer is not connected');
+    }
+
+    const amount = Math.max(1, Math.abs(pixels));
+    const dx = direction === 'left' ? -amount : direction === 'right' ? amount : 0;
+    const dy = direction === 'up' ? -amount : direction === 'down' ? amount : 0;
+
+    await this._puppeteerPage.evaluate(
+      ({ left, top }) => {
+        window.scrollBy({
+          left,
+          top,
+          behavior: 'smooth',
+        });
+      },
+      { left: dx, top: dy },
+    );
+  }
+
+  async scrollIntoViewBySelector(selector: string): Promise<void> {
+    const element = await this.getElementBySelector(selector);
+    if (!element) {
+      throw new Error(`Element not found for selector: ${selector}`);
+    }
+    await this._scrollIntoViewIfNeeded(element);
+  }
+
+  async getTextBySelector(selector: string): Promise<string> {
+    const element = await this.getElementBySelector(selector);
+    if (!element) {
+      throw new Error(`Element not found for selector: ${selector}`);
+    }
+
+    return await element.evaluate(el => {
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+        return el.value ?? '';
+      }
+      const asHTMLElement = el as HTMLElement;
+      return (asHTMLElement.innerText || el.textContent || '').trim();
+    });
   }
 
   isFileUploader(elementNode: DOMElementNode, maxDepth = 3, currentDepth = 0): boolean {

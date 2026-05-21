@@ -1,20 +1,20 @@
 {
   "app_metadata_description": {
-    "description": "Descrição da extensão",
-    "message": "Automatize testes e tarefas de QA na web com IA! QAgent é um agente de navegador de código aberto para QA que permite executar casos de teste, verificar elementos de UI e reportar bugs."
+    "description": "Extension description",
+    "message": "Automate web QA with AI. Run test cases, validate UI elements, and report bugs with QAgent."
   },
   "app_metadata_name": {
-    "description": "Nome da extensão",
-    "message": "QAgent: Agente de QA e Automação de Testes com IA"
+    "description": "Extension name",
+    "message": "QAgent: QA and Test Automation Agent with AI"
   },
   "errors_unknown": {
-    "message": "Ocorreu um erro desconhecido"
+    "message": "An unknown error has occurred"
   },
   "errors_conn_serviceWorker": {
-    "message": "Falha ao conectar ao service worker"
+    "message": "Failed to connect to service worker"
   },
   "errors_cmd_unknown": {
-    "message": "Comando não suportado: $COMMAND$.\n\nComandos disponíveis: /state, /nohighlight, /replay <historySessionId>",
+    "message": "Unsupported command: $COMMAND$.\n\nAvailable commands: /state, /nohighlight, /replay <historySessionId>",
     "placeholders": {
       "command": {
         "content": "$1",
@@ -23,85 +23,106 @@
     }
   },
   "nav_newChat_a11y": {
-    "message": "Novo Chat"
+    "message": "New Chat"
   },
   "nav_loadHistory_a11y": {
-    "message": "Carregar Histórico"
+    "message": "Load History"
   },
   "nav_settings_a11y": {
-    "message": "Configurações"
+    "message": "Settings"
   },
   "nav_back": {
-    "message": "← Voltar"
+    "message": "← Back"
   },
   "nav_back_a11y": {
-    "message": "Voltar para o chat"
+    "message": "Return to chat"
   },
   "welcome_title": {
-    "message": "Bem-vindo ao QAgent!"
+    "message": "Welcome to QAgent!"
   },
   "welcome_instruction": {
-    "message": "Para começar, por favor, configure suas chaves de API na página de configurações."
+    "message": "To get started, configure your API keys and select models on the settings page."
+  },
+  "setup_modal_title": {
+    "message": "Configuration required"
+  },
+  "setup_modal_description": {
+    "message": "To unlock chat, configure an LLM provider and select models in Settings."
+  },
+  "setup_modal_close_a11y": {
+    "message": "Close configuration notice"
   },
   "welcome_openSettings": {
-    "message": "Abrir Configurações"
+    "message": "Open Settings"
   },
   "welcome_quickStart": {
-    "message": "Guia de Início Rápido"
+    "message": "Quick Start Guide"
   },
   "welcome_joinCommunity": {
-    "message": "Junte-se à Nossa Comunidade"
+    "message": "Join Our Community"
   },
   "status_checkingConfig": {
-    "message": "Verificando configuração..."
+    "message": "Checking configuration..."
   },
   "chat_buttons_stop": {
-    "message": "Parar"
+    "message": "Stop"
   },
   "chat_buttons_replay": {
-    "message": "Reproduzir"
+    "message": "Replay"
   },
   "chat_buttons_send": {
-    "message": "Enviar"
+    "message": "Send"
   },
   "chat_input_placeholder": {
-    "message": "Com qual caso de teste ou tarefa de QA posso ajudar?"
+    "message": "What test case or QA task can I help with?"
   },
   "chat_input_form": {
-    "message": "Formulário de entrada de chat"
+    "message": "Chat entry form"
   },
   "chat_input_editor": {
-    "message": "Entrada de mensagem"
+    "message": "Message input"
+  },
+  "chat_input_placeholder_withAttachments": {
+    "message": "Add a message (optional)..."
+  },
+  "chat_input_attachFiles": {
+    "message": "Attach files"
+  },
+  "chat_input_attachFiles_title": {
+    "message": "Attach text files (txt, md, json, csv, etc.)"
+  },
+  "chat_input_removeFile": {
+    "message": "Remove $1"
   },
   "chat_history_title": {
-    "message": "Histórico de Chat"
+    "message": "Chat History"
   },
   "chat_history_empty": {
-    "message": "Nenhum histórico de chat disponível"
+    "message": "No chat history available"
   },
   "chat_history_bookmark": {
-    "message": "Adicionar sessão aos favoritos"
+    "message": "Add session to favorites"
   },
   "chat_history_delete": {
-    "message": "Excluir sessão"
+    "message": "Delete session"
   },
   "chat_bookmarks_header": {
-    "message": "Início Rápido"
+    "message": "Quick Start"
   },
   "chat_bookmarks_saveEdit": {
-    "message": "Salvar alterações"
+    "message": "Save changes"
   },
   "chat_bookmarks_cancelEdit": {
-    "message": "Cancelar alterações"
+    "message": "Cancel changes"
   },
   "chat_bookmarks_edit": {
-    "message": "Editar título do favorito"
+    "message": "Edit bookmark title"
   },
   "chat_bookmarks_delete": {
-    "message": "Excluir favorito"
+    "message": "Delete favorite"
   },
   "chat_replay_starting": {
-    "message": "Iniciando reprodução da tarefa:\n\n\"$TASK$\"",
+    "message": "Starting task playback:\n\n\"$TASK$\"",
     "placeholders": {
       "task": {
         "content": "$1",
@@ -110,7 +131,7 @@
     }
   },
   "chat_replay_failed": {
-    "message": "Reprodução falhou: $ERROR_MESSAGE$",
+    "message": "Playback failed: $ERROR_MESSAGE$",
     "placeholders": {
       "error_message": {
         "content": "$1",
@@ -119,13 +140,13 @@
     }
   },
   "chat_replay_invalidArgs": {
-    "message": "Argumentos inválidos. Por favor, use o formato: /replay <historySessionId>"
+    "message": "Invalid arguments. Please use the format: /replay <historySessionId>"
   },
   "chat_replay_disabled": {
-    "message": "A reprodução está desativada nas configurações gerais. Por favor, ative \"Reproduzir Tarefas Históricas\" nas configurações da extensão para usar este recurso."
+    "message": "Playback is disabled in general settings. Please enable \"Replay Historical Tasks\" in the extension settings to use this feature."
   },
   "chat_replay_noHistory": {
-    "message": "Nenhum histórico de ação encontrado para a sessão \"$SESSION_ID$\".\n\nÉ uma sessão de reprodução (sessões de reprodução não podem ser reproduzidas novamente), ou foi criada antes do recurso de reprodução estar disponível.",
+    "message": "No action history found for session \"$SESSION_ID$\".\n\nIt is a replay session (replay sessions cannot be replayed), or it was created before the replay feature was available.",
     "placeholders": {
       "session_id": {
         "content": "$1",
@@ -134,280 +155,286 @@
     }
   },
   "chat_replay_prefix": {
-    "message": "Reprodução de "
+    "message": "Replay of "
   },
   "chat_stt_processing": {
-    "message": "Processando fala..."
+    "message": "Processing speech..."
   },
   "chat_stt_recording_stop": {
-    "message": "Parar gravação"
+    "message": "Stop recording"
   },
   "chat_stt_input_start": {
-    "message": "Iniciar entrada de voz"
+    "message": "Start voice input"
   },
   "chat_stt_processingFailed": {
-    "message": "Falha ao processar gravação de fala"
+    "message": "Failed to process speech recording"
   },
   "chat_stt_model_notFound": {
-    "message": "Nenhum modelo de conversão de fala para texto configurado ou não é um modelo Gemini. Por favor, configure um modelo Gemini nas configurações."
+    "message": "No speech-to-text model configured or not a Gemini model. Please configure a Gemini model in settings."
   },
   "chat_stt_recognitionFailed": {
-    "message": "Reconhecimento de fala falhou"
+    "message": "Speech recognition failed"
   },
   "chat_stt_microphone_permissionDenied": {
-    "message": "Acesso ao microfone negado. Por favor, ative as permissões de microfone nas configurações do navegador."
+    "message": "Microphone access denied. Please enable microphone permissions in your browser settings."
   },
   "chat_stt_microphone_accessFailed": {
-    "message": "Falha ao acessar o microfone. "
+    "message": "Failed to access the microphone."
   },
   "chat_stt_microphone_grantPermission": {
-    "message": "Por favor, conceda permissão ao microfone."
+    "message": "Please grant microphone permission."
   },
   "chat_stt_microphone_notFound": {
-    "message": "Nenhum microfone encontrado."
+    "message": "No microphone found."
   },
   "permissions_microphone_title": {
-    "message": "Ativar Entrada de Voz"
+    "message": "Enable Voice Input"
   },
   "permissions_microphone_description": {
-    "message": "O QAgent precisa de acesso ao microfone para converter sua fala em texto."
+    "message": "QAgent needs microphone access to convert your speech to text."
   },
   "permissions_microphone_grantButton": {
-    "message": "Conceder Permissão ao Microfone"
+    "message": "Grant Microphone Permission"
   },
   "permissions_microphone_requesting": {
-    "message": "Solicitando permissão de microfone..."
+    "message": "Requesting microphone permission..."
   },
   "permissions_microphone_grantedSuccess": {
-    "message": "✅ Permissão de microfone concedida! Agora você pode usar a entrada de voz."
+    "message": "✅ Microphone permission granted! Now you can use voice input."
   },
   "permissions_microphone_grantedButton": {
-    "message": "Permissão Concedida"
+    "message": "Permission Granted"
   },
   "permissions_microphone_denied": {
-    "message": "Permissão negada. "
+    "message": "Permission denied."
   },
   "permissions_microphone_allowHelp": {
-    "message": "Por favor, clique em \"Permitir\" quando solicitado o acesso ao microfone."
+    "message": "Please click \"Allow\" when prompted for microphone access."
   },
   "permissions_microphone_notFound": {
-    "message": "Nenhum microfone encontrado. Por favor, verifique seus dispositivos de áudio."
+    "message": "No microphone found. Please check your audio devices."
   },
   "permissions_microphone_alreadyGranted": {
-    "message": "✅ Permissão de microfone já concedida!"
+    "message": "✅ Microphone permission already granted!"
   },
   "permissions_microphone_alreadyGrantedButton": {
-    "message": "Permissão Já Concedida"
+    "message": "Permission Already Granted"
   },
   "options_nav_header": {
-    "message": "Configurações"
+    "message": "Settings"
   },
   "options_tabs_general": {
-    "message": "Geral"
+    "message": "General"
   },
   "options_tabs_models": {
-    "message": "Modelos"
+    "message": "Models"
   },
   "options_tabs_firewall": {
     "message": "Firewall"
   },
   "options_tabs_help": {
-    "message": "Ajuda"
+    "message": "Help"
   },
   "options_tabs_analytics": {
-    "message": "Análise"
+    "message": "Analytics"
   },
   "sidepanel_progress_message": {
-    "message": "Mostrando progresso..."
+    "message": "Showing progress..."
   },
   "options_general_header": {
-    "message": "Geral"
+    "message": "General"
   },
   "options_general_maxSteps": {
-    "message": "Máximo de Passos por Tarefa"
+    "message": "Maximum Steps per Task"
   },
   "options_general_maxSteps_desc": {
-    "message": "Limite de passos por tarefa"
+    "message": "Step limit per task"
   },
   "options_general_maxActions": {
-    "message": "Máximo de Ações por Passo"
+    "message": "Maximum Actions per Step"
   },
   "options_general_maxActions_desc": {
-    "message": "Limite de ações por passo"
+    "message": "Limit actions per step"
   },
   "options_general_maxFailures": {
-    "message": "Tolerância a Falhas"
+    "message": "Fault Tolerance"
   },
   "options_general_maxFailures_desc": {
-    "message": "Quantas falhas consecutivas antes de parar"
+    "message": "How many consecutive failures before stopping"
   },
   "options_general_enableVision": {
-    "message": "Ativar Visão"
+    "message": "Activate Vision"
   },
   "options_general_enableVision_desc": {
-    "message": "Usar capacidade de visão dos modelos de linguagem (consome mais tokens para melhores resultados)"
+    "message": "Use vision capabilities of language models (consume more tokens for better results)"
   },
   "options_general_displayHighlights": {
-    "message": "Mostrar Destaques"
+    "message": "Show Highlights"
   },
   "options_general_displayHighlights_desc": {
-    "message": "Mostrar destaques visuais em elementos interativos (ex: botões, links, etc.)"
+    "message": "Show visual highlights in interactive elements (e.g. buttons, links, etc.)"
   },
   "options_general_planningInterval": {
-    "message": "Frequência de Replanejamento"
+    "message": "Replanning Frequency"
   },
   "options_general_planningInterval_desc": {
-    "message": "Reconsiderar e atualizar o plano a cada [Número] passos"
+    "message": "Reconsider and update the plan every [Number] steps"
   },
   "options_general_minWaitPageLoad": {
-    "message": "Tempo de Espera de Carregamento da Página"
+    "message": "Page Load Waiting Time"
   },
   "options_general_minWaitPageLoad_desc": {
-    "message": "Tempo mínimo de espera após o carregamento da página (250-5000ms)"
+    "message": "Minimum waiting time after page load (250-5000ms)"
   },
   "options_general_replayHistoricalTasks": {
-    "message": "Reproduzir Tarefas Históricas (experimental)"
+    "message": "Reproduce Historical Tasks (experimental)"
   },
   "options_general_replayHistoricalTasks_desc": {
-    "message": "Ativar o armazenamento e a reprodução do histórico de passos do agente (experimental, pode ter problemas)"
+    "message": "Enable agent step history storage and playback (experimental, may have issues)"
+  },
+  "options_general_chatDebugMode": {
+    "message": "Chat Debug Mode"
+  },
+  "options_general_chatDebugMode_desc": {
+    "message": "Show every task event and payload directly in chat for troubleshooting."
   },
   "options_models_providers_header": {
-    "message": "Provedores de LLM"
+    "message": "LLM Providers"
   },
   "options_models_providers_notConfigured": {
-    "message": "Nenhum provedor configurado ainda. Adicione um provedor para começar."
+    "message": "No providers configured yet. Add a provider to get started."
   },
   "options_models_providers_btnCancel": {
-    "message": "Cancelar"
+    "message": "Cancel"
   },
   "options_models_providers_btnSave": {
-    "message": "Salvar"
+    "message": "Save"
   },
   "options_models_providers_btnDelete": {
-    "message": "Excluir"
+    "message": "Delete"
   },
   "options_models_providers_setupInstructions": {
-    "message": "Insira sua chave de API e clique em Salvar para configurá-la."
+    "message": "Enter your API key and click Save to configure it."
   },
   "options_models_providers_custom_name": {
-    "message": "Nome"
+    "message": "Name"
   },
   "options_models_providers_custom_name_desc": {
-    "message": "Nome do provedor (espaços não são permitidos ao salvar)"
+    "message": "Provider name (spaces are not allowed when saving)"
   },
   "options_models_providers_custom_name_placeholder": {
-    "message": "Nome do provedor"
+    "message": "Provider name"
   },
   "options_models_providers_apiKey": {
-    "message": "Chave de API"
+    "message": "API Key"
   },
   "options_models_providers_apiKey_placeholder_optional": {
-    "message": "Chave de API (opcional)"
+    "message": "API Key (optional)"
   },
   "options_models_providers_apiKey_placeholder_required": {
-    "message": "Chave de API (obrigatório)"
+    "message": "API Key (required)"
   },
   "options_models_providers_apiKey_placeholder_ollama": {
-    "message": "Chave de API (deixe em branco para Ollama)"
+    "message": "API Key (leave blank for Ollama)"
   },
   "options_models_providers_apiKey_hide": {
-    "message": "Ocultar chave de API"
+    "message": "Hide API Key"
   },
   "options_models_providers_apiKey_show": {
-    "message": "Mostrar chave de API"
+    "message": "Show API Key"
   },
   "options_models_selection_header": {
-    "message": "Seleção de Modelo"
+    "message": "Model Selection"
   },
   "options_models_speechToText_header": {
-    "message": "Modelo de Fala para Texto"
+    "message": "Speech to Text Model"
   },
   "options_models_agents_navigator": {
-    "message": "Navega em sites, executa passos de teste e verifica resultados"
+    "message": "Browse websites, run test steps, and check results"
   },
   "options_models_agents_planner": {
-    "message": "Desenvolve estratégias de teste e divide requisitos em casos de teste"
+    "message": "Develops testing strategies and divides requirements into test cases"
   },
   "options_models_labels_model": {
-    "message": "Modelo"
+    "message": "Model"
   },
   "options_models_labels_temperature": {
-    "message": "Temperatura"
+    "message": "Temperature"
   },
   "options_models_labels_topP": {
     "message": "Top P"
   },
   "options_models_labels_reasoning": {
-    "message": "Raciocínio"
+    "message": "Reasoning"
   },
   "options_models_stt_desc": {
-    "message": "Configure o modelo Gemini usado para converter fala em texto ao usar o recurso de microfone."
+    "message": "Configure the Gemini model used to convert speech to text when using the microphone feature."
   },
   "options_models_chooseModel": {
-    "message": "Escolher Modelo"
+    "message": "Choose Model"
   },
   "options_models_addNewProvider": {
-    "message": "Adicionar Novo Provedor"
+    "message": "Add New Provider"
   },
   "options_models_providers_openaiCompatible": {
-    "message": "Provedor de API compatível com OpenAI"
+    "message": "OpenAI Compatible API Provider"
   },
   "options_models_providers_baseUrl": {
-    "message": "URL Base"
+    "message": "Base URL"
   },
   "options_models_providers_endpoint": {
     "message": "Endpoint"
   },
   "options_models_providers_deployment": {
-    "message": "Implantação"
+    "message": "Implantation"
   },
   "options_models_providers_apiVersion": {
-    "message": "Versão da API"
+    "message": "API Version"
   },
   "options_models_providers_models": {
-    "message": "Modelos"
+    "message": "Models"
   },
   "options_models_providers_placeholders_baseUrl_custom": {
-    "message": "Endpoint de API compatível com OpenAI obrigatório"
+    "message": "Mandatory OpenAI Compatible API Endpoint"
   },
   "options_models_providers_placeholders_baseUrl_azure": {
     "message": "https://SEU_NOME_DE_RECURSO.openai.azure.com/"
   },
   "options_models_providers_placeholders_baseUrl_openrouter": {
-    "message": "URL Base do OpenRouter (opcional, padrão para https://openrouter.ai/api/v1)"
+    "message": "OpenRouter Base URL (optional, defaults to https://openrouter.ai/api/v1)"
   },
   "options_models_providers_placeholders_baseUrl_llama": {
-    "message": "URL Base da API Llama (padrão para https://api.llama.com/v1)"
+    "message": "Llama API Base URL (defaults to https://api.llama.com/v1)"
   },
   "options_models_providers_placeholders_baseUrl_ollama": {
-    "message": "URL base do Ollama"
+    "message": "Ollama base URL"
   },
   "options_models_providers_placeholders_azureDeployment": {
-    "message": "Insira o nome do modelo Azure (ex: gpt-4o, gpt-4o-mini)"
+    "message": "Enter the Azure template name (ex: gpt-4o, gpt-4o-mini)"
   },
   "options_models_providers_placeholders_azureApiVersion": {
     "message": "ex: 2025-04-01-preview"
   },
   "options_models_providers_deployment_desc": {
-    "message": "Digite o nome do modelo e pressione Enter ou Espaço para definir. O nome da implantação deve corresponder ao nome do modelo OpenAI (ex: gpt-4o) para melhor compatibilidade."
+    "message": "Type the model name and press Enter or Space to define. The deployment name must match the OpenAI model name (ex: gpt-4o) for best compatibility."
   },
   "options_models_providers_models_instructions": {
-    "message": "Digite e pressione Enter ou Espaço para adicionar."
+    "message": "Type and press Enter or Space to add."
   },
   "options_models_providers_models_openrouter_empty": {
-    "message": "Nenhum modelo selecionado. Adicione nomes de modelos manualmente, se necessário."
+    "message": "No models selected. Add template names manually if necessary."
   },
   "options_models_providers_ollama_reminder": {
-    "message": "a variável de ambiente DEVE ser definida para o servidor Ollama."
+    "message": "the environment variable MUST be set to the Ollama server."
   },
   "options_models_providers_ollama_learnMore": {
-    "message": "Saiba mais"
+    "message": "Find out more"
   },
   "options_models_providers_errors_spacesNotAllowed": {
-    "message": "Espaços não são permitidos em nomes de provedores. Por favor, use sublinhados ou outros caracteres."
+    "message": "Spaces are not allowed in provider names. Please use underscores or other characters."
   },
   "options_models_providers_errors_baseUrlRequired": {
-    "message": "A URL Base é obrigatória para $PROVIDER$. Por favor, insira-a.",
+    "message": "Base URL is required for $PROVIDER$. Please enter it.",
     "placeholders": {
       "provider": {
         "content": "$1",
@@ -416,88 +443,88 @@
     }
   },
   "options_firewall_header": {
-    "message": "Firewall"
+    "message": "firewall"
   },
   "options_firewall_enableToggle": {
-    "message": "Ativar Firewall"
+    "message": "Activate Firewall"
   },
   "options_firewall_toggleFirewall_a11y": {
-    "message": "Ativar/Desativar Firewall"
+    "message": "Enable/Disable Firewall"
   },
   "options_firewall_allowList_header": {
-    "message": "Lista de Permissões"
+    "message": "Whitelist"
   },
   "options_firewall_allowList_empty": {
-    "message": "Nenhum domínio na lista de permissões. Uma lista de permissões vazia significa que todos os domínios não negados são permitidos."
+    "message": "No domains are whitelisted. An empty whitelist means that all non-denied domains are allowed."
   },
   "options_firewall_denyList_header": {
-    "message": "Lista de Negações"
+    "message": "List of Denials"
   },
   "options_firewall_denyList_empty": {
-    "message": "Nenhum domínio na lista de negações"
+    "message": "No domains in the deny list"
   },
   "options_firewall_placeholders_domainUrl": {
-    "message": "Insira domínio ou URL (ex: example.com, localhost, 127.0.0.1)"
+    "message": "Enter domain or URL (ex: example.com, localhost, 127.0.0.1)"
   },
   "options_firewall_btnAdd": {
-    "message": "Adicionar"
+    "message": "To add"
   },
   "options_firewall_btnRemove": {
-    "message": "Remover"
+    "message": "Remove"
   },
   "options_firewall_howItWorks_header": {
-    "message": "Como o Firewall Funciona"
+    "message": "How the Firewall Works"
   },
   "options_firewall_howItWorks": {
-    "message": "O firewall contém uma lista de negações e uma lista de permissões.\nSe ambas as listas estiverem vazias, todos os URLs são permitidos\nA lista de negações tem prioridade - se um URL corresponder a qualquer entrada da lista de negações, ele será bloqueado\nQuando a lista de permissões está vazia, todos os URLs não negados são permitidos\nQuando a lista de permissões não está vazia, apenas os URLs correspondentes são permitidos\nCuringas ainda NÃO são suportados\nA lista de permissões é preferível à lista de negações"
+    "message": "The firewall contains a deny list and an allow list.\nIf both lists are empty, all URLs are allowed\nThe deny list takes priority - if a URL matches any deny list entry, it will be blocked\nWhen the whitelist is empty, all non-denied URLs are allowed\nWhen the whitelist is not empty, only matching URLs are allowed\nWildcards are NOT supported yet\nAllow list is preferable to deny list"
   },
   "bg_errors_noTabId": {
-    "message": "Nenhum ID de aba fornecido"
+    "message": "No tab ID provided"
   },
   "bg_errors_noTaskId": {
-    "message": "Nenhum ID de tarefa fornecido"
+    "message": "No task ID provided"
   },
   "bg_errors_noRunningTask": {
-    "message": "Nenhuma tarefa em execução"
+    "message": "No tasks running"
   },
   "bg_cmd_newTask_noTask": {
-    "message": "Nenhuma tarefa fornecida"
+    "message": "No tasks provided"
   },
   "bg_cmd_followUpTask_noTask": {
-    "message": "Nenhuma tarefa de acompanhamento fornecida"
+    "message": "No follow-up tasks provided"
   },
   "bg_cmd_followUpTask_cleaned": {
-    "message": "O executor foi limpo, não é possível adicionar tarefa de acompanhamento"
+    "message": "Executor has been cleaned up, cannot add follow-up task"
   },
   "bg_cmd_resumeTask_noTask": {
-    "message": "Nenhuma tarefa para resumir"
+    "message": "No tasks to summarize"
   },
   "bg_cmd_state_printed": {
-    "message": "Estado impresso no console"
+    "message": "Status printed on the console"
   },
   "bg_cmd_state_failed": {
-    "message": "Falha ao obter o estado"
+    "message": "Failed to get state"
   },
   "bg_cmd_nohighlight_ok": {
-    "message": "destaque removido"
+    "message": "highlighted removed"
   },
   "bg_cmd_stt_noAudioData": {
-    "message": "Nenhum dado de áudio fornecido"
+    "message": "No audio data provided"
   },
   "bg_cmd_stt_failed": {
-    "message": "Reconhecimento de fala falhou"
+    "message": "Speech recognition failed"
   },
   "bg_cmd_replay_noHistory": {
-    "message": "Nenhum ID de sessão de histórico fornecido"
+    "message": "No history session ID provided"
   },
   "bg_cmd_replay_failed": {
-    "message": "Reprodução falhou"
+    "message": "Playback failed"
   },
   "bg_setup_noApiKeys": {
-    "message": "Por favor, configure as chaves de API nas configurações primeiro"
+    "message": "Please configure API keys in settings first"
   },
   "bg_setup_noProvider": {
-    "message": "Provedor $PROVIDER$ não encontrado nas configurações",
+    "message": "Provider $PROVIDER$ not found in settings",
     "placeholders": {
       "provider": {
         "content": "$1",
@@ -506,22 +533,25 @@
     }
   },
   "bg_setup_noNavigatorModel": {
-    "message": "Por favor, escolha um modelo para o navegador nas configurações primeiro"
+    "message": "Please choose a browser model in the settings first"
   },
   "exec_errors_maxStepsReached": {
-    "message": "Máximo de passos atingido"
+    "message": "Maximum steps reached"
   },
   "exec_errors_maxFailuresReached": {
-    "message": "Máximo de falhas atingido"
+    "message": "Maximum failures reached"
+  },
+  "exec_errors_loopDetected": {
+    "message": "Navigation loop detected. Please refine the task with more specific instructions."
   },
   "exec_task_cancel": {
-    "message": "Tarefa cancelada"
+    "message": "Task canceled"
   },
   "exec_task_pause": {
-    "message": "Tarefa pausada"
+    "message": "Task paused"
   },
   "exec_task_fail": {
-    "message": "Tarefa falhou: \n\n$ERROR_MESSAGE$",
+    "message": "Task failed: $ERROR_MESSAGE$",
     "placeholders": {
       "error_message": {
         "content": "$1",
@@ -530,13 +560,13 @@
     }
   },
   "exec_replay_cancel": {
-    "message": "Reprodução cancelada"
+    "message": "Playback canceled"
   },
   "exec_replay_ok": {
-    "message": "Reprodução concluída"
+    "message": "Playback completed"
   },
   "exec_replay_fail": {
-    "message": "Reprodução falhou: \n\n$ERROR_MESSAGE$",
+    "message": "Playback failed: $ERROR_MESSAGE$",
     "placeholders": {
       "error_message": {
         "content": "$1",
@@ -545,13 +575,13 @@
     }
   },
   "exec_replay_historyNotFound": {
-    "message": "Histórico não encontrado"
+    "message": "History not found"
   },
   "exec_replay_historyEmpty": {
-    "message": "O histórico está vazio"
+    "message": "History is empty"
   },
   "act_searchGoogle_start": {
-    "message": "Procurando por \"$QUERY$\" no Google",
+    "message": "Searching for \"$QUERY$\" on Google",
     "placeholders": {
       "query": {
         "content": "$1",
@@ -560,7 +590,7 @@
     }
   },
   "act_searchGoogle_ok": {
-    "message": "Procurado por \"$QUERY$\" no Google",
+    "message": "Searched for \"$QUERY$\" on Google",
     "placeholders": {
       "query": {
         "content": "$1",
@@ -569,7 +599,7 @@
     }
   },
   "act_goToUrl_start": {
-    "message": "Navegando para $URL$",
+    "message": "Navigating to $URL$",
     "placeholders": {
       "url": {
         "content": "$1",
@@ -578,7 +608,7 @@
     }
   },
   "act_goToUrl_ok": {
-    "message": "Navegado para $URL$",
+    "message": "Navigated to $URL$",
     "placeholders": {
       "url": {
         "content": "$1",
@@ -587,13 +617,13 @@
     }
   },
   "act_goBack_start": {
-    "message": "Navegando para trás"
+    "message": "Navigating backwards"
   },
   "act_goBack_ok": {
-    "message": "Navegado para trás"
+    "message": "Navigated backwards"
   },
   "act_wait_start": {
-    "message": "Aguardando $SECONDS$ segundos",
+    "message": "Waiting for $SECONDS$ seconds",
     "placeholders": {
       "seconds": {
         "content": "$1",
@@ -602,7 +632,7 @@
     }
   },
   "act_wait_ok": {
-    "message": "$SECONDS$ segundos se passaram",
+    "message": "$SECONDS$ seconds have passed",
     "placeholders": {
       "seconds": {
         "content": "$1",
@@ -611,7 +641,7 @@
     }
   },
   "act_click_start": {
-    "message": "Clicar no elemento com índice $INDEX$",
+    "message": "Click on the element with index $INDEX$",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -620,7 +650,7 @@
     }
   },
   "act_errors_elementNotExist": {
-    "message": "Elemento com índice $INDEX$ não existe - tente novamente ou use ações alternativas",
+    "message": "Element with index $INDEX$ does not exist - try again or use alternative actions",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -629,7 +659,7 @@
     }
   },
   "act_errors_elementNoLongerAvailable": {
-    "message": "Elemento não está mais disponível com o índice $INDEX$ - muito provavelmente a página mudou",
+    "message": "Element is no longer available with index $INDEX$ - most likely the page has changed",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -638,7 +668,7 @@
     }
   },
   "act_click_fileUploader": {
-    "message": "Índice $INDEX$ - possui um elemento que abre o diálogo de upload de arquivo. Para fazer upload de arquivos, use uma função específica para upload de arquivos",
+    "message": "Index $INDEX$ - has an element that opens the file upload dialog. To upload files, use a specific file upload function",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -647,7 +677,7 @@
     }
   },
   "act_click_ok": {
-    "message": "Botão clicado com índice $INDEX$: $TEXT$",
+    "message": "Button clicked with index $INDEX$: $TEXT$",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -660,10 +690,10 @@
     }
   },
   "act_click_newTabOpened": {
-    "message": "Nova aba aberta - mudando para ela"
+    "message": "Open new tab - switching to it"
   },
   "act_inputText_start": {
-    "message": "Inserir texto no índice $INDEX$",
+    "message": "Insert text into index $INDEX$",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -672,7 +702,7 @@
     }
   },
   "act_inputText_ok": {
-    "message": "Inserir $TEXT$ no índice $INDEX$",
+    "message": "Insert $TEXT$ into index $INDEX$",
     "placeholders": {
       "text": {
         "content": "$1",
@@ -685,7 +715,7 @@
     }
   },
   "act_switchTab_start": {
-    "message": "Mudando para a aba $TAB_ID$",
+    "message": "Switching to the $TAB_ID$ tab",
     "placeholders": {
       "tab_id": {
         "content": "$1",
@@ -694,7 +724,7 @@
     }
   },
   "act_switchTab_ok": {
-    "message": "Mudou para a aba $TAB_ID$",
+    "message": "Moved to the $TAB_ID$ tab",
     "placeholders": {
       "tab_id": {
         "content": "$1",
@@ -703,7 +733,7 @@
     }
   },
   "act_openTab_start": {
-    "message": "Abrindo $URL$ em nova aba",
+    "message": "Opening $URL$ in new tab",
     "placeholders": {
       "url": {
         "content": "$1",
@@ -712,7 +742,7 @@
     }
   },
   "act_openTab_ok": {
-    "message": "Abriu $URL$ em nova aba",
+    "message": "Opened $URL$ in new tab",
     "placeholders": {
       "url": {
         "content": "$1",
@@ -721,7 +751,7 @@
     }
   },
   "act_closeTab_start": {
-    "message": "Fechando aba $TAB_ID$",
+    "message": "Closing tab $TAB_ID$",
     "placeholders": {
       "tab_id": {
         "content": "$1",
@@ -730,7 +760,7 @@
     }
   },
   "act_closeTab_ok": {
-    "message": "Fechou aba $TAB_ID$",
+    "message": "Closed tab $TAB_ID$",
     "placeholders": {
       "tab_id": {
         "content": "$1",
@@ -739,7 +769,7 @@
     }
   },
   "act_cache_start": {
-    "message": "Armazenando em cache os resultados: $CONTENT$",
+    "message": "Caching results: $CONTENT$",
     "placeholders": {
       "content": {
         "content": "$1",
@@ -748,7 +778,7 @@
     }
   },
   "act_cache_ok": {
-    "message": "Resultados armazenados em cache: $CONTENT$",
+    "message": "Cached results: $CONTENT$",
     "placeholders": {
       "content": {
         "content": "$1",
@@ -757,7 +787,7 @@
     }
   },
   "act_scrollToPercent_start": {
-    "message": "Rolar para a porcentagem: $PERCENT$",
+    "message": "Scroll to percentage: $PERCENT$",
     "placeholders": {
       "percent": {
         "content": "$1",
@@ -766,7 +796,7 @@
     }
   },
   "act_scrollToPercent_ok": {
-    "message": "Rolado para a porcentagem: $PERCENT$",
+    "message": "Rolled to percentage: $PERCENT$",
     "placeholders": {
       "percent": {
         "content": "$1",
@@ -775,31 +805,31 @@
     }
   },
   "act_scrollToTop_start": {
-    "message": "Rolar para o topo"
+    "message": "Scroll to top"
   },
   "act_scrollToTop_ok": {
-    "message": "Rolado para o topo"
+    "message": "Scrolled to the top"
   },
   "act_scrollToBottom_start": {
-    "message": "Rolar para o final"
+    "message": "Scroll to the end"
   },
   "act_scrollToBottom_ok": {
-    "message": "Rolado para o final"
+    "message": "Scrolled to the end"
   },
   "act_previousPage_start": {
-    "message": "Rolar para a página anterior"
+    "message": "Scroll to previous page"
   },
   "act_previousPage_ok": {
-    "message": "Rolado para a página anterior"
+    "message": "Scrolled to previous page"
   },
   "act_nextPage_start": {
-    "message": "Rolar para a próxima página"
+    "message": "Scroll to next page"
   },
   "act_nextPage_ok": {
-    "message": "Rolado para a próxima página"
+    "message": "Scrolled to next page"
   },
   "act_errors_alreadyAtTop": {
-    "message": "O elemento com índice $INDEX$ já está no topo, não é possível rolar para a página anterior",
+    "message": "The element with index $INDEX$ is already at the top, it is not possible to scroll to the previous page",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -808,10 +838,10 @@
     }
   },
   "act_errors_pageAlreadyAtTop": {
-    "message": "Já está no topo da página, não é possível rolar para a página anterior"
+    "message": "It is already at the top of the page, it is not possible to scroll to the previous page"
   },
   "act_errors_alreadyAtBottom": {
-    "message": "O elemento com índice $INDEX$ já está no final, não é possível rolar para a próxima página",
+    "message": "The element with index $INDEX$ is already at the end, it is not possible to scroll to the next page",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -820,10 +850,10 @@
     }
   },
   "act_errors_pageAlreadyAtBottom": {
-    "message": "Já está no final da página, não é possível rolar para a próxima página"
+    "message": "It's already at the end of the page, you can't scroll to the next page"
   },
   "act_scrollToText_start": {
-    "message": "Rolar para o texto: $TEXT$, ocorrência $OCCURRENCE$",
+    "message": "Scroll to text: $TEXT$, occurrence $OCCURRENCE$",
     "placeholders": {
       "text": {
         "content": "$1",
@@ -836,7 +866,7 @@
     }
   },
   "act_scrollToText_ok": {
-    "message": "Rolado para o texto: $TEXT$, ocorrência $OCCURRENCE$",
+    "message": "Scrolled to text: $TEXT$, occurrence $OCCURRENCE$",
     "placeholders": {
       "text": {
         "content": "$1",
@@ -849,7 +879,7 @@
     }
   },
   "act_scrollToText_notFound": {
-    "message": "Texto '$TEXT$' (ocorrência $OCCURRENCE$) não encontrado ou não visível",
+    "message": "Text '$TEXT$' (occurrence $OCCURRENCE$) not found or not visible",
     "placeholders": {
       "text": {
         "content": "$1",
@@ -862,7 +892,7 @@
     }
   },
   "act_scrollToText_failed": {
-    "message": "Falha ao rolar para o texto: $ERROR$",
+    "message": "Failed to scroll to text: $ERROR$",
     "placeholders": {
       "error": {
         "content": "$1",
@@ -871,7 +901,7 @@
     }
   },
   "act_sendKeys_start": {
-    "message": "Enviar teclas: $KEYS$",
+    "message": "Send keys: $KEYS$",
     "placeholders": {
       "keys": {
         "content": "$1",
@@ -880,7 +910,7 @@
     }
   },
   "act_sendKeys_ok": {
-    "message": "Teclas enviadas: $KEYS$",
+    "message": "Keys sent: $KEYS$",
     "placeholders": {
       "keys": {
         "content": "$1",
@@ -889,7 +919,7 @@
     }
   },
   "act_getDropdownOptions_start": {
-    "message": "Obtendo opções do menu suspenso com índice $INDEX$",
+    "message": "Getting dropdown menu options with index $INDEX$",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -898,10 +928,10 @@
     }
   },
   "act_getDropdownOptions_useExactText": {
-    "message": "Use a string de texto exata em select_dropdown_option"
+    "message": "Use exact text string in select_dropdown_option"
   },
   "act_getDropdownOptions_ok": {
-    "message": "Obtidas $COUNT$ opções do menu suspenso",
+    "message": "Obtained $COUNT$ dropdown menu options",
     "placeholders": {
       "count": {
         "content": "$1",
@@ -910,10 +940,10 @@
     }
   },
   "act_getDropdownOptions_noOptions": {
-    "message": "Nenhuma opção encontrada no menu suspenso"
+    "message": "No options found in dropdown menu"
   },
   "act_getDropdownOptions_failed": {
-    "message": "Falha ao obter opções do menu suspenso: $ERROR$",
+    "message": "Failed to get dropdown menu options: $ERROR$",
     "placeholders": {
       "error": {
         "content": "$1",
@@ -922,7 +952,7 @@
     }
   },
   "act_selectDropdownOption_start": {
-    "message": "Selecionar opção \"$TEXT$\" do menu suspenso com índice $INDEX$",
+    "message": "Select option \"$TEXT$\" from the drop-down menu with index $INDEX$",
     "placeholders": {
       "text": {
         "content": "$1",
@@ -935,7 +965,7 @@
     }
   },
   "act_selectDropdownOption_ok": {
-    "message": "Opção selecionada \"$TEXT$\" do menu suspenso com índice $INDEX$",
+    "message": "Selected option \"$TEXT$\" from dropdown with index $INDEX$",
     "placeholders": {
       "text": {
         "content": "$1",
@@ -948,7 +978,7 @@
     }
   },
   "act_selectDropdownOption_notSelect": {
-    "message": "Não é possível selecionar a opção: O elemento com índice $INDEX$ é um $TAG_NAME$, não um SELECT",
+    "message": "Cannot select option: The element with index $INDEX$ is a $TAG_NAME$, not a SELECT",
     "placeholders": {
       "index": {
         "content": "$1",
@@ -961,12 +991,33 @@
     }
   },
   "act_selectDropdownOption_failed": {
-    "message": "Falha ao selecionar a opção: $ERROR$",
+    "message": "Failed to select option: $ERROR$",
     "placeholders": {
       "error": {
         "content": "$1",
         "example": "Opção não encontrada"
       }
     }
+  },
+  "settings_title": {
+    "message": "Settings"
+  },
+  "settings_language": {
+    "message": "Language"
+  },
+  "settings_language_auto": {
+    "message": "Automatic (Browser Default)"
+  },
+  "settings_advanced": {
+    "message": "Advanced Settings"
+  },
+  "settings_debugMode": {
+    "message": "Debug Mode"
+  },
+  "settings_debugMode_desc": {
+    "message": "Show all execution events directly in chat."
+  },
+  "settings_version": {
+    "message": "Version"
   }
 }

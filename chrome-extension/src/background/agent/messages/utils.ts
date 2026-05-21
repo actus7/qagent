@@ -1,4 +1,5 @@
 import { type BaseMessage, AIMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
+import { jsonrepair } from 'jsonrepair';
 
 import { guardrails } from '@src/background/services/guardrails';
 import { ResponseParseError } from '../agents/errors';
@@ -38,6 +39,93 @@ export function removeThinkTags(text: string): string {
   result = result.replace(strayCloseTagRegex, '');
 
   return result.trim();
+}
+
+function tryParseJsonCandidate(candidate: string): Record<string, unknown> | null {
+  const normalized = candidate.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(normalized);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    // Keep trying with repaired JSON below.
+  }
+
+  try {
+    const repaired = jsonrepair(normalized);
+    const parsed = JSON.parse(repaired);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function extractBalancedJsonObject(content: string): string | null {
+  const start = content.indexOf('{');
+  if (start === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
+
+  for (let i = start; i < content.length; i++) {
+    const char = content[i];
+
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+        continue;
+      }
+      if (char === '\\') {
+        escaping = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{') {
+      depth++;
+      continue;
+    }
+
+    if (char === '}') {
+      depth--;
+      if (depth === 0) {
+        return content.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractFencedCodeBlocks(content: string): string[] {
+  const blocks: string[] = [];
+  const regex = /```(?:json)?\s*([\s\S]*?)```/gi;
+  let match: RegExpExecArray | null = regex.exec(content);
+
+  while (match) {
+    const code = match[1]?.trim();
+    if (code) {
+      blocks.push(code);
+    }
+    match = regex.exec(content);
+  }
+
+  return blocks;
 }
 
 /**
@@ -115,20 +203,33 @@ export function extractJsonFromModelOutput(content: string): Record<string, unkn
       throw new Error('Python tag structure does not contain valid parameters');
     }
 
-    // If content is wrapped in code blocks, extract just the JSON part
-    if (processedContent.includes('```')) {
-      // Find the JSON content between code blocks
-      const parts = processedContent.split('```');
-      processedContent = parts[1];
+    const candidates: string[] = [processedContent];
 
-      // Remove language identifier if present (e.g., 'json\n')
-      if (processedContent.startsWith('json')) {
-        processedContent = processedContent.substring(4).trim();
+    const fencedBlocks = extractFencedCodeBlocks(processedContent);
+    for (const block of fencedBlocks) {
+      candidates.push(block);
+    }
+
+    const balancedFromContent = extractBalancedJsonObject(processedContent);
+    if (balancedFromContent) {
+      candidates.push(balancedFromContent);
+    }
+
+    for (const block of fencedBlocks) {
+      const balancedFromBlock = extractBalancedJsonObject(block);
+      if (balancedFromBlock) {
+        candidates.push(balancedFromBlock);
       }
     }
 
-    // Parse the cleaned content
-    return JSON.parse(processedContent);
+    for (const candidate of candidates) {
+      const parsed = tryParseJsonCandidate(candidate);
+      if (parsed) {
+        return parsed;
+      }
+    }
+
+    throw new Error('No valid JSON candidate found');
   } catch (e) {
     throw new ResponseParseError(`Could not manually extract JSON from model output`);
   }

@@ -1,37 +1,38 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import '@src/Options.css';
 import { Button } from '@extension/ui';
-import { withErrorBoundary, withSuspense } from '@extension/shared';
+import { useTheme, withErrorBoundary, withSuspense } from '@extension/shared';
 import { t } from '@extension/i18n';
 import { FiSettings, FiCpu, FiShield } from 'react-icons/fi';
-import { GeneralSettings } from './components/GeneralSettings';
-import { ModelSettings } from './components/ModelSettings';
-import { FirewallSettings } from './components/FirewallSettings';
+import { useLanguage } from './context/LanguageContext';
 
 type TabTypes = 'general' | 'models' | 'firewall';
 
-const TABS: { id: TabTypes; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
-  { id: 'general', icon: FiSettings, label: t('options_tabs_general') },
-  { id: 'models', icon: FiCpu, label: t('options_tabs_models') },
-  { id: 'firewall', icon: FiShield, label: t('options_tabs_firewall') },
-];
+const GeneralSettingsTab = lazy(async () => {
+  const module = await import('./components/GeneralSettings');
+  return { default: module.GeneralSettings };
+});
+
+const ModelSettingsTab = lazy(async () => {
+  const module = await import('./components/ModelSettings');
+  return { default: module.ModelSettings };
+});
+
+const FirewallSettingsTab = lazy(async () => {
+  const module = await import('./components/FirewallSettings');
+  return { default: module.FirewallSettings };
+});
 
 const Options = () => {
+  const { currentLocale } = useLanguage();
+  const { resolvedTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabTypes>('models');
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  // Check for dark mode preference
-  useEffect(() => {
-    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setIsDarkMode(darkModeMediaQuery.matches);
-
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches);
-    };
-
-    darkModeMediaQuery.addEventListener('change', handleChange);
-    return () => darkModeMediaQuery.removeEventListener('change', handleChange);
-  }, []);
+  const isDarkMode = resolvedTheme === 'dark';
+  const tabs: { id: TabTypes; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
+    { id: 'general', icon: FiSettings, label: t('options_tabs_general') },
+    { id: 'models', icon: FiCpu, label: t('options_tabs_models') },
+    { id: 'firewall', icon: FiShield, label: t('options_tabs_firewall') },
+  ];
 
   const handleTabClick = (tabId: TabTypes) => {
     setActiveTab(tabId);
@@ -40,11 +41,11 @@ const Options = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
-        return <GeneralSettings isDarkMode={isDarkMode} />;
+        return <GeneralSettingsTab />;
       case 'models':
-        return <ModelSettings isDarkMode={isDarkMode} />;
+        return <ModelSettingsTab />;
       case 'firewall':
-        return <FirewallSettings isDarkMode={isDarkMode} />;
+        return <FirewallSettingsTab />;
       default:
         return null;
     }
@@ -52,6 +53,7 @@ const Options = () => {
 
   return (
     <div
+      data-locale={currentLocale}
       className={`flex min-h-screen min-w-[768px] ${isDarkMode ? 'bg-slate-900' : "bg-[url('/bg.jpg')] bg-cover bg-center"} ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
       {/* Vertical Navigation Bar */}
       <nav
@@ -61,7 +63,7 @@ const Options = () => {
             {t('options_nav_header')}
           </h1>
           <ul className="space-y-2">
-            {TABS.map(item => (
+            {tabs.map(item => (
               <li key={item.id}>
                 <Button
                   onClick={() => handleTabClick(item.id)}
@@ -70,7 +72,7 @@ const Options = () => {
                       ? `${isDarkMode ? 'bg-slate-700/70 text-gray-300 hover:text-white' : 'bg-emerald-500/15 font-medium text-gray-700 hover:text-white'} backdrop-blur-sm`
                       : `${isDarkMode ? 'bg-emerald-800/50' : ''} text-white backdrop-blur-sm`
                     }`}>
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="size-4" />
                   <span>{item.label}</span>
                 </Button>
               </li>
@@ -81,7 +83,9 @@ const Options = () => {
 
       {/* Main Content Area */}
       <main className={`flex-1 ${isDarkMode ? 'bg-slate-800/50' : 'bg-white/10'} p-8 backdrop-blur-sm`}>
-        <div className="mx-auto min-w-[512px] max-w-screen-lg">{renderTabContent()}</div>
+        <div className="mx-auto min-w-[512px] max-w-screen-lg">
+          <Suspense fallback={<div>Loading...</div>}>{renderTabContent()}</Suspense>
+        </div>
       </main>
     </div>
   );

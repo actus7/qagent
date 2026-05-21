@@ -18,6 +18,7 @@ import {
   isBadRequestError,
   isExtensionConflictError,
   isForbiddenError,
+  LLMTimeoutError,
   ResponseParseError,
   LLM_FORBIDDEN_ERROR_MESSAGE,
   RequestCancelledError,
@@ -30,6 +31,7 @@ import { AgentStepRecord } from '../history';
 import { type DOMHistoryElement } from '@src/background/browser/dom/history/view';
 
 const logger = createLogger('NavigatorAgent');
+const MAX_AGENT_STEP_HISTORY_ENTRIES = 300;
 
 interface ParsedModelOutput {
   current_state?: {
@@ -88,6 +90,27 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
 
     // The zod object is too complex to be used directly, so we need to convert it to json schema first for the model to use
     this.jsonSchema = convertZodToJsonSchema(this.modelOutputSchema, 'NavigatorAgentOutput', true);
+
+    // Gemini often stalls with navigator's large structured schema. Prefer manual JSON extraction for stability.
+    if (this.isGeminiModel() && this.withStructuredOutput) {
+      this.withStructuredOutput = false;
+      logger.info(`[${this.modelName}] Navigator structured output disabled; using manual JSON extraction mode.`);
+    }
+  }
+
+  private isGeminiModel(): boolean {
+    return this.modelName.toLowerCase().includes('gemini');
+  }
+
+  private async invokeWithoutStructuredOutput(inputMessages: BaseMessage[]): Promise<this['ModelOutput']> {
+    const previousWithStructuredOutput = this.withStructuredOutput;
+    this.withStructuredOutput = false;
+    try {
+      logger.warning(`[${this.modelName}] Structured output timeout. Retrying with manual JSON extraction fallback.`);
+      return await super.invoke(inputMessages);
+    } finally {
+      this.withStructuredOutput = previousWithStructuredOutput;
+    }
   }
 
   async invoke(inputMessages: BaseMessage[]): Promise<this['ModelOutput']> {
@@ -100,15 +123,26 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
 
       let response = undefined;
       try {
-        response = await structuredLlm.invoke(inputMessages, {
-          signal: this.context.controller.signal,
-          ...this.callOptions,
-        });
+        response = await this.invokeWithTimeout(
+          signal =>
+            structuredLlm.invoke(inputMessages, {
+              ...this.callOptions,
+              signal,
+            }),
+          `[${this.modelName}] navigator structured output invocation`,
+        );
 
         if (response.parsed) {
           return response.parsed;
         }
       } catch (error) {
+        if (error instanceof LLMTimeoutError) {
+          if (this.isGeminiModel()) {
+            return this.invokeWithoutStructuredOutput(inputMessages);
+          }
+          throw error;
+        }
+
         if (isAbortedError(error)) {
           throw error;
         }
@@ -167,32 +201,61 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
 
     try {
       this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_START, 'Navigating...');
+      logger.debug('Navigator execute started', {
+        taskId: this.context.taskId,
+        step: this.context.nSteps,
+        paused: this.context.paused,
+        stopped: this.context.stopped,
+      });
 
       const messageManager = this.context.messageManager;
       // add the browser state message
       await this.addStateMessageToMemory();
       const currentState = await this.context.browserContext.getCachedState();
+      logger.debug('Navigator cached state captured', {
+        url: currentState.url,
+        title: currentState.title,
+        tabCount: currentState.tabs.length,
+      });
       browserStateHistory = new BrowserStateHistory(currentState);
 
       // check if the task is paused or stopped
       if (this.context.paused || this.context.stopped) {
+        logger.info('Navigator cancelled before model invocation', {
+          paused: this.context.paused,
+          stopped: this.context.stopped,
+        });
         cancelled = true;
         return agentOutput;
       }
 
       // call the model to get the actions to take
+      messageManager.cutMessages();
       const inputMessages = messageManager.getMessages();
-      // logger.info('Navigator input message', inputMessages[inputMessages.length - 1]);
+      logger.debug('Navigator invoking model', {
+        model: this.modelName,
+        messageCount: inputMessages.length,
+        structuredOutput: this.withStructuredOutput,
+      });
 
       const modelOutput = await this.invoke(inputMessages);
+      logger.debug('Navigator model output received', modelOutput);
 
       // check if the task is paused or stopped
       if (this.context.paused || this.context.stopped) {
+        logger.info('Navigator cancelled after model invocation', {
+          paused: this.context.paused,
+          stopped: this.context.stopped,
+        });
         cancelled = true;
         return agentOutput;
       }
 
       const actions = this.fixActions(modelOutput);
+      logger.info('Navigator normalized actions', {
+        count: actions.length,
+        actionNames: actions.map(action => Object.keys(action)[0] ?? 'unknown'),
+      });
       modelOutput.action = actions;
       modelOutputString = JSON.stringify(modelOutput);
 
@@ -202,12 +265,16 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
 
       // take the actions
       actionResults = await this.doMultiAction(actions);
-      // logger.info('Action results', JSON.stringify(actionResults, null, 2));
+      logger.debug('Navigator action execution results', actionResults);
 
       this.context.actionResults = actionResults;
 
       // check if the task is paused or stopped
       if (this.context.paused || this.context.stopped) {
+        logger.info('Navigator cancelled after action execution', {
+          paused: this.context.paused,
+          stopped: this.context.stopped,
+        });
         cancelled = true;
         return agentOutput;
       }
@@ -217,6 +284,10 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
       if (actionResults.length > 0 && actionResults[actionResults.length - 1].isDone) {
         done = true;
       }
+      logger.info('Navigator step completed', {
+        done,
+        actionResultCount: actionResults.length,
+      });
       agentOutput.result = { done };
       return agentOutput;
     } catch (error) {
@@ -227,7 +298,7 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
         throw new ChatModelAuthError(errorMessage, error);
       } else if (isBadRequestError(error)) {
         throw new ChatModelBadRequestError(errorMessage, error);
-      } else if (isAbortedError(error)) {
+      } else if (isAbortedError(error) || error instanceof LLMTimeoutError) {
         throw new RequestCancelledError(errorMessage);
       } else if (isExtensionConflictError(error)) {
         throw new ExtensionConflictError(EXTENSION_CONFLICT_ERROR_MESSAGE, error);
@@ -263,6 +334,13 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
 
         const history = new AgentStepRecord(modelOutputString, actionResultsCopy, browserStateHistory);
         this.context.history.history.push(history);
+        if (this.context.history.history.length > MAX_AGENT_STEP_HISTORY_ENTRIES) {
+          const overflow = this.context.history.history.length - MAX_AGENT_STEP_HISTORY_ENTRIES;
+          this.context.history.history.splice(0, overflow);
+          logger.debug(
+            `Trimmed ${overflow} agent history entr${overflow === 1 ? 'y' : 'ies'} to keep ${MAX_AGENT_STEP_HISTORY_ENTRIES} entries`,
+          );
+        }
 
         // logger.info('All history', JSON.stringify(this.context.history, null, 2));
       }
@@ -409,6 +487,9 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
         const result = await actionInstance.call(actionArgs);
         if (result === undefined) {
           throw new Error(`Action ${actionName} returned undefined`);
+        }
+        if (!result.error) {
+          result.success = true;
         }
 
         // if the action has an index argument, record the interacted element to the result

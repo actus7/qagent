@@ -1,5 +1,6 @@
 import { createStorage } from '../base/base';
 import { StorageEnum } from '../base/enums';
+import type { BaseStorage } from '../base/types';
 import type {
   ChatSession,
   ChatMessage,
@@ -11,6 +12,11 @@ import type {
 
 // Key for storing chat session metadata
 const CHAT_SESSIONS_META_KEY = 'chat_sessions_meta';
+const EMPTY_AGENT_STEP_HISTORY: ChatAgentStepHistory = {
+  task: '',
+  history: '',
+  timestamp: 0,
+};
 
 // Create storage for session metadata
 const chatSessionsMetaStorage = createStorage<ChatSessionMetadata[]>(CHAT_SESSIONS_META_KEY, [], {
@@ -20,32 +26,46 @@ const chatSessionsMetaStorage = createStorage<ChatSessionMetadata[]>(CHAT_SESSIO
 
 // Helper function to get storage key for a specific session's messages
 const getSessionMessagesKey = (sessionId: string) => `chat_messages_${sessionId}`;
+const sessionMessagesStorageCache = new Map<string, BaseStorage<ChatMessage[]>>();
 
 // Helper function to create storage for a specific session's messages
 const getSessionMessagesStorage = (sessionId: string) => {
-  return createStorage<ChatMessage[]>(getSessionMessagesKey(sessionId), [], {
+  const cachedStorage = sessionMessagesStorageCache.get(sessionId);
+  if (cachedStorage) return cachedStorage;
+
+  const storage = createStorage<ChatMessage[]>(getSessionMessagesKey(sessionId), [], {
     storageEnum: StorageEnum.Local,
-    liveUpdate: true,
+    liveUpdate: false,
   });
+  sessionMessagesStorageCache.set(sessionId, storage);
+  return storage;
 };
 
 // Helper function to get storage key for a specific session's agent state history
 const getSessionAgentStepHistoryKey = (sessionId: string) => `chat_agent_step_${sessionId}`;
+const sessionAgentStepHistoryStorageCache = new Map<string, BaseStorage<ChatAgentStepHistory>>();
 
 // Helper function to get storage for a specific session's agent state history
 const getSessionAgentStepHistoryStorage = (sessionId: string) => {
-  return createStorage<ChatAgentStepHistory>(
-    getSessionAgentStepHistoryKey(sessionId),
-    {
-      task: '',
-      history: '',
-      timestamp: 0,
-    },
-    {
-      storageEnum: StorageEnum.Local,
-      liveUpdate: true,
-    },
-  );
+  const cachedStorage = sessionAgentStepHistoryStorageCache.get(sessionId);
+  if (cachedStorage) return cachedStorage;
+
+  const storage = createStorage<ChatAgentStepHistory>(getSessionAgentStepHistoryKey(sessionId), EMPTY_AGENT_STEP_HISTORY, {
+    storageEnum: StorageEnum.Local,
+    liveUpdate: false,
+  });
+  sessionAgentStepHistoryStorageCache.set(sessionId, storage);
+  return storage;
+};
+
+const clearSessionStorageCaches = (sessionId: string) => {
+  sessionMessagesStorageCache.delete(sessionId);
+  sessionAgentStepHistoryStorageCache.delete(sessionId);
+};
+
+const clearAllSessionStorageCaches = () => {
+  sessionMessagesStorageCache.clear();
+  sessionAgentStepHistoryStorageCache.clear();
 };
 
 // Helper function to get current timestamp in milliseconds
@@ -72,7 +92,11 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
       for (const sessionMeta of sessionsMeta) {
         const messagesStorage = getSessionMessagesStorage(sessionMeta.id);
         await messagesStorage.set([]);
+        const agentStepHistoryStorage = getSessionAgentStepHistoryStorage(sessionMeta.id);
+        await agentStepHistoryStorage.set(EMPTY_AGENT_STEP_HISTORY);
+        clearSessionStorageCaches(sessionMeta.id);
       }
+      clearAllSessionStorageCaches();
       await chatSessionsMetaStorage.set([]);
     },
 
@@ -160,6 +184,9 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
       // Remove the session's messages
       const messagesStorage = getSessionMessagesStorage(sessionId);
       await messagesStorage.set([]);
+      const agentStepHistoryStorage = getSessionAgentStepHistoryStorage(sessionId);
+      await agentStepHistoryStorage.set(EMPTY_AGENT_STEP_HISTORY);
+      clearSessionStorageCaches(sessionId);
     },
 
     addMessage: async (sessionId: string, message: Message): Promise<ChatMessage> => {

@@ -20,10 +20,16 @@
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "pnpm lint --fix",
     "prettier": "prettier . --write --ignore-path ../../.prettierignore",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "companion": "node ./dist/lib/agent-browser/bin-companion.js"
   },
   "devDependencies": {
+    "@extension/shared": "workspace:*",
     "@extension/tsconfig": "workspace:*",
-    "@extension/shared": "workspace:*"
+    "@types/ws": "^8.5.13"
+  },
+  "dependencies": {
+    "agent-browser": "0.9.2",
+    "ws": "^8.18.3"
   }
 }

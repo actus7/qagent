@@ -1,20 +1,26 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { FiSettings, FiSun, FiMoon, FiMonitor } from 'react-icons/fi';
 import { PiPlusBold } from 'react-icons/pi';
 import { GrHistory } from 'react-icons/gr';
 import { type Message, Actors, chatHistoryStore, agentModelStore, generalSettingsStore } from '@extension/storage';
-import favoritesStorage, { type FavoritePrompt } from '@extension/storage/lib/prompt/favorites';
 import { t } from '@extension/i18n';
 import MessageList from './components/MessageList';
 import ChatInput from './components/ChatInput';
 import ChatHistoryList from './components/ChatHistoryList';
 import BookmarkList from './components/BookmarkList';
-import { EventType, type AgentEvent, ExecutionState } from './types/event';
+import { EventType, AgentEvent, ExecutionState } from './types/event';
 import { Button } from '@src/components/ui/button';
 import { ScrollArea } from '@src/components/ui/scroll-area';
-import { Separator } from '@src/components/ui/separator';
-import { useTheme } from '@src/hooks/useTheme';
+import { useTheme } from '@extension/shared';
+import { useLanguage } from '@src/context/LanguageContext';
+import SettingsModal from './components/SettingsModal';
+import SetupRequiredModal from './components/SetupRequiredModal';
+import BrowserPreview from './components/BrowserPreview';
+import { useSidePanelActions, useSidePanelState } from './hooks/useSidePanelSelectors';
+import { useHistoryHandlers } from './hooks/useHistoryHandlers';
+import { useFavoritePromptHandlers } from './hooks/useFavoritePromptHandlers';
+import { useSidePanelConnection } from './hooks/useSidePanelConnection';
+import type { BrowserFramePayload, BrowserInputPayload, BrowserStatusPayload, ExecutionPortEventMessage } from './types/port';
 
 // Declare chrome API types
 declare global {
@@ -23,35 +29,134 @@ declare global {
   }
 }
 
+const formatDebugEvent = (event: AgentEvent) => {
+  const stepNumber = typeof event.data?.step === 'number' ? event.data.step + 1 : null;
+  const payload = {
+    type: event.type,
+    actor: event.actor,
+    state: event.state,
+    timestamp: event.timestamp,
+    data: event.data,
+  };
+
+  return [
+    `[DEBUG] ${event.actor}.${event.state} | step ${stepNumber ?? '-'} / ${event.data?.maxSteps ?? '-'}`,
+    JSON.stringify(payload, null, 2),
+  ].join('\n');
+};
+
+const isValidActor = (value: string): value is Actors => {
+  return Object.values(Actors).includes(value as Actors);
+};
+
+const isValidExecutionState = (value: string): value is ExecutionState => {
+  return Object.values(ExecutionState).includes(value as ExecutionState);
+};
+
+const toAgentEvent = (message: ExecutionPortEventMessage): AgentEvent | null => {
+  if (!isValidActor(message.actor) || !isValidExecutionState(message.state)) {
+    return null;
+  }
+
+  return new AgentEvent(message.actor, message.state, message.data, message.timestamp, EventType.EXECUTION);
+};
+
 const SidePanel = () => {
+  // BrowserManager companion is the only supported engine.
+  const isAgentBrowserEngine = true;
+  const { currentLocale } = useLanguage();
   const progressMessage = t('sidepanel_progress_message');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputEnabled, setInputEnabled] = useState(true);
-  const [showStopButton, setShowStopButton] = useState(false);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
-  const [chatSessions, setChatSessions] = useState<Array<{ id: string; title: string; createdAt: number }>>([]);
-  const [isFollowUpMode, setIsFollowUpMode] = useState(false);
-  const [isHistoricalSession, setIsHistoricalSession] = useState(false);
-  const [favoritePrompts, setFavoritePrompts] = useState<FavoritePrompt[]>([]);
-  const [hasConfiguredModels, setHasConfiguredModels] = useState<boolean | null>(null); // null = loading, false = no models, true = has models
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessingSpeech, setIsProcessingSpeech] = useState(false);
-  const [isReplaying, setIsReplaying] = useState(false);
-  const [replayEnabled, setReplayEnabled] = useState(false);
+  const {
+    messages,
+    inputEnabled,
+    showStopButton,
+    showSettings,
+    currentSessionId,
+    showHistory,
+    chatSessions,
+    isFollowUpMode,
+    isHistoricalSession,
+    favoritePrompts,
+    hasConfiguredModels,
+    isRecording,
+    isProcessingSpeech,
+    isReplaying,
+    replayEnabled,
+    chatDebugMode,
+    showSetupRequiredModal,
+  } = useSidePanelState();
+
+  const {
+    setMessages,
+    setInputEnabled,
+    setShowStopButton,
+    setShowSettings,
+    setCurrentSessionId,
+    setShowHistory,
+    setChatSessions,
+    setIsFollowUpMode,
+    setIsHistoricalSession,
+    setFavoritePrompts,
+    setHasConfiguredModels,
+    setIsRecording,
+    setIsProcessingSpeech,
+    setIsReplaying,
+    setReplayEnabled,
+    setChatDebugMode,
+    setShowSetupRequiredModal,
+    resetChatView,
+  } = useSidePanelActions();
   const sessionIdRef = useRef<string | null>(null);
   const isReplayingRef = useRef<boolean>(false);
-  const portRef = useRef<chrome.runtime.Port | null>(null);
-  const heartbeatIntervalRef = useRef<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const setInputTextRef = useRef<((text: string) => void) | null>(null);
+  const handleTaskStateRef = useRef<(event: AgentEvent) => void>(() => {});
+  const chatDebugModeRef = useRef<boolean>(false);
+  const [browserFrame, setBrowserFrame] = useState<BrowserFramePayload | null>(null);
+  const [browserStatus, setBrowserStatus] = useState<BrowserStatusPayload | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
+  const lastSettingsRefreshRef = useRef<number>(0);
 
   const { theme, cycleTheme } = useTheme();
 
   const ThemeIcon = theme === 'dark' ? FiMoon : theme === 'light' ? FiSun : FiMonitor;
+
+  const setInputText = useCallback((text: string) => {
+    if (setInputTextRef.current) {
+      setInputTextRef.current(text);
+    }
+  }, []);
+
+  const {
+    handleLoadHistory,
+    handleBackToChat,
+    handleSessionSelect,
+    handleSessionDelete,
+    handleSessionBookmark,
+  } = useHistoryHandlers({
+    currentLocale,
+    currentSessionId,
+    setChatSessions,
+    setShowHistory,
+    setCurrentSessionId,
+    setMessages,
+    setIsFollowUpMode,
+    setIsHistoricalSession,
+    setFavoritePrompts,
+  });
+
+  const {
+    handleBookmarkSelect,
+    handleBookmarkUpdateTitle,
+    handleBookmarkDelete,
+    handleBookmarkReorder,
+  } = useFavoritePromptHandlers({
+    currentLocale,
+    setFavoritePrompts,
+    setInputText,
+  });
 
   // Check if models are configured
   const checkModelConfiguration = useCallback(async () => {
@@ -65,39 +170,83 @@ const SidePanel = () => {
       console.error('Error checking model configuration:', error);
       setHasConfiguredModels(false);
     }
-  }, []);
+  }, [setHasConfiguredModels]);
 
   // Load general settings to check if replay is enabled
   const loadGeneralSettings = useCallback(async () => {
     try {
       const settings = await generalSettingsStore.getSettings();
       setReplayEnabled(settings.replayHistoricalTasks);
+      setChatDebugMode(settings.chatDebugMode);
     } catch (error) {
       console.error('Error loading general settings:', error);
       setReplayEnabled(false);
+      setChatDebugMode(false);
     }
-  }, []);
+  }, [setChatDebugMode, setReplayEnabled]);
+
+  const refreshConfigurationAndSettings = useCallback(
+    async (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastSettingsRefreshRef.current < 750) {
+        return;
+      }
+
+      lastSettingsRefreshRef.current = now;
+      await Promise.all([checkModelConfiguration(), loadGeneralSettings()]);
+    },
+    [checkModelConfiguration, loadGeneralSettings],
+  );
+
+  const handleChatDebugModeChange = useCallback(
+    async (enabled: boolean) => {
+      setChatDebugMode(enabled);
+      try {
+        await generalSettingsStore.updateSettings({ chatDebugMode: enabled });
+      } catch (error) {
+        console.error('Failed to update chat debug mode:', error);
+        setChatDebugMode(!enabled);
+      }
+    },
+    [setChatDebugMode],
+  );
 
   // Check model configuration on mount
   useEffect(() => {
-    checkModelConfiguration();
-    loadGeneralSettings();
-  }, [checkModelConfiguration, loadGeneralSettings]);
+    void refreshConfigurationAndSettings(true);
+  }, [refreshConfigurationAndSettings]);
+
+  // React immediately to model configuration changes made in other extension pages (e.g. Options).
+  useEffect(() => {
+    const unsubscribe = agentModelStore.subscribe(() => {
+      void checkModelConfiguration();
+    });
+    return unsubscribe;
+  }, [checkModelConfiguration]);
+
+  useEffect(() => {
+    if (hasConfiguredModels === false) {
+      setShowSetupRequiredModal(true);
+      return;
+    }
+
+    if (hasConfiguredModels === true) {
+      setShowSetupRequiredModal(false);
+    }
+  }, [hasConfiguredModels, setShowSetupRequiredModal]);
 
   // Re-check model configuration when the side panel becomes visible again
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        // Panel became visible, re-check configuration and settings
-        checkModelConfiguration();
-        loadGeneralSettings();
+        void refreshConfigurationAndSettings();
       }
     };
 
     const handleFocus = () => {
-      // Panel gained focus, re-check configuration and settings
-      checkModelConfiguration();
-      loadGeneralSettings();
+      if (!document.hidden) {
+        void refreshConfigurationAndSettings();
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -107,7 +256,7 @@ const SidePanel = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [checkModelConfiguration, loadGeneralSettings]);
+  }, [refreshConfigurationAndSettings]);
 
   useEffect(() => {
     sessionIdRef.current = currentSessionId;
@@ -129,15 +278,46 @@ const SidePanel = () => {
     // Use provided sessionId if available, otherwise fall back to sessionIdRef.current
     const effectiveSessionId = sessionId !== undefined ? sessionId : sessionIdRef.current;
 
-    console.log('sessionId', effectiveSessionId);
-
     // Save message to storage if we have a session and it's not a progress message
     if (effectiveSessionId && !isProgressMessage) {
       chatHistoryStore
         .addMessage(effectiveSessionId, newMessage)
         .catch(err => console.error('Failed to save message to history:', err));
     }
-  }, []);
+  }, [progressMessage, setMessages]);
+
+  const { ensureConnection, stopConnection, sendMessage } = useSidePanelConnection({
+    appendMessage,
+    handleTaskStateRef,
+    toAgentEvent,
+    chatDebugModeRef,
+    setInputEnabled,
+    setShowStopButton,
+    setIsProcessingSpeech,
+    setInputText,
+    setBrowserFrame,
+    setBrowserStatus,
+  });
+
+  const handleBrowserInput = useCallback(
+    (input: BrowserInputPayload, sessionId?: string) => {
+      try {
+        ensureConnection();
+        sendMessage({
+          type: 'browser_input',
+          input,
+          ...(sessionId ? { sessionId } : {}),
+        });
+      } catch (error) {
+        appendMessage({
+          actor: Actors.SYSTEM,
+          content: error instanceof Error ? error.message : String(error),
+          timestamp: Date.now(),
+        });
+      }
+    },
+    [appendMessage, ensureConnection, sendMessage],
+  );
 
   const handleTaskState = useCallback(
     (event: AgentEvent) => {
@@ -174,6 +354,11 @@ const SidePanel = () => {
               skip = false;
               break;
             case ExecutionState.TASK_PAUSE:
+              setIsFollowUpMode(false);
+              setInputEnabled(true);
+              setShowStopButton(false);
+              setIsReplaying(false);
+              skip = false;
               break;
             case ExecutionState.TASK_RESUME:
               break;
@@ -271,123 +456,34 @@ const SidePanel = () => {
           timestamp: timestamp,
         });
       }
-    },
-    [appendMessage],
-  );
 
-  // Stop heartbeat and close connection
-  const stopConnection = useCallback(() => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-    if (portRef.current) {
-      portRef.current.disconnect();
-      portRef.current = null;
-    }
-  }, []);
-
-  // Setup connection management
-  const setupConnection = useCallback(() => {
-    // Only setup if no existing connection
-    if (portRef.current) {
-      return;
-    }
-
-    try {
-      portRef.current = chrome.runtime.connect({ name: 'side-panel-connection' });
-
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      portRef.current.onMessage.addListener((message: any) => {
-        // Add type checking for message
-        if (message && message.type === EventType.EXECUTION) {
-          handleTaskState(message);
-        } else if (message && message.type === 'error') {
-          // Handle error messages from service worker
-          appendMessage({
-            actor: Actors.SYSTEM,
-            content: message.error || t('errors_unknown'),
-            timestamp: Date.now(),
-          });
-          setInputEnabled(true);
-          setShowStopButton(false);
-        } else if (message && message.type === 'speech_to_text_result') {
-          // Handle speech-to-text result
-          if (message.text && setInputTextRef.current) {
-            setInputTextRef.current(message.text);
-          }
-          setIsProcessingSpeech(false);
-        } else if (message && message.type === 'speech_to_text_error') {
-          // Handle speech-to-text error
-          appendMessage({
-            actor: Actors.SYSTEM,
-            content: message.error || t('chat_stt_recognitionFailed'),
-            timestamp: Date.now(),
-          });
-          setIsProcessingSpeech(false);
-        } else if (message && message.type === 'heartbeat_ack') {
-          console.log('Heartbeat acknowledged');
-        }
-      });
-
-      portRef.current.onDisconnect.addListener(() => {
-        const error = chrome.runtime.lastError;
-        console.log('Connection disconnected', error ? `Error: ${error.message}` : '');
-        portRef.current = null;
-        if (heartbeatIntervalRef.current) {
-          clearInterval(heartbeatIntervalRef.current);
-          heartbeatIntervalRef.current = null;
-        }
-        setInputEnabled(true);
-        setShowStopButton(false);
-      });
-
-      // Setup heartbeat interval
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-      }
-
-      heartbeatIntervalRef.current = window.setInterval(() => {
-        if (portRef.current?.name === 'side-panel-connection') {
-          try {
-            portRef.current.postMessage({ type: 'heartbeat' });
-          } catch (error) {
-            console.error('Heartbeat failed:', error);
-            stopConnection(); // Stop connection if heartbeat fails
-          }
-        } else {
-          stopConnection(); // Stop if port is invalid
-        }
-      }, 25000);
-    } catch (error) {
-      console.error('Failed to establish connection:', error);
-      appendMessage({
-        actor: Actors.SYSTEM,
-        content: t('errors_conn_serviceWorker'),
-        timestamp: Date.now(),
-      });
-      // Clear any references since connection failed
-      portRef.current = null;
-    }
-  }, [handleTaskState, appendMessage, stopConnection]);
-
-  // Add safety check for message sending
-  const sendMessage = useCallback(
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    (message: any) => {
-      if (portRef.current?.name !== 'side-panel-connection') {
-        throw new Error('No valid connection available');
-      }
-      try {
-        portRef.current.postMessage(message);
-      } catch (error) {
-        console.error('Failed to send message:', error);
-        stopConnection(); // Stop connection when message sending fails
-        throw error;
+      if (chatDebugMode) {
+        appendMessage({
+          actor,
+          content: formatDebugEvent(event),
+          timestamp: timestamp,
+        });
       }
     },
-    [stopConnection],
+    [
+      appendMessage,
+      chatDebugMode,
+      progressMessage,
+      setInputEnabled,
+      setIsFollowUpMode,
+      setIsHistoricalSession,
+      setIsReplaying,
+      setShowStopButton,
+    ],
   );
+
+  useEffect(() => {
+    handleTaskStateRef.current = handleTaskState;
+  }, [handleTaskState]);
+
+  useEffect(() => {
+    chatDebugModeRef.current = chatDebugMode;
+  }, [chatDebugMode]);
 
   // Handle replay command
   const handleReplay = async (historySessionId: string): Promise<void> => {
@@ -427,7 +523,6 @@ const SidePanel = () => {
 
       // Create a new chat session for this replay task
       const newSession = await chatHistoryStore.createSession(`${t('chat_replay_prefix')}${historySessionId.substring(0, 20)}...`);
-      console.log('newSession for replay', newSession);
 
       // Store the new session ID in both state and ref
       const newTaskId = newSession.id;
@@ -451,13 +546,10 @@ const SidePanel = () => {
       // Add the user message to the new session
       appendMessage(userMessage, sessionIdRef.current);
 
-      // Setup connection if not exists
-      if (!portRef.current) {
-        setupConnection();
-      }
+      ensureConnection();
 
       // Send replay command to background with the task from history
-      portRef.current?.postMessage({
+      await sendMessage({
         type: 'replay',
         taskId: newTaskId,
         tabId: tabId,
@@ -484,21 +576,18 @@ const SidePanel = () => {
   // Handle chat commands that start with /
   const handleCommand = async (command: string): Promise<boolean> => {
     try {
-      // Setup connection if not exists
-      if (!portRef.current) {
-        setupConnection();
-      }
+      ensureConnection();
 
       // Handle different commands
       if (command === '/state') {
-        portRef.current?.postMessage({
+        await sendMessage({
           type: 'state',
         });
         return true;
       }
 
       if (command === '/nohighlight') {
-        portRef.current?.postMessage({
+        await sendMessage({
           type: 'nohighlight',
         });
         return true;
@@ -542,8 +631,6 @@ const SidePanel = () => {
   };
 
   const handleSendMessage = async (text: string, displayText?: string) => {
-    console.log('handleSendMessage', text);
-
     // Trim the input text first
     const trimmedText = text.trim();
 
@@ -558,7 +645,6 @@ const SidePanel = () => {
 
     // Block sending messages in historical sessions
     if (isHistoricalSession) {
-      console.log('Cannot send messages in historical sessions');
       return;
     }
 
@@ -579,7 +665,6 @@ const SidePanel = () => {
         const newSession = await chatHistoryStore.createSession(
           titleText.substring(0, 50) + (titleText.length > 50 ? '...' : ''),
         );
-        console.log('newSession', newSession);
 
         // Store the session ID in both state and ref
         const sessionId = newSession.id;
@@ -596,10 +681,12 @@ const SidePanel = () => {
       // Pass the sessionId directly to appendMessage
       appendMessage(userMessage, sessionIdRef.current);
 
-      // Setup connection if not exists
-      if (!portRef.current) {
-        setupConnection();
+      const taskId = sessionIdRef.current;
+      if (!taskId) {
+        throw new Error('Task session ID is not available');
       }
+
+      ensureConnection();
 
       // Send message using the utility function
       if (isFollowUpMode) {
@@ -607,19 +694,17 @@ const SidePanel = () => {
         await sendMessage({
           type: 'follow_up_task',
           task: text,
-          taskId: sessionIdRef.current,
+          taskId,
           tabId,
         });
-        console.log('follow_up_task sent', text, tabId, sessionIdRef.current);
       } else {
         // Send as new task
         await sendMessage({
           type: 'new_task',
           task: text,
-          taskId: sessionIdRef.current,
+          taskId,
           tabId,
         });
-        console.log('new_task sent', text, tabId, sessionIdRef.current);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -637,7 +722,7 @@ const SidePanel = () => {
 
   const handleStopTask = async () => {
     try {
-      portRef.current?.postMessage({
+      await sendMessage({
         type: 'cancel_task',
       });
     } catch (err) {
@@ -654,156 +739,20 @@ const SidePanel = () => {
   };
 
   const handleNewChat = () => {
+    if (hasConfiguredModels === false) {
+      setShowSetupRequiredModal(true);
+      return;
+    }
+
     // Clear messages and start a new chat
-    setMessages([]);
-    setCurrentSessionId(null);
+    resetChatView();
     sessionIdRef.current = null;
-    setInputEnabled(true);
-    setShowStopButton(false);
-    setIsFollowUpMode(false);
-    setIsHistoricalSession(false);
 
     // Disconnect any existing connection
     stopConnection();
+    setBrowserFrame(null);
+    setBrowserStatus(null);
   };
-
-  const loadChatSessions = useCallback(async () => {
-    try {
-      const sessions = await chatHistoryStore.getSessionsMetadata();
-      setChatSessions(sessions.sort((a, b) => b.createdAt - a.createdAt));
-    } catch (error) {
-      console.error('Failed to load chat sessions:', error);
-    }
-  }, []);
-
-  const handleLoadHistory = async () => {
-    await loadChatSessions();
-    setShowHistory(true);
-  };
-
-  const handleBackToChat = (reset = false) => {
-    setShowHistory(false);
-    if (reset) {
-      setCurrentSessionId(null);
-      setMessages([]);
-      setIsFollowUpMode(false);
-      setIsHistoricalSession(false);
-    }
-  };
-
-  const handleSessionSelect = async (sessionId: string) => {
-    try {
-      const fullSession = await chatHistoryStore.getSession(sessionId);
-      if (fullSession && fullSession.messages.length > 0) {
-        setCurrentSessionId(fullSession.id);
-        setMessages(fullSession.messages);
-        setIsFollowUpMode(false);
-        setIsHistoricalSession(true); // Mark this as a historical session
-        console.log('history session selected', sessionId);
-      }
-      setShowHistory(false);
-    } catch (error) {
-      console.error('Failed to load session:', error);
-    }
-  };
-
-  const handleSessionDelete = async (sessionId: string) => {
-    try {
-      await chatHistoryStore.deleteSession(sessionId);
-      await loadChatSessions();
-      if (sessionId === currentSessionId) {
-        setMessages([]);
-        setCurrentSessionId(null);
-      }
-    } catch (error) {
-      console.error('Failed to delete session:', error);
-    }
-  };
-
-  const handleSessionBookmark = async (sessionId: string) => {
-    try {
-      const fullSession = await chatHistoryStore.getSession(sessionId);
-
-      if (fullSession && fullSession.messages.length > 0) {
-        // Get the session title
-        const sessionTitle = fullSession.title;
-        // Get the first 8 words of the title
-        const title = sessionTitle.split(' ').slice(0, 8).join(' ');
-
-        // Get the first message content (the task)
-        const taskContent = fullSession.messages[0]?.content || '';
-
-        // Add to favorites storage
-        await favoritesStorage.addPrompt(title, taskContent);
-
-        // Update favorites in the UI
-        const prompts = await favoritesStorage.getAllPrompts();
-        setFavoritePrompts(prompts);
-
-        // Return to chat view after pinning
-        handleBackToChat(true);
-      }
-    } catch (error) {
-      console.error('Failed to pin session to favorites:', error);
-    }
-  };
-
-  const handleBookmarkSelect = (content: string) => {
-    if (setInputTextRef.current) {
-      setInputTextRef.current(content);
-    }
-  };
-
-  const handleBookmarkUpdateTitle = async (id: number, title: string) => {
-    try {
-      await favoritesStorage.updatePromptTitle(id, title);
-
-      // Update favorites in the UI
-      const prompts = await favoritesStorage.getAllPrompts();
-      setFavoritePrompts(prompts);
-    } catch (error) {
-      console.error('Failed to update favorite prompt title:', error);
-    }
-  };
-
-  const handleBookmarkDelete = async (id: number) => {
-    try {
-      await favoritesStorage.removePrompt(id);
-
-      // Update favorites in the UI
-      const prompts = await favoritesStorage.getAllPrompts();
-      setFavoritePrompts(prompts);
-    } catch (error) {
-      console.error('Failed to delete favorite prompt:', error);
-    }
-  };
-
-  const handleBookmarkReorder = async (draggedId: number, targetId: number) => {
-    try {
-      // Directly pass IDs to storage function - it now handles the reordering logic
-      await favoritesStorage.reorderPrompts(draggedId, targetId);
-
-      // Fetch the updated list from storage to get the new IDs and reflect the authoritative order
-      const updatedPromptsFromStorage = await favoritesStorage.getAllPrompts();
-      setFavoritePrompts(updatedPromptsFromStorage);
-    } catch (error) {
-      console.error('Failed to reorder favorite prompts:', error);
-    }
-  };
-
-  // Load favorite prompts from storage
-  useEffect(() => {
-    const loadFavorites = async () => {
-      try {
-        const prompts = await favoritesStorage.getAllPrompts();
-        setFavoritePrompts(prompts);
-      } catch (error) {
-        console.error('Failed to load favorite prompts:', error);
-      }
-    };
-
-    loadFavorites();
-  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -927,15 +876,12 @@ const SidePanel = () => {
           reader.onloadend = () => {
             const base64Audio = reader.result as string;
 
-            // Setup connection if not exists
-            if (!portRef.current) {
-              setupConnection();
-            }
+            ensureConnection();
 
             // Send audio to backend for speech-to-text conversion
             try {
               setIsProcessingSpeech(true);
-              portRef.current?.postMessage({
+              sendMessage({
                 type: 'speech_to_text',
                 audio: base64Audio,
               });
@@ -991,9 +937,25 @@ const SidePanel = () => {
     }
   };
 
+  const chatInputAction = showStopButton
+    ? { type: 'stop' as const, onStopTask: handleStopTask }
+    : isHistoricalSession && replayEnabled && currentSessionId
+      ? { type: 'replay' as const, historicalSessionId: currentSessionId, onReplay: handleReplay }
+      : { type: 'send' as const };
+
+  const chatInputVoice =
+    isProcessingSpeech
+      ? ({ type: 'processing' } as const)
+      : ({
+          type: isRecording ? 'recording' : 'idle',
+          onToggle: handleMicClick,
+        } as const);
+
   return (
     <div>
-      <div className="flex h-screen flex-col overflow-hidden rounded-2xl border border-border bg-background">
+      <div
+        data-locale={currentLocale}
+        className="relative flex h-screen flex-col overflow-hidden rounded-2xl border border-border bg-background text-foreground">
         <header className="flex items-center justify-between border-b border-border px-3 py-2">
           <div className="flex items-center">
             {showHistory ? (
@@ -1001,7 +963,7 @@ const SidePanel = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleBackToChat(false)}
-                className="text-primary hover:text-primary/80"
+                className="hover:text-primary/80 text-primary"
                 aria-label={t('nav_back_a11y')}>
                 {t('nav_back')}
               </Button>
@@ -1016,7 +978,7 @@ const SidePanel = () => {
                   variant="ghost"
                   size="icon"
                   onClick={handleNewChat}
-                  className="size-8 text-primary hover:text-primary/80"
+                  className="hover:text-primary/80 size-8 text-primary"
                   aria-label={t('nav_newChat_a11y')}>
                   <PiPlusBold size={18} />
                 </Button>
@@ -1024,7 +986,7 @@ const SidePanel = () => {
                   variant="ghost"
                   size="icon"
                   onClick={handleLoadHistory}
-                  className="size-8 text-primary hover:text-primary/80"
+                  className="hover:text-primary/80 size-8 text-primary"
                   aria-label={t('nav_loadHistory_a11y')}>
                   <GrHistory size={18} />
                 </Button>
@@ -1034,7 +996,7 @@ const SidePanel = () => {
               variant="ghost"
               size="icon"
               onClick={cycleTheme}
-              className="size-8 text-primary hover:text-primary/80"
+              className="hover:text-primary/80 size-8 text-primary"
               aria-label={`Theme: ${theme}`}
               title={`Theme: ${theme}`}>
               <ThemeIcon size={18} />
@@ -1042,8 +1004,8 @@ const SidePanel = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => chrome.runtime.openOptionsPage()}
-              className="size-8 text-primary hover:text-primary/80"
+              onClick={() => setShowSettings(true)}
+              className="hover:text-primary/80 size-8 text-primary"
               aria-label={t('nav_settings_a11y')}>
               <FiSettings size={18} />
             </Button>
@@ -1056,7 +1018,6 @@ const SidePanel = () => {
               onSessionSelect={handleSessionSelect}
               onSessionDelete={handleSessionDelete}
               onSessionBookmark={handleSessionBookmark}
-              visible={true}
             />
           </div>
         ) : (
@@ -1071,43 +1032,31 @@ const SidePanel = () => {
               </div>
             )}
 
-            {/* Setup message */}
-            {hasConfiguredModels === false && (
-              <div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">
-                <div className="max-w-md text-center">
-                  <img src="/icon-128.png" alt="QAgent Logo" className="mx-auto mb-4 size-12" />
-                  <h3 className="mb-2 text-lg font-semibold text-foreground">
-                    {t('welcome_title')}
-                  </h3>
-                  <p className="mb-4">{t('welcome_instruction')}</p>
-                  <Button
-                    onClick={() => chrome.runtime.openOptionsPage()}
-                    className="my-4">
-                    {t('welcome_openSettings')}
-                  </Button>
-                </div>
-              </div>
-            )}
+            {hasConfiguredModels === false ? <div className="flex-1" /> : null}
 
             {/* Chat interface */}
             {hasConfiguredModels === true && (
               <>
+                {isAgentBrowserEngine && (
+                  <BrowserPreview
+                    frame={browserFrame}
+                    status={browserStatus}
+                    sessionId={currentSessionId}
+                    disabled={!inputEnabled}
+                    onInput={handleBrowserInput}
+                  />
+                )}
                 {messages.length === 0 && (
                   <>
                     <div className="mb-2 border-t border-border p-2">
                       <ChatInput
                         onSendMessage={handleSendMessage}
-                        onStopTask={handleStopTask}
-                        onMicClick={handleMicClick}
-                        isRecording={isRecording}
-                        isProcessingSpeech={isProcessingSpeech}
+                        voice={chatInputVoice}
                         disabled={!inputEnabled || isHistoricalSession}
-                        showStopButton={showStopButton}
+                        action={chatInputAction}
                         setContent={setter => {
                           setInputTextRef.current = setter;
                         }}
-                        historicalSessionId={isHistoricalSession && replayEnabled ? currentSessionId : null}
-                        onReplay={handleReplay}
                       />
                     </div>
                     <ScrollArea className="flex-1">
@@ -1121,33 +1070,43 @@ const SidePanel = () => {
                     </ScrollArea>
                   </>
                 )}
-                {messages.length > 0 && (
+                {messages.length > 0 ? (
                   <ScrollArea className="flex-1 p-2">
                     <MessageList messages={messages} />
                     <div ref={messagesEndRef} />
                   </ScrollArea>
-                )}
-                {messages.length > 0 && (
+                ) : null}
+                {messages.length > 0 ? (
                   <div className="border-t border-border p-2">
                     <ChatInput
                       onSendMessage={handleSendMessage}
-                      onStopTask={handleStopTask}
-                      onMicClick={handleMicClick}
-                      isRecording={isRecording}
-                      isProcessingSpeech={isProcessingSpeech}
+                      voice={chatInputVoice}
                       disabled={!inputEnabled || isHistoricalSession}
-                      showStopButton={showStopButton}
+                      action={chatInputAction}
                       setContent={setter => {
                         setInputTextRef.current = setter;
                       }}
-                      historicalSessionId={isHistoricalSession && replayEnabled ? currentSessionId : null}
-                      onReplay={handleReplay}
                     />
                   </div>
-                )}
+                ) : null}
               </>
             )}
           </>
+        )}
+        {showSettings && (
+          <SettingsModal
+            chatDebugMode={chatDebugMode}
+            onClose={() => setShowSettings(false)}
+            onChatDebugModeChange={handleChatDebugModeChange}
+          />
+        )}
+        {showSetupRequiredModal && (
+          <SetupRequiredModal
+            onClose={() => setShowSetupRequiredModal(false)}
+            onOpenSettings={() => {
+              chrome.runtime.openOptionsPage();
+            }}
+          />
         )}
       </div>
     </div>

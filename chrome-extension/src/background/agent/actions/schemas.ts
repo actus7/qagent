@@ -15,6 +15,134 @@ export const doneActionSchema: ActionSchema = {
   }),
 };
 
+const selectorField = z
+  .string()
+  .describe('selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.');
+
+// agent-browser style navigation actions
+export const openActionSchema: ActionSchema = {
+  name: 'open',
+  description: 'Navigate to URL in the current tab',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    url: z.string(),
+  }),
+};
+
+export const backActionSchema: ActionSchema = {
+  name: 'back',
+  description: 'Go back to the previous page',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+  }),
+};
+
+export const forwardActionSchema: ActionSchema = {
+  name: 'forward',
+  description: 'Go forward to the next page in history',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+  }),
+};
+
+export const reloadActionSchema: ActionSchema = {
+  name: 'reload',
+  description: 'Reload current page',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+  }),
+};
+
+export const clickActionSchema: ActionSchema = {
+  name: 'click',
+  description: 'Click element by selector',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    selector: selectorField,
+  }),
+};
+
+export const fillActionSchema: ActionSchema = {
+  name: 'fill',
+  description: 'Clear and fill text in an input element',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    selector: selectorField,
+    text: z.string().describe('text to fill'),
+  }),
+};
+
+export const typeActionSchema: ActionSchema = {
+  name: 'type',
+  description: 'Type text in an element without clearing existing content first',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    selector: selectorField,
+    text: z.string().describe('text to type'),
+  }),
+};
+
+export const pressActionSchema: ActionSchema = {
+  name: 'press',
+  description: 'Press keyboard keys like Enter, Tab, Backspace and combinations like Control+o or Control+Shift+T',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    key: z.string().describe('key or shortcut to send'),
+  }),
+};
+
+export const scrollActionSchema: ActionSchema = {
+  name: 'scroll',
+  description: 'Scroll the page by direction and optional pixels',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    direction: z.enum(['up', 'down', 'left', 'right']).describe('scroll direction'),
+    pixels: z.number().int().positive().optional().describe('pixel amount to scroll'),
+  }),
+};
+
+export const scrollIntoViewActionSchema: ActionSchema = {
+  name: 'scrollintoview',
+  description: 'Scroll the target element into view',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    selector: selectorField,
+  }),
+};
+
+export const snapshotActionSchema: ActionSchema = {
+  name: 'snapshot',
+  description: 'Get current interactive elements snapshot with refs',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+  }),
+};
+
+export const getTextActionSchema: ActionSchema = {
+  name: 'get_text',
+  description: 'Get element text by selector',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    selector: selectorField,
+  }),
+};
+
+export const getTitleActionSchema: ActionSchema = {
+  name: 'get_title',
+  description: 'Get current page title',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+  }),
+};
+
+export const getUrlActionSchema: ActionSchema = {
+  name: 'get_url',
+  description: 'Get current page URL',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+  }),
+};
+
 // Basic Navigation Actions
 export const searchGoogleActionSchema: ActionSchema = {
   name: 'search_google',

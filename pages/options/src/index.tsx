@@ -1,7 +1,8 @@
 import { createRoot } from 'react-dom/client';
 import '@src/index.css';
-import '@extension/ui/dist/global.css';
+import '@extension/ui/lib/global.css';
 import Options from '@src/Options';
+import { LanguageProvider } from './context/LanguageContext';
 
 function init() {
   const appContainer = document.querySelector('#app-container');
@@ -10,7 +11,11 @@ function init() {
   }
   const root = createRoot(appContainer);
   appContainer.className = 'min-w-[768px]';
-  root.render(<Options />);
+  root.render(
+    <LanguageProvider>
+      <Options />
+    </LanguageProvider>,
+  );
 }
 
 init();

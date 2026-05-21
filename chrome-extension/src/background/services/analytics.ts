@@ -23,6 +23,7 @@ export class AnalyticsService {
     ResponseParseError: 'llm_response_parse_error',
     URLNotAllowedError: 'url_blocked_error',
     RequestCancelledError: 'request_cancelled_error',
+    LLMTimeoutError: 'timeout',
     ExtensionConflictError: 'extension_conflict_error',
     InvalidInputError: 'invalid_input_error',
     TimeoutError: 'timeout',
@@ -32,6 +33,7 @@ export class AnalyticsService {
     SyntaxError: 'syntax_error',
     MaxStepsReachedError: 'max_steps_reached',
     MaxFailuresReachedError: 'max_failures_reached',
+    NavigationLoopDetectedError: 'navigation_loop_detected',
   } as const;
 
   private static readonly MESSAGE_PATTERNS: Array<[RegExp, string]> = [

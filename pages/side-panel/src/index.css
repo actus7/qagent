@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: oklch(1.0000 0 0);
     --foreground: oklch(0.2153 0.0187 235.1251);
     --card: oklch(1.0000 0 0);
@@ -59,6 +60,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: oklch(0.2153 0.0187 235.1251);
     --foreground: oklch(0.9436 0.0051 228.8204);
     --card: oklch(0.3351 0.0253 234.8586);
@@ -113,6 +115,34 @@
 
   body {
     letter-spacing: var(--tracking-normal);
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    color: var(--foreground);
+    caret-color: var(--foreground);
+  }
+
+  .dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  .dark select,
+  .dark textarea {
+    -webkit-text-fill-color: var(--foreground);
+  }
+
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark textarea:-webkit-autofill,
+  .dark select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px var(--card) inset;
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+  }
+
+  .dark select option {
+    background-color: var(--card);
+    color: var(--foreground);
   }
 }
 

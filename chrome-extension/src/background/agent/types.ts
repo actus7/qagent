@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type BrowserContext from '../browser/context';
+import type { BrowserContextLike } from '../browser/types';
 import { DEFAULT_INCLUDE_ATTRIBUTES } from '../browser/dom/views';
 import type { DOMHistoryElement } from '../browser/dom/history/view';
 import type MessageManager from './messages/service';
@@ -36,7 +36,7 @@ export const DEFAULT_AGENT_OPTIONS: AgentOptions = {
 export class AgentContext {
   controller: AbortController;
   taskId: string;
-  browserContext: BrowserContext;
+  browserContext: BrowserContextLike;
   messageManager: MessageManager;
   eventManager: EventManager;
   options: AgentOptions;
@@ -52,7 +52,7 @@ export class AgentContext {
 
   constructor(
     taskId: string,
-    browserContext: BrowserContext,
+    browserContext: BrowserContextLike,
     messageManager: MessageManager,
     eventManager: EventManager,
     options: Partial<AgentOptions>,

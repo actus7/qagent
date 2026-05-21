@@ -175,7 +175,22 @@ export function isBadRequestError(error: unknown): boolean {
 
 export function isAbortedError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  return error.name === 'AbortError' || error.message.includes('Aborted');
+  if (error.name === 'AbortError') {
+    return true;
+  }
+
+  const cause = (error as { cause?: unknown }).cause;
+  if (cause instanceof Error && cause.name === 'AbortError') {
+    return true;
+  }
+
+  // Match common cancellation message variants, but avoid broad matching on any "aborted" substring.
+  const normalizedMessage = error.message.trim().toLowerCase();
+  return (
+    normalizedMessage === 'aborted' ||
+    normalizedMessage.includes('operation was aborted') ||
+    normalizedMessage.includes('this operation was aborted')
+  );
 }
 
 /**
@@ -194,6 +209,24 @@ export class RequestCancelledError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'RequestCancelledError';
+  }
+}
+
+export class LLMTimeoutError extends Error {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = 'LLMTimeoutError';
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, LLMTimeoutError);
+    }
+  }
+
+  toString(): string {
+    return `${this.name}: ${this.message}${this.cause ? ` (Caused by: ${this.cause})` : ''}`;
   }
 }
 
@@ -282,6 +315,27 @@ export class MaxFailuresReachedError extends Error {
   /**
    * Returns a string representation of the error
    */
+  toString(): string {
+    return `${this.name}: ${this.message}${this.cause ? ` (Caused by: ${this.cause})` : ''}`;
+  }
+}
+
+/**
+ * Custom error class for repeated navigation without progress
+ */
+export class NavigationLoopDetectedError extends Error {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = 'NavigationLoopDetectedError';
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, NavigationLoopDetectedError);
+    }
+  }
+
   toString(): string {
     return `${this.name}: ${this.message}${this.cause ? ` (Caused by: ${this.cause})` : ''}`;
   }

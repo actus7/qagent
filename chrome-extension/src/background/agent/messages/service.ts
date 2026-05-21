@@ -372,6 +372,9 @@ export default class MessageManager {
     if (diff <= 0) return;
 
     const lastMsg = this.history.messages[this.history.messages.length - 1];
+    if (!lastMsg) {
+      return;
+    }
 
     // if list with image remove image
     if (Array.isArray(lastMsg.message.content)) {
@@ -395,16 +398,26 @@ export default class MessageManager {
       this.history.messages[this.history.messages.length - 1] = lastMsg;
     }
 
+    diff = this.history.totalTokens - this.settings.maxInputTokens;
     if (diff <= 0) return;
+
+    if (
+      !(lastMsg.message instanceof HumanMessage) ||
+      typeof lastMsg.message.content !== 'string' ||
+      lastMsg.metadata.tokens <= 0
+    ) {
+      this.trimToTokenBudget();
+      return;
+    }
 
     // if still over, remove text from state message proportionally to the number of tokens needed with buffer
     // Calculate the proportion of content to remove
     const proportionToRemove = diff / lastMsg.metadata.tokens;
     if (proportionToRemove > 0.99) {
-      throw new Error(
-        `Max token limit reached - history is too long - reduce the system prompt or task. proportion_to_remove: ${proportionToRemove}`,
-      );
+      this.trimToTokenBudget();
+      return;
     }
+
     logger.debug(
       `Removing ${(proportionToRemove * 100).toFixed(2)}% of the last message (${(proportionToRemove * lastMsg.metadata.tokens).toFixed(2)} / ${lastMsg.metadata.tokens.toFixed(2)} tokens)`,
     );
@@ -414,16 +427,27 @@ export default class MessageManager {
     const newContent = content.slice(0, -charactersToRemove);
 
     // remove tokens and old long message
-    this.history.removeLastStateMessage();
+    this.history.removeMessage();
 
     // new message with updated content
     const msg = new HumanMessage({ content: newContent });
     this.addMessageWithTokens(msg);
+    this.trimToTokenBudget();
 
     const finalMsg = this.history.messages[this.history.messages.length - 1];
     logger.debug(
       `Added message with ${finalMsg.metadata.tokens} tokens - total tokens now: ${this.history.totalTokens}/${this.settings.maxInputTokens} - total messages: ${this.history.messages.length}`,
     );
+  }
+
+  private trimToTokenBudget(): void {
+    while (this.history.totalTokens > this.settings.maxInputTokens && this.history.messages.length > 1) {
+      const before = this.history.totalTokens;
+      this.history.removeOldestMessage();
+      if (this.history.totalTokens >= before) {
+        break;
+      }
+    }
   }
 
   /**

@@ -276,8 +276,6 @@ export const llmProviderStore: LLMProviderStorage = {
           }),
     };
 
-    console.log(`[llmProviderStore.setProvider] Saving config for ${providerId}:`, JSON.stringify(completeConfig));
-
     const current = (await storage.get()) || { providers: {} };
     await storage.set({
       providers: {

@@ -296,8 +296,9 @@ export class DOMElementNode extends DOMBaseNode {
 
           // Build the line
           const highlightIndicator = node.isNew ? `*[${node.highlightIndex}]` : `[${node.highlightIndex}]`;
+          const refIndicator = `[ref=e${node.highlightIndex}]`;
 
-          let line = `${depthStr}${highlightIndicator}<${node.tagName}`;
+          let line = `${depthStr}${highlightIndicator}${refIndicator}<${node.tagName}`;
 
           if (attributesHtmlStr) {
             line += ` ${attributesHtmlStr}`;

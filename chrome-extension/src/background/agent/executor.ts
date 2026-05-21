@@ -6,8 +6,8 @@ import { PlannerAgent, type PlannerOutput } from './agents/planner';
 import { NavigatorPrompt } from './prompts/navigator';
 import { PlannerPrompt } from './prompts/planner';
 import { createLogger } from '@src/background/log';
-import MessageManager from './messages/service';
-import type BrowserContext from '../browser/context';
+import MessageManager, { MessageManagerSettings } from './messages/service';
+import type { BrowserContextLike } from '../browser/types';
 import { ActionBuilder } from './actions/builder';
 import { EventManager } from './event/manager';
 import { Actors, type EventCallback, EventType, ExecutionState } from './event/types';
@@ -16,6 +16,7 @@ import {
   ChatModelBadRequestError,
   ChatModelForbiddenError,
   ExtensionConflictError,
+  NavigationLoopDetectedError,
   RequestCancelledError,
   MaxStepsReachedError,
   MaxFailuresReachedError,
@@ -25,12 +26,20 @@ import { chatHistoryStore } from '@extension/storage/lib/chat';
 import type { AgentStepHistory } from './history';
 import type { GeneralSettingsConfig } from '@extension/storage';
 import { analytics } from '../services/analytics';
+import { createLoopDetectionState, evaluateLoopDetection, type LoopDetectionState } from './loop-detection';
 
 const logger = createLogger('Executor');
+const MAX_TASK_CHAIN_LENGTH = 50;
 
 export interface ExecutorExtraArgs {
   plannerLLM?: BaseChatModel;
   extractorLLM?: BaseChatModel;
+  navigatorProvider?: string;
+  plannerProvider?: string;
+  navigatorRequestsPerMinute?: number;
+  plannerRequestsPerMinute?: number;
+  navigatorRateLimitKey?: string;
+  plannerRateLimitKey?: string;
   agentOptions?: Partial<AgentOptions>;
   generalSettings?: GeneralSettingsConfig;
 }
@@ -42,15 +51,21 @@ export class Executor {
   private readonly plannerPrompt: PlannerPrompt;
   private readonly navigatorPrompt: NavigatorPrompt;
   private readonly generalSettings: GeneralSettingsConfig | undefined;
+  private loopDetectionState: LoopDetectionState = createLoopDetectionState();
+  private plannerDisabledForTask = false;
   private tasks: string[] = [];
   constructor(
     task: string,
     taskId: string,
-    browserContext: BrowserContext,
+    browserContext: BrowserContextLike,
     navigatorLLM: BaseChatModel,
     extraArgs?: Partial<ExecutorExtraArgs>,
   ) {
-    const messageManager = new MessageManager();
+    const messageManager = new MessageManager(
+      new MessageManagerSettings({
+        maxInputTokens: extraArgs?.agentOptions?.maxInputTokens,
+      }),
+    );
 
     const plannerLLM = extraArgs?.plannerLLM ?? navigatorLLM;
     const extractorLLM = extraArgs?.extractorLLM ?? navigatorLLM;
@@ -76,12 +91,18 @@ export class Executor {
       chatLLM: navigatorLLM,
       context: context,
       prompt: this.navigatorPrompt,
+      provider: extraArgs?.navigatorProvider,
+      requestsPerMinute: extraArgs?.navigatorRequestsPerMinute,
+      rateLimitKey: extraArgs?.navigatorRateLimitKey,
     });
 
     this.planner = new PlannerAgent({
       chatLLM: plannerLLM,
       context: context,
       prompt: this.plannerPrompt,
+      provider: extraArgs?.plannerProvider ?? extraArgs?.navigatorProvider,
+      requestsPerMinute: extraArgs?.plannerRequestsPerMinute ?? extraArgs?.navigatorRequestsPerMinute,
+      rateLimitKey: extraArgs?.plannerRateLimitKey ?? extraArgs?.navigatorRateLimitKey,
     });
 
     this.context = context;
@@ -100,10 +121,23 @@ export class Executor {
 
   addFollowUpTask(task: string): void {
     this.tasks.push(task);
+    this.trimFollowUpTaskChain();
     this.context.messageManager.addNewTask(task);
 
     // need to reset previous action results that are not included in memory
     this.context.actionResults = this.context.actionResults.filter(result => result.includeInMemory);
+  }
+
+  private trimFollowUpTaskChain(): void {
+    if (this.tasks.length <= MAX_TASK_CHAIN_LENGTH) {
+      return;
+    }
+
+    const overflow = this.tasks.length - MAX_TASK_CHAIN_LENGTH;
+    this.tasks.splice(1, overflow);
+    logger.warning(
+      `Follow-up task chain trimmed by ${overflow} item(s) to keep maximum length at ${MAX_TASK_CHAIN_LENGTH}`,
+    );
   }
 
   /**
@@ -130,6 +164,8 @@ export class Executor {
     // reset the step counter
     const context = this.context;
     context.nSteps = 0;
+    this.plannerDisabledForTask = false;
+    this.loopDetectionState = createLoopDetectionState();
     const allowedMaxSteps = this.context.options.maxSteps;
 
     try {
@@ -154,7 +190,11 @@ export class Executor {
         }
 
         // Run planner periodically for guidance
-        if (this.planner && (context.nSteps % context.options.planningInterval === 0 || navigatorDone)) {
+        if (
+          this.planner &&
+          !this.plannerDisabledForTask &&
+          (context.nSteps % context.options.planningInterval === 0 || navigatorDone)
+        ) {
           navigatorDone = false;
           latestPlanOutput = await this.runPlanner();
 
@@ -173,8 +213,10 @@ export class Executor {
         }
       }
 
-      // Determine task completion status
-      const isCompleted = latestPlanOutput?.result?.done === true;
+      // Determine task completion status:
+      // - planner-confirmed completion OR
+      // - navigator completed on the last loop iteration (may not get another planner validation cycle)
+      const isCompleted = latestPlanOutput?.result?.done === true || navigatorDone;
 
       if (isCompleted) {
         // Emit final answer if available, otherwise use task ID
@@ -202,10 +244,17 @@ export class Executor {
       }
     } catch (error) {
       if (error instanceof RequestCancelledError) {
-        this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_CANCEL, t('exec_task_cancel'));
+        if (this.context.stopped) {
+          this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_CANCEL, t('exec_task_cancel'));
 
-        // Track task cancellation
-        void analytics.trackTaskCancelled(this.context.taskId);
+          // Track task cancellation
+          void analytics.trackTaskCancelled(this.context.taskId);
+        } else {
+          // Cancellation can also happen from transport/network interruptions; surface as a failure.
+          this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [error.message]));
+          const errorCategory = analytics.categorizeError(error);
+          void analytics.trackTaskFailed(this.context.taskId, errorCategory);
+        }
       } else {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [errorMessage]));
@@ -245,21 +294,33 @@ export class Executor {
       }
 
       // Execute planner
+      this.context.messageManager.cutMessages();
       const planOutput = await this.planner.execute();
       if (planOutput.result) {
         this.context.messageManager.addPlan(JSON.stringify(planOutput.result), positionForPlan);
       }
       return planOutput;
     } catch (error) {
-      logger.error(`Failed to execute planner: ${error}`);
+      if (error instanceof RequestCancelledError) {
+        if (this.context.stopped) {
+          logger.info(`Planner request cancelled: ${error.message}`);
+          throw error;
+        }
+        this.plannerDisabledForTask = true;
+        logger.warning(
+          `Planner request cancelled: ${error.message}. Planner disabled for this task; continuing with navigator only.`,
+        );
+        return null;
+      }
+
       if (
         error instanceof ChatModelAuthError ||
         error instanceof ChatModelBadRequestError ||
         error instanceof ChatModelForbiddenError ||
         error instanceof URLNotAllowedError ||
-        error instanceof RequestCancelledError ||
         error instanceof ExtensionConflictError
       ) {
+        logger.error(`Failed to execute planner: ${error}`);
         throw error;
       }
       context.consecutiveFailures++;
@@ -277,11 +338,29 @@ export class Executor {
       // Get and execute navigation action
       // check if the task is paused or stopped
       if (context.paused || context.stopped) {
+        logger.debug('navigate skipped because context is paused/stopped', {
+          paused: context.paused,
+          stopped: context.stopped,
+          step: context.nSteps,
+        });
         return false;
       }
+      const navStartedAt = Date.now();
+      logger.debug('navigate start', { step: context.nSteps, taskId: context.taskId });
       const navOutput = await this.navigator.execute();
+      logger.debug('navigate end', {
+        step: context.nSteps,
+        durationMs: Date.now() - navStartedAt,
+        hasError: Boolean(navOutput.error),
+        done: navOutput.result?.done === true,
+      });
       // check if the task is paused or stopped
       if (context.paused || context.stopped) {
+        logger.debug('navigate finished but context is paused/stopped', {
+          paused: context.paused,
+          stopped: context.stopped,
+          step: context.nSteps,
+        });
         return false;
       }
       context.nSteps++;
@@ -289,19 +368,33 @@ export class Executor {
         throw new Error(navOutput.error);
       }
       context.consecutiveFailures = 0;
-      if (navOutput.result?.done) {
+      const done = navOutput.result?.done === true;
+      const latestHistoryStep = context.history.history[context.history.history.length - 1];
+      const loopDetection = evaluateLoopDetection(this.loopDetectionState, latestHistoryStep, done);
+      this.loopDetectionState = loopDetection.nextState;
+
+      if (loopDetection.loopDetected) {
+        throw new NavigationLoopDetectedError(t('exec_errors_loopDetected'));
+      }
+
+      if (done) {
         return true;
       }
     } catch (error) {
-      logger.error(`Failed to execute step: ${error}`);
       if (
         error instanceof ChatModelAuthError ||
         error instanceof ChatModelBadRequestError ||
         error instanceof ChatModelForbiddenError ||
         error instanceof URLNotAllowedError ||
         error instanceof RequestCancelledError ||
-        error instanceof ExtensionConflictError
+        error instanceof ExtensionConflictError ||
+        error instanceof NavigationLoopDetectedError
       ) {
+        if (error instanceof RequestCancelledError) {
+          logger.info(`Navigator request cancelled: ${error.message}`);
+        } else {
+          logger.error(`Failed to execute step: ${error}`);
+        }
         throw error;
       }
       context.consecutiveFailures++;
@@ -328,7 +421,7 @@ export class Executor {
 
     if (this.context.consecutiveFailures >= this.context.options.maxFailures) {
       logger.error(`Stopping due to ${this.context.options.maxFailures} consecutive failures`);
-      return true;
+      throw new MaxFailuresReachedError(t('exec_errors_maxFailuresReached'));
     }
 
     return false;

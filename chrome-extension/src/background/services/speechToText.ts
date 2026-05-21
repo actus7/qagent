@@ -65,7 +65,7 @@ export class SpeechToTextService {
       const transcriptionResponse = await this.llm.invoke([transcriptionMessage]);
 
       const transcribedText = transcriptionResponse.content.toString().trim();
-      logger.info('Audio transcription completed:', transcribedText);
+      logger.info('Audio transcription completed. Characters:', transcribedText.length);
 
       return transcribedText;
     } catch (error) {

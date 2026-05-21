@@ -10,15 +10,21 @@ import Page, { build_initial_state } from './page';
 import { createLogger } from '@src/background/log';
 import { isUrlAllowed } from './util';
 import { analytics } from '../services/analytics';
+import type { BrowserContextLike, BrowserEngineName, BrowserPageLike } from './types';
 
 const logger = createLogger('BrowserContext');
-export default class BrowserContext {
+const MAX_ATTACHED_PAGES = 3;
+export default class BrowserContext implements BrowserContextLike {
   private _config: BrowserContextConfig;
   private _currentTabId: number | null = null;
-  private _attachedPages: Map<number, Page> = new Map();
+  private _attachedPages: Map<number, BrowserPageLike> = new Map();
 
   constructor(config: Partial<BrowserContextConfig>) {
     this._config = { ...DEFAULT_BROWSER_CONTEXT_CONFIG, ...config };
+  }
+
+  public getEngineName(): BrowserEngineName {
+    return 'chrome-debugger';
   }
 
   public get currentTabId(): number | null {
@@ -38,7 +44,7 @@ export default class BrowserContext {
     this._currentTabId = tabId;
   }
 
-  private async _getOrCreatePage(tab: chrome.tabs.Tab, forceUpdate = false): Promise<Page> {
+  private async _getOrCreatePage(tab: chrome.tabs.Tab, forceUpdate = false): Promise<BrowserPageLike> {
     if (!tab.id) {
       throw new Error('Tab ID is not available');
     }
@@ -68,10 +74,47 @@ export default class BrowserContext {
     this._currentTabId = null;
   }
 
-  public async attachPage(page: Page): Promise<boolean> {
+  private touchAttachedPage(tabId: number): void {
+    const existingPage = this._attachedPages.get(tabId);
+    if (!existingPage) {
+      return;
+    }
+    this._attachedPages.delete(tabId);
+    this._attachedPages.set(tabId, existingPage);
+  }
+
+  private async enforceAttachedPagesLimit(preserveTabId?: number): Promise<void> {
+    while (this._attachedPages.size > MAX_ATTACHED_PAGES) {
+      const oldestEntry = this._attachedPages.entries().next().value as [number, BrowserPageLike] | undefined;
+      if (!oldestEntry) {
+        return;
+      }
+
+      const [oldestTabId, oldestPage] = oldestEntry;
+      if (preserveTabId !== undefined && oldestTabId === preserveTabId) {
+        this.touchAttachedPage(oldestTabId);
+        continue;
+      }
+
+      try {
+        await oldestPage.detachPuppeteer();
+      } catch (error) {
+        logger.warning('Failed to detach LRU page', oldestTabId, error);
+      } finally {
+        this._attachedPages.delete(oldestTabId);
+        if (this._currentTabId === oldestTabId) {
+          this._currentTabId = null;
+        }
+      }
+      logger.info('attachPage LRU eviction', oldestTabId, `max attached pages: ${MAX_ATTACHED_PAGES}`);
+    }
+  }
+
+  public async attachPage(page: BrowserPageLike): Promise<boolean> {
     // check if page is already attached
     if (this._attachedPages.has(page.tabId)) {
       logger.info('attachPage', page.tabId, 'already attached');
+      this.touchAttachedPage(page.tabId);
       return true;
     }
 
@@ -79,6 +122,7 @@ export default class BrowserContext {
       logger.info('attachPage', page.tabId, 'attached');
       // add page to managed pages
       this._attachedPages.set(page.tabId, page);
+      await this.enforceAttachedPagesLimit(page.tabId);
       return true;
     }
     return false;
@@ -91,10 +135,13 @@ export default class BrowserContext {
       await page.detachPuppeteer();
       // remove page from managed pages
       this._attachedPages.delete(tabId);
+      if (this._currentTabId === tabId) {
+        this._currentTabId = null;
+      }
     }
   }
 
-  public async getCurrentPage(): Promise<Page> {
+  public async getCurrentPage(): Promise<BrowserPageLike> {
     // 1. If _currentTabId not set, query the active tab and attach it
     if (!this._currentTabId) {
       let activeTab: chrome.tabs.Tab;
@@ -128,6 +175,7 @@ export default class BrowserContext {
     }
 
     // 3. Return existing page from attachedPages
+    this.touchAttachedPage(this._currentTabId);
     return existingPage;
   }
 
@@ -222,7 +270,7 @@ export default class BrowserContext {
     await Promise.race([Promise.all(promises), timeoutPromise]);
   }
 
-  public async switchTab(tabId: number): Promise<Page> {
+  public async switchTab(tabId: number): Promise<BrowserPageLike> {
     logger.info('switchTab', tabId);
 
     await chrome.tabs.update(tabId, { active: true });
@@ -264,7 +312,7 @@ export default class BrowserContext {
     this._currentTabId = tabId;
   }
 
-  public async openTab(url: string): Promise<Page> {
+  public async openTab(url: string): Promise<BrowserPageLike> {
     if (!isUrlAllowed(url, this._config.allowedUrls, this._config.deniedUrls)) {
       throw new URLNotAllowedError(`Open tab failed. URL: ${url} is not allowed`);
     }

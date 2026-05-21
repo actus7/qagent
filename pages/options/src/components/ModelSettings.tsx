@@ -6,9 +6,10 @@
  * - Added keyboard event handlers to close dropdowns with Escape key
  * - Styling for both light and dark mode themes
  */
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Button } from '@extension/ui';
+import { useTheme } from '@extension/shared';
 import {
   llmProviderStore,
   agentModelStore,
@@ -19,6 +20,9 @@ import {
   getDefaultDisplayNameFromProviderId,
   getDefaultProviderConfig,
   getDefaultAgentModelParams,
+  getDefaultModelRequestsPerMinute,
+  normalizeReasoningEffort,
+  type ReasoningEffort,
   type ProviderConfig,
 } from '@extension/storage';
 import { t } from '@extension/i18n';
@@ -53,30 +57,46 @@ function isAnthropicModel(modelName: string): boolean {
   return modelNameWithoutProvider.startsWith('claude-');
 }
 
-interface ModelSettingsProps {
-  isDarkMode?: boolean; // Controls dark/light theme styling
+const PARAMETER_SAVE_DEBOUNCE_MS = 250;
+
+function createEmptySelectedModels(): Record<AgentNameEnum, string> {
+  return {
+    [AgentNameEnum.Navigator]: '',
+    [AgentNameEnum.Planner]: '',
+  };
 }
 
-export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
+function createDefaultModelParameters(): Record<AgentNameEnum, { temperature: number; topP: number; requestsPerMinute: number }> {
+  return {
+    [AgentNameEnum.Navigator]: { temperature: 0, topP: 0, requestsPerMinute: 10 },
+    [AgentNameEnum.Planner]: { temperature: 0, topP: 0, requestsPerMinute: 10 },
+  };
+}
+
+function createDefaultReasoningEffort(): Record<AgentNameEnum, ReasoningEffort | undefined> {
+  return {
+    [AgentNameEnum.Navigator]: undefined,
+    [AgentNameEnum.Planner]: undefined,
+  };
+}
+
+export const ModelSettings = () => {
+  const { resolvedTheme } = useTheme();
+  const isDarkMode = resolvedTheme === 'dark';
   const [providers, setProviders] = useState<Record<string, ProviderConfig>>({});
   const [modifiedProviders, setModifiedProviders] = useState<Set<string>>(new Set());
   const [providersFromStorage, setProvidersFromStorage] = useState<Set<string>>(new Set());
-  const [selectedModels, setSelectedModels] = useState<Record<AgentNameEnum, string>>({
-    [AgentNameEnum.Navigator]: '',
-    [AgentNameEnum.Planner]: '',
-  });
-  const [modelParameters, setModelParameters] = useState<Record<AgentNameEnum, { temperature: number; topP: number }>>({
-    [AgentNameEnum.Navigator]: { temperature: 0, topP: 0 },
-    [AgentNameEnum.Planner]: { temperature: 0, topP: 0 },
-  });
+  const [selectedModels, setSelectedModels] = useState<Record<AgentNameEnum, string>>(() => createEmptySelectedModels());
+  const [modelParameters, setModelParameters] = useState<
+    Record<AgentNameEnum, { temperature: number; topP: number; requestsPerMinute: number }>
+  >(
+    () => createDefaultModelParameters(),
+  );
 
   // State for reasoning effort for O-series models
-  const [reasoningEffort, setReasoningEffort] = useState<
-    Record<AgentNameEnum, 'minimal' | 'low' | 'medium' | 'high' | undefined>
-  >({
-    [AgentNameEnum.Navigator]: undefined,
-    [AgentNameEnum.Planner]: undefined,
-  });
+  const [reasoningEffort, setReasoningEffort] = useState<Record<AgentNameEnum, ReasoningEffort | undefined>>(() =>
+    createDefaultReasoningEffort(),
+  );
   const [newModelInputs, setNewModelInputs] = useState<Record<string, string>>({});
   const [isProviderSelectorOpen, setIsProviderSelectorOpen] = useState(false);
   const newlyAddedProviderRef = useRef<string | null>(null);
@@ -90,12 +110,16 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
   // State for model input handling
 
   const [selectedSpeechToTextModel, setSelectedSpeechToTextModel] = useState<string>('');
+  const selectedModelsRef = useRef<Record<AgentNameEnum, string>>(createEmptySelectedModels());
+  const modelParametersRef = useRef<Record<AgentNameEnum, { temperature: number; topP: number; requestsPerMinute: number }>>(
+    createDefaultModelParameters(),
+  );
+  const parameterPersistTimeoutsRef = useRef<Partial<Record<AgentNameEnum, number>>>({});
 
   useEffect(() => {
     const loadProviders = async () => {
       try {
         const allProviders = await llmProviderStore.getAllProviders();
-        console.log('allProviders', allProviders);
 
         // Track which providers are from storage
         const fromStorage = new Set(Object.keys(allProviders));
@@ -117,43 +141,84 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
 
   // Load existing agent models and parameters on mount
   useEffect(() => {
+    let cancelled = false;
+
     const loadAgentModels = async () => {
       try {
-        const models: Record<AgentNameEnum, string> = {
-          [AgentNameEnum.Planner]: '',
-          [AgentNameEnum.Navigator]: '',
-        };
-
-        for (const agent of Object.values(AgentNameEnum)) {
-          const config = await agentModelStore.getAgentModel(agent);
-          if (config) {
-            // Store in provider>model format
-            models[agent] = `${config.provider}>${config.modelName}`;
-            if (config.parameters?.temperature !== undefined || config.parameters?.topP !== undefined) {
-              setModelParameters(prev => ({
-                ...prev,
-                [agent]: {
-                  temperature: config.parameters?.temperature ?? prev[agent].temperature,
-                  topP: config.parameters?.topP ?? prev[agent].topP,
-                },
-              }));
-            }
-            // Also load reasoningEffort if available
-            if (config.reasoningEffort) {
-              setReasoningEffort(prev => ({
-                ...prev,
-                [agent]: config.reasoningEffort as 'minimal' | 'low' | 'medium' | 'high',
-              }));
-            }
-          }
+        const agents = Object.values(AgentNameEnum);
+        const configs = await Promise.all(agents.map(agent => agentModelStore.getAgentModel(agent)));
+        if (cancelled) {
+          return;
         }
-        setSelectedModels(models);
+
+        const nextSelectedModels = createEmptySelectedModels();
+        const nextModelParameters = createDefaultModelParameters();
+        const nextReasoningEffort = createDefaultReasoningEffort();
+
+        agents.forEach((agent, index) => {
+          const config = configs[index];
+          if (!config) {
+            return;
+          }
+
+          nextSelectedModels[agent] = `${config.provider}>${config.modelName}`;
+
+          const savedTemperature =
+            typeof config.parameters?.temperature === 'number'
+              ? config.parameters.temperature
+              : nextModelParameters[agent].temperature;
+          const savedTopP =
+            typeof config.parameters?.topP === 'number' ? config.parameters.topP : nextModelParameters[agent].topP;
+          const savedRequestsPerMinute =
+            typeof config.requestsPerMinute === 'number' && Number.isFinite(config.requestsPerMinute)
+              ? Math.max(1, Math.round(config.requestsPerMinute))
+              : getDefaultModelRequestsPerMinute(config.provider, config.modelName);
+
+          nextModelParameters[agent] = {
+            temperature: savedTemperature,
+            topP: savedTopP,
+            requestsPerMinute: savedRequestsPerMinute,
+          };
+
+          const normalizedReasoningEffort = normalizeReasoningEffort(config.reasoningEffort);
+          if (normalizedReasoningEffort) {
+            nextReasoningEffort[agent] = normalizedReasoningEffort;
+          }
+        });
+
+        selectedModelsRef.current = nextSelectedModels;
+        modelParametersRef.current = nextModelParameters;
+        setSelectedModels(nextSelectedModels);
+        setModelParameters(nextModelParameters);
+        setReasoningEffort(nextReasoningEffort);
       } catch (error) {
         console.error('Error loading agent models:', error);
       }
     };
 
-    loadAgentModels();
+    void loadAgentModels();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    selectedModelsRef.current = selectedModels;
+  }, [selectedModels]);
+
+  useEffect(() => {
+    modelParametersRef.current = modelParameters;
+  }, [modelParameters]);
+
+  useEffect(() => {
+    const parameterPersistTimeouts = parameterPersistTimeoutsRef.current;
+    return () => {
+      for (const timeoutId of Object.values(parameterPersistTimeouts)) {
+        if (timeoutId !== undefined) {
+          window.clearTimeout(timeoutId);
+        }
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -199,9 +264,13 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
 
   // Add a click outside handler to close the dropdown
   useEffect(() => {
+    if (!isProviderSelectorOpen) {
+      return;
+    }
+
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (isProviderSelectorOpen && !target.closest('.provider-selector-container')) {
+      if (!target.closest('[data-provider-selector-container]')) {
         setIsProviderSelectorOpen(false);
       }
     };
@@ -255,12 +324,26 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
 
   // Update available models whenever providers change
   useEffect(() => {
+    let active = true;
+
     const updateAvailableModels = async () => {
       const models = await getAvailableModelsCallback();
+      if (!active) {
+        return;
+      }
       setAvailableModels(models);
     };
 
-    updateAvailableModels();
+    const unsubscribe = llmProviderStore.subscribe(() => {
+      void updateAvailableModels();
+    });
+
+    void updateAvailableModels();
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [getAvailableModelsCallback]); // Only depends on the callback
 
   const handleApiKeyChange = (provider: string, apiKey: string, baseUrl?: string) => {
@@ -383,7 +466,6 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
     // For deletion, we only care if it's in storage and not modified
     if (isInStorage && !isModified) {
       return {
-        theme: isDarkMode ? 'dark' : 'light',
         variant: 'danger' as const,
         children: t('options_models_providers_btnDelete'),
         disabled: false,
@@ -418,7 +500,6 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
     }
 
     return {
-      theme: isDarkMode ? 'dark' : 'light',
       variant: 'primary' as const,
       children: t('options_models_providers_btnSave'),
       disabled: !hasInput || !isModified,
@@ -499,9 +580,6 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
         return next;
       });
 
-      // Refresh available models
-      const models = await getAvailableModelsCallback();
-      setAvailableModels(models);
     } catch (error) {
       console.error('Error saving API key:', error);
     }
@@ -533,9 +611,6 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
         return next;
       });
 
-      // Refresh available models
-      const models = await getAvailableModelsCallback();
-      setAvailableModels(models);
     } catch (error) {
       console.error('Error deleting provider:', error);
     }
@@ -561,31 +636,40 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
     // modelValue will be in format "provider>model"
     const [provider, model] = modelValue.split('>');
 
-    console.log(`[handleModelChange] Setting ${agentName} model: provider=${provider}, model=${model}`);
-
     // Set parameters based on provider type
-    const newParameters = getDefaultAgentModelParams(provider, agentName);
+    const defaults = getDefaultAgentModelParams(provider, agentName);
+    const newParameters: { temperature: number; topP: number; requestsPerMinute: number } = {
+      temperature: typeof defaults.temperature === 'number' ? defaults.temperature : 0.1,
+      topP: typeof defaults.topP === 'number' ? defaults.topP : 0.1,
+      requestsPerMinute: getDefaultModelRequestsPerMinute(provider, model),
+    };
+    const pendingTimeout = parameterPersistTimeoutsRef.current[agentName];
+    if (pendingTimeout !== undefined) {
+      window.clearTimeout(pendingTimeout);
+      delete parameterPersistTimeoutsRef.current[agentName];
+    }
 
-    setModelParameters(prev => ({
-      ...prev,
-      [agentName]: newParameters,
-    }));
+    setModelParameters(prev => {
+      const next = {
+        ...prev,
+        [agentName]: newParameters,
+      };
+      modelParametersRef.current = next;
+      return next;
+    });
 
     // Store both provider and model name in the format "provider>model"
-    setSelectedModels(prev => ({
-      ...prev,
-      [agentName]: modelValue, // Store the full provider>model value
-    }));
+    setSelectedModels(prev => {
+      const next = {
+        ...prev,
+        [agentName]: modelValue,
+      };
+      selectedModelsRef.current = next;
+      return next;
+    });
 
     try {
       if (model) {
-        const providerConfig = providers[provider];
-
-        // For Azure, verify the model is in the deployment names list
-        if (providerConfig && providerConfig.type === ProviderTypeEnum.AzureOpenAI) {
-          console.log(`[handleModelChange] Azure model selected: ${model}`);
-        }
-
         // Reset reasoning effort if switching models
         if (isOpenAIReasoningModel(modelValue)) {
           // Set default reasoning effort based on agent type
@@ -605,12 +689,13 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
         // For Anthropic Opus models, only pass temperature, not topP
         const parametersToSave = isAnthropicModel(modelValue)
           ? { temperature: newParameters.temperature }
-          : newParameters;
+          : { temperature: newParameters.temperature, topP: newParameters.topP };
 
         await agentModelStore.setAgentModel(agentName, {
           provider,
           modelName: model,
           parameters: parametersToSave,
+          requestsPerMinute: newParameters.requestsPerMinute,
           reasoningEffort: isOpenAIReasoningModel(modelValue)
             ? reasoningEffort[agentName] || (agentName === AgentNameEnum.Planner ? 'low' : 'minimal')
             : undefined,
@@ -626,7 +711,7 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
 
   const handleReasoningEffortChange = async (
     agentName: AgentNameEnum,
-    value: 'minimal' | 'low' | 'medium' | 'high',
+    value: ReasoningEffort,
   ) => {
     setReasoningEffort(prev => ({
       ...prev,
@@ -634,16 +719,22 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
     }));
 
     // Only update if we have a selected model
-    if (selectedModels[agentName] && isOpenAIReasoningModel(selectedModels[agentName])) {
+    const selectedModel = selectedModelsRef.current[agentName];
+    if (selectedModel && isOpenAIReasoningModel(selectedModel)) {
       try {
         // Extract provider and model from the "provider>model" format
-        const [provider, modelName] = selectedModels[agentName].split('>');
+        const [provider, modelName] = selectedModel.split('>');
 
         if (provider && modelName) {
+          const currentParameters = modelParametersRef.current[agentName];
+          const parametersToSave = isAnthropicModel(selectedModel)
+            ? { temperature: currentParameters.temperature }
+            : { temperature: currentParameters.temperature, topP: currentParameters.topP };
           await agentModelStore.setAgentModel(agentName, {
             provider,
             modelName,
-            parameters: modelParameters[agentName],
+            parameters: parametersToSave,
+            requestsPerMinute: currentParameters.requestsPerMinute,
             reasoningEffort: value,
           });
         }
@@ -653,10 +744,55 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
     }
   };
 
-  const handleParameterChange = async (agentName: AgentNameEnum, paramName: 'temperature' | 'topP', value: number) => {
+  const persistAgentParameters = useCallback(
+    async (agentName: AgentNameEnum, newParameters: { temperature: number; topP: number; requestsPerMinute: number }) => {
+      const selectedModel = selectedModelsRef.current[agentName];
+      if (!selectedModel) {
+        return;
+      }
+
+      try {
+        const [provider, modelName] = selectedModel.split('>');
+        if (!provider || !modelName) {
+          return;
+        }
+
+        const parametersToSave = isAnthropicModel(selectedModel)
+          ? { temperature: newParameters.temperature }
+          : { temperature: newParameters.temperature, topP: newParameters.topP };
+
+        await agentModelStore.setAgentModel(agentName, {
+          provider,
+          modelName,
+          parameters: parametersToSave,
+          requestsPerMinute: newParameters.requestsPerMinute,
+        });
+      } catch (error) {
+        console.error('Error saving agent parameters:', error);
+      }
+    },
+    [],
+  );
+
+  const handleParameterChange = (
+    agentName: AgentNameEnum,
+    paramName: 'temperature' | 'topP' | 'requestsPerMinute',
+    value: number,
+    options?: { debounceMs?: number },
+  ) => {
+    const normalizedValue =
+      paramName === 'requestsPerMinute'
+        ? Math.max(1, Math.min(600, Math.round(Number.isFinite(value) ? value : 1)))
+        : value;
+
     const newParameters = {
-      ...modelParameters[agentName],
-      [paramName]: value,
+      ...modelParametersRef.current[agentName],
+      [paramName]: normalizedValue,
+    };
+
+    modelParametersRef.current = {
+      ...modelParametersRef.current,
+      [agentName]: newParameters,
     };
 
     setModelParameters(prev => ({
@@ -664,28 +800,22 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
       [agentName]: newParameters,
     }));
 
-    // Only update if we have a selected model
-    if (selectedModels[agentName]) {
-      try {
-        // Extract provider and model from the "provider>model" format
-        const [provider, modelName] = selectedModels[agentName].split('>');
-
-        if (provider && modelName) {
-          // For Anthropic Opus models, only pass temperature, not topP
-          const parametersToSave = isAnthropicModel(selectedModels[agentName])
-            ? { temperature: newParameters.temperature }
-            : newParameters;
-
-          await agentModelStore.setAgentModel(agentName, {
-            provider,
-            modelName,
-            parameters: parametersToSave,
-          });
-        }
-      } catch (error) {
-        console.error('Error saving agent parameters:', error);
-      }
+    const pendingTimeout = parameterPersistTimeoutsRef.current[agentName];
+    if (pendingTimeout !== undefined) {
+      window.clearTimeout(pendingTimeout);
     }
+
+    const debounceMs = options?.debounceMs ?? PARAMETER_SAVE_DEBOUNCE_MS;
+    if (debounceMs <= 0) {
+      void persistAgentParameters(agentName, newParameters);
+      delete parameterPersistTimeoutsRef.current[agentName];
+      return;
+    }
+
+    parameterPersistTimeoutsRef.current[agentName] = window.setTimeout(() => {
+      void persistAgentParameters(agentName, newParameters);
+      delete parameterPersistTimeoutsRef.current[agentName];
+    }, debounceMs);
   };
 
   const handleSpeechToTextModelChange = async (modelValue: string) => {
@@ -745,6 +875,38 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
           </select>
         </div>
 
+        {/* Requests per minute */}
+        {selectedModels[agentName] && (
+          <div className="flex items-center">
+            <label
+              htmlFor={`${agentName}-rpm`}
+              className={`w-24 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              RPM
+            </label>
+            <div className="flex flex-1 items-center space-x-2">
+              <input
+                id={`${agentName}-rpm`}
+                type="number"
+                min="1"
+                max="600"
+                step="1"
+                value={modelParameters[agentName].requestsPerMinute}
+                onChange={e => {
+                  const value = Number.parseInt(e.target.value, 10);
+                  if (!Number.isNaN(value) && value >= 1 && value <= 600) {
+                    handleParameterChange(agentName, 'requestsPerMinute', value, { debounceMs: 0 });
+                  }
+                }}
+                className={`w-24 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-800' : 'border-gray-300 bg-white text-gray-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200'} px-2 py-1 text-sm`}
+                aria-label={`${agentName} requests per minute`}
+              />
+              <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Requests/min
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Temperature Slider - Only show for non-reasoning models */}
         {selectedModels[agentName] && !isOpenAIReasoningModel(selectedModels[agentName]) && (
           <div className="flex items-center">
@@ -761,7 +923,11 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
                 max="2"
                 step="0.01"
                 value={modelParameters[agentName].temperature}
-                onChange={e => handleParameterChange(agentName, 'temperature', Number.parseFloat(e.target.value))}
+                onChange={e =>
+                  handleParameterChange(agentName, 'temperature', Number.parseFloat(e.target.value), {
+                    debounceMs: PARAMETER_SAVE_DEBOUNCE_MS,
+                  })
+                }
                 style={{
                   background: `linear-gradient(to right, ${isDarkMode ? '#10b981' : '#34d399'} 0%, ${isDarkMode ? '#10b981' : '#34d399'} ${(modelParameters[agentName].temperature / 2) * 100}%, ${isDarkMode ? '#475569' : '#cbd5e1'} ${(modelParameters[agentName].temperature / 2) * 100}%, ${isDarkMode ? '#475569' : '#cbd5e1'} 100%)`,
                 }}
@@ -780,7 +946,7 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
                   onChange={e => {
                     const value = Number.parseFloat(e.target.value);
                     if (!Number.isNaN(value) && value >= 0 && value <= 2) {
-                      handleParameterChange(agentName, 'temperature', value);
+                      handleParameterChange(agentName, 'temperature', value, { debounceMs: 0 });
                     }
                   }}
                   className={`w-20 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-800' : 'border-gray-300 bg-white text-gray-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200'} px-2 py-1 text-sm`}
@@ -809,7 +975,11 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
                   max="1"
                   step="0.001"
                   value={modelParameters[agentName].topP}
-                  onChange={e => handleParameterChange(agentName, 'topP', Number.parseFloat(e.target.value))}
+                  onChange={e =>
+                    handleParameterChange(agentName, 'topP', Number.parseFloat(e.target.value), {
+                      debounceMs: PARAMETER_SAVE_DEBOUNCE_MS,
+                    })
+                  }
                   style={{
                     background: `linear-gradient(to right, ${isDarkMode ? '#10b981' : '#34d399'} 0%, ${isDarkMode ? '#10b981' : '#34d399'} ${(modelParameters[agentName].topP * 100)}%, ${isDarkMode ? '#475569' : '#cbd5e1'} ${(modelParameters[agentName].topP * 100)}%, ${isDarkMode ? '#475569' : '#cbd5e1'} 100%)`,
                   }}
@@ -828,7 +998,7 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
                     onChange={e => {
                       const value = Number.parseFloat(e.target.value);
                       if (!Number.isNaN(value) && value >= 0 && value <= 1) {
-                        handleParameterChange(agentName, 'topP', value);
+                        handleParameterChange(agentName, 'topP', value, { debounceMs: 0 });
                       }
                     }}
                     className={`w-20 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-800' : 'border-gray-300 bg-white text-gray-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200'} px-2 py-1 text-sm`}
@@ -851,11 +1021,9 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
               <select
                 id={`${agentName}-reasoning-effort`}
                 value={reasoningEffort[agentName] || (agentName === AgentNameEnum.Planner ? 'low' : 'minimal')}
-                onChange={e =>
-                  handleReasoningEffortChange(agentName, e.target.value as 'minimal' | 'low' | 'medium' | 'high')
-                }
+                onChange={e => handleReasoningEffortChange(agentName, normalizeReasoningEffort(e.target.value) || 'minimal')}
                 className={`flex-1 rounded-md border text-sm ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200' : 'border-gray-300 bg-white text-gray-700'} px-3 py-2`}>
-                <option value="minimal/none">Minimal</option>
+                <option value="minimal">Minimal</option>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
@@ -947,8 +1115,8 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
     }, 100);
   };
 
-  // Sort providers to ensure newly added providers appear at the bottom
-  const getSortedProviders = () => {
+  // Keep sorting/filtering stable across renders.
+  const sortedProviders = useMemo(() => {
     // Filter providers to only include those from storage and newly added providers
     const filteredProviders = Object.entries(providers).filter(([providerId, config]) => {
       // ALSO filter out any provider missing a config or type, to satisfy TS
@@ -1005,7 +1173,7 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
       // Sort alphabetically by name within each group
       return (configA.name || keyA).localeCompare(configB.name || keyB);
     });
-  };
+  }, [providers, providersFromStorage, modifiedProviders]);
 
   const handleProviderSelection = (providerType: string) => {
     // Close the dropdown immediately
@@ -1133,49 +1301,52 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
           {t('options_models_providers_header')}
         </h2>
         <div className="space-y-6">
-          {getSortedProviders().length === 0 ? (
+          {sortedProviders.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
               <p className="mb-4">{t('options_models_providers_notConfigured')}</p>
             </div>
           ) : (
-            getSortedProviders().map(([providerId, providerConfig]) => {
+            sortedProviders.map(([providerId, providerConfig]) => {
               // Add type guard to satisfy TypeScript
               if (!providerConfig || !providerConfig.type) {
                 console.warn(`Skipping rendering for providerId ${providerId} due to missing config or type`);
                 return null; // Skip rendering this item if config/type is somehow missing
               }
 
+              const isNewProvider = modifiedProviders.has(providerId) && !providersFromStorage.has(providerId);
+              const buttonProps = getButtonProps(providerId);
+
               return (
                 <div
                   key={providerId}
                   id={`provider-${providerId}`}
-                  className={`space-y-4 ${modifiedProviders.has(providerId) && !providersFromStorage.has(providerId) ? `rounded-lg border p-4 ${isDarkMode ? 'border-emerald-700 bg-slate-700' : 'border-emerald-200 bg-emerald-50/70'}` : ''}`}>
+                  className={`space-y-4 ${isNewProvider ? `rounded-lg border p-4 ${isDarkMode ? 'border-emerald-700 bg-slate-700' : 'border-emerald-200 bg-emerald-50/70'}` : ''}`}>
                   <div className="flex items-center justify-between">
                     <h3 className={`text-lg font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                       {providerConfig.name || providerId}
                     </h3>
                     <div className="flex space-x-2">
                       {/* Show Cancel button for newly added providers */}
-                      {modifiedProviders.has(providerId) && !providersFromStorage.has(providerId) && (
+                      {isNewProvider && (
                         <Button variant="secondary" onClick={() => handleCancelProvider(providerId)}>
                           {t('options_models_providers_btnCancel')}
                         </Button>
                       )}
                       <Button
-                        variant={getButtonProps(providerId).variant}
-                        disabled={getButtonProps(providerId).disabled}
+                        variant={buttonProps.variant}
+                        disabled={buttonProps.disabled}
                         onClick={() =>
                           providersFromStorage.has(providerId) && !modifiedProviders.has(providerId)
                             ? handleDelete(providerId)
                             : handleSave(providerId)
                         }>
-                        {getButtonProps(providerId).children}
+                        {buttonProps.children}
                       </Button>
                     </div>
                   </div>
 
                   {/* Show message for newly added providers */}
-                  {modifiedProviders.has(providerId) && !providersFromStorage.has(providerId) && (
+                  {isNewProvider && (
                     <div className={`mb-2 text-sm ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>
                       <p>{t('options_models_providers_setupInstructions')}</p>
                     </div>
@@ -1196,10 +1367,7 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
                             type="text"
                             placeholder={t('options_models_providers_custom_name_placeholder')}
                             value={providerConfig.name || ''}
-                            onChange={e => {
-                              console.log('Name input changed:', e.target.value);
-                              handleNameChange(providerId, e.target.value);
-                            }}
+                            onChange={e => handleNameChange(providerId, e.target.value)}
                             className={`flex-1 rounded-md border p-2 text-sm ${nameErrors[providerId]
                               ? isDarkMode
                                 ? 'border-red-700 bg-slate-700 text-gray-200 focus:border-red-600 focus:ring-2 focus:ring-red-900'
@@ -1556,7 +1724,7 @@ export const ModelSettings = ({ isDarkMode = false }: ModelSettingsProps) => {
           )}
 
           {/* Add Provider button and dropdown */}
-          <div className="provider-selector-container relative pt-4">
+          <div data-provider-selector-container className="relative pt-4">
             <Button
               variant="secondary"
               onClick={() => setIsProviderSelectorOpen(prev => !prev)}

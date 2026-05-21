@@ -41,7 +41,16 @@
     "message": "歡迎使用 QAgent！"
   },
   "welcome_instruction": {
-    "message": "開始使用前，請先完成 API 金鑰的設定。"
+    "message": "開始使用前，請先在設定頁面設定 API 金鑰並選擇模型。"
+  },
+  "setup_modal_title": {
+    "message": "需要完成設定"
+  },
+  "setup_modal_description": {
+    "message": "若要啟用聊天，請先設定 LLM 供應商，並在設定頁選擇模型。"
+  },
+  "setup_modal_close_a11y": {
+    "message": "關閉設定提醒"
   },
   "welcome_openSettings": {
     "message": "開啟設定"
@@ -72,6 +81,18 @@
   },
   "chat_input_editor": {
     "message": "訊息輸入"
+  },
+  "chat_input_placeholder_withAttachments": {
+    "message": "新增訊息（可選）..."
+  },
+  "chat_input_attachFiles": {
+    "message": "附加檔案"
+  },
+  "chat_input_attachFiles_title": {
+    "message": "附加文字檔（txt、md、json、csv 等）"
+  },
+  "chat_input_removeFile": {
+    "message": "移除 $1"
   },
   "chat_history_title": {
     "message": "對話歷史紀錄"
@@ -267,6 +288,12 @@
   },
   "options_general_replayHistoricalTasks_desc": {
     "message": "啟用儲存與重播代理程式的步驟歷史紀錄 (此為實驗性功能，可能存在問題)"
+  },
+  "options_general_chatDebugMode": {
+    "message": "聊天除錯模式"
+  },
+  "options_general_chatDebugMode_desc": {
+    "message": "在聊天中直接顯示所有執行事件與 payload，方便疑難排解。"
   },
   "options_models_providers_header": {
     "message": "LLM 提供者"
@@ -510,6 +537,9 @@
   },
   "exec_errors_maxFailuresReached": {
     "message": "已達失敗次數上限。"
+  },
+  "exec_errors_loopDetected": {
+    "message": "偵測到導覽迴圈。請用更明確的指令重新描述任務。"
   },
   "exec_task_cancel": {
     "message": "任務已取消"
@@ -965,5 +995,29 @@
         "example": "Option not found"
       }
     }
+  },
+  "chat_replay_prefix": {
+    "message": "重播 "
+  },
+  "settings_title": {
+    "message": "設定"
+  },
+  "settings_language": {
+    "message": "語言"
+  },
+  "settings_language_auto": {
+    "message": "自動 (瀏覽器預設)"
+  },
+  "settings_advanced": {
+    "message": "進階設定"
+  },
+  "settings_debugMode": {
+    "message": "除錯模式"
+  },
+  "settings_debugMode_desc": {
+    "message": "在聊天中直接顯示所有執行事件。"
+  },
+  "settings_version": {
+    "message": "版本"
   }
 }

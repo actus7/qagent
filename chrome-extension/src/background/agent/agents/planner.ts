@@ -12,6 +12,7 @@ import {
   isAuthenticationError,
   isBadRequestError,
   isForbiddenError,
+  LLMTimeoutError,
   LLM_FORBIDDEN_ERROR_MESSAGE,
   RequestCancelledError,
 } from './errors';
@@ -48,6 +49,12 @@ export type PlannerOutput = z.infer<typeof plannerOutputSchema>;
 export class PlannerAgent extends BaseAgent<typeof plannerOutputSchema, PlannerOutput> {
   constructor(options: BaseAgentOptions, extraOptions?: Partial<ExtraAgentOptions>) {
     super(plannerOutputSchema, options, { ...extraOptions, id: 'planner' });
+
+    const isGeminiModel = this.modelName.toLowerCase().includes('gemini');
+    if (isGeminiModel && this.withStructuredOutput) {
+      this.withStructuredOutput = false;
+      logger.info(`[${this.modelName}] Planner structured output disabled; using manual JSON extraction mode.`);
+    }
   }
 
   async execute(): Promise<AgentOutput<PlannerOutput>> {
@@ -114,7 +121,7 @@ export class PlannerAgent extends BaseAgent<typeof plannerOutputSchema, PlannerO
         throw new ChatModelAuthError(errorMessage, error);
       } else if (isBadRequestError(error)) {
         throw new ChatModelBadRequestError(errorMessage, error);
-      } else if (isAbortedError(error)) {
+      } else if (isAbortedError(error) || error instanceof LLMTimeoutError) {
         throw new RequestCancelledError(errorMessage);
       } else if (isForbiddenError(error)) {
         throw new ChatModelForbiddenError(LLM_FORBIDDEN_ERROR_MESSAGE, error);

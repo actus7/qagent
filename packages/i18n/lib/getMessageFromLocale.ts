@@ -6,6 +6,13 @@ import enMessage from '../locales/en/messages.json';
 import pt_BRMessage from '../locales/pt_BR/messages.json';
 import zh_TWMessage from '../locales/zh_TW/messages.json';
 
+export const supportedLocales = ['en', 'pt_BR', 'zh_TW'] as const;
+export type SupportedLocale = (typeof supportedLocales)[number];
+
+function isSupportedLocale(value: string): value is SupportedLocale {
+  return (supportedLocales as readonly string[]).includes(value);
+}
+
 export function getMessageFromLocale(locale: string) {
   switch (locale) {
     case 'en':
@@ -19,16 +26,31 @@ export function getMessageFromLocale(locale: string) {
   }
 }
 
-export const defaultLocale = (() => {
-  const locales = ['en', 'pt_BR', 'zh_TW'];
-  const firstLocale = locales[0];
-  const defaultLocale = Intl.DateTimeFormat().resolvedOptions().locale.replace('-', '_');
-  if (locales.includes(defaultLocale)) {
-    return defaultLocale;
+/**
+ * Resolves user language setting to a concrete locale.
+ * - `auto` follows browser language with sane fallbacks.
+ * - explicit locales are accepted when supported.
+ */
+export function resolveLocale(language: string | undefined | null): SupportedLocale {
+  if (language && language !== 'auto') {
+    const normalizedLanguage = language.replace('-', '_');
+    if (isSupportedLocale(normalizedLanguage)) {
+      return normalizedLanguage;
+    }
   }
-  const defaultLocaleWithoutRegion = defaultLocale.split('_')[0];
-  if (locales.includes(defaultLocaleWithoutRegion)) {
-    return defaultLocaleWithoutRegion;
+
+  const browserLocale = Intl.DateTimeFormat().resolvedOptions().locale.replace('-', '_');
+  if (isSupportedLocale(browserLocale)) {
+    return browserLocale;
   }
-  return firstLocale;
-})();
+
+  const browserLang = browserLocale.split('_')[0];
+  const localeByLanguageCode = supportedLocales.find(locale => locale.split('_')[0] === browserLang);
+  if (localeByLanguageCode) {
+    return localeByLanguageCode;
+  }
+
+  return supportedLocales[0];
+}
+
+export const defaultLocale = resolveLocale('auto');

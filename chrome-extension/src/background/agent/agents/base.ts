@@ -6,10 +6,106 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { createLogger } from '@src/background/log';
 import type { Action } from '../actions/builder';
 import { convertInputMessages, extractJsonFromModelOutput, removeThinkTags } from '../messages/utils';
-import { isAbortedError, ResponseParseError } from './errors';
-import { ProviderTypeEnum } from '@extension/storage';
+import { isAbortedError, LLMTimeoutError, ResponseParseError } from './errors';
+import { getDefaultModelRequestsPerMinute, ProviderTypeEnum } from '@extension/storage';
+import { acquireRateLimitSlot } from '../rate-limiter';
 
 const logger = createLogger('agent');
+const LLM_REQUEST_TIMEOUT_MS = 45_000;
+const GEMINI_REQUEST_TIMEOUT_MS = 90_000;
+const MAX_RATE_LIMIT_RETRIES = 2;
+const RATE_LIMIT_RETRY_BASE_MS = 1_500;
+
+function normalizeErrorForLog(error: unknown): { name: string; message: string; stack?: string } | string {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      ...(error.stack ? { stack: error.stack } : {}),
+    };
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const candidate = error as { name?: unknown; message?: unknown; stack?: unknown };
+    const details: { name: string; message: string; stack?: string } = {
+      name: typeof candidate.name === 'string' ? candidate.name : 'UnknownError',
+      message:
+        typeof candidate.message === 'string'
+          ? candidate.message
+          : (() => {
+              try {
+                return JSON.stringify(error);
+              } catch {
+                return String(error);
+              }
+            })(),
+    };
+
+    if (typeof candidate.stack === 'string') {
+      details.stack = candidate.stack;
+    }
+
+    return details;
+  }
+
+  return String(error);
+}
+
+function errorMessageIncludesRateLimit(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('rate limit') ||
+    normalized.includes('too many requests') ||
+    normalized.includes('status code 429') ||
+    normalized.includes('http 429') ||
+    normalized.includes('quota exceeded')
+  );
+}
+
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    if (errorMessageIncludesRateLimit(error.message)) {
+      return true;
+    }
+    return errorMessageIncludesRateLimit(error.stack ?? '');
+  }
+
+  if (typeof error === 'string') {
+    return errorMessageIncludesRateLimit(error);
+  }
+
+  try {
+    return errorMessageIncludesRateLimit(JSON.stringify(error));
+  } catch {
+    return false;
+  }
+}
+
+function resolveRateLimitRetryDelayMs(error: unknown, attempt: number): number {
+  const fallback = RATE_LIMIT_RETRY_BASE_MS * (attempt + 1);
+  const message = error instanceof Error ? `${error.message} ${error.stack ?? ''}` : String(error);
+  const retryAfterMatch = message.match(/retry[-\s]?after[:=\s]*([0-9]+(?:\.[0-9]+)?)\s*(ms|s|sec|secs|second|seconds|m|min|mins|minute|minutes)?/i);
+  if (retryAfterMatch) {
+    const rawValue = Number.parseFloat(retryAfterMatch[1]);
+    const unit = (retryAfterMatch[2] ?? 's').toLowerCase();
+    if (!Number.isFinite(rawValue) || rawValue <= 0) {
+      return fallback;
+    }
+    if (unit.startsWith('ms')) {
+      return Math.ceil(rawValue) + 100;
+    }
+    if (unit.startsWith('m')) {
+      return Math.ceil(rawValue * 60_000) + 100;
+    }
+    return Math.ceil(rawValue * 1_000) + 100;
+  }
+
+  return fallback;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type CallOptions = Record<string, any>;
@@ -20,6 +116,8 @@ export interface BaseAgentOptions {
   context: AgentContext;
   prompt: BasePrompt;
   provider?: string;
+  requestsPerMinute?: number;
+  rateLimitKey?: string;
 }
 export interface ExtraAgentOptions {
   id?: string;
@@ -46,6 +144,8 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
   protected withStructuredOutput: boolean;
   protected callOptions?: CallOptions;
   protected modelOutputToolName: string;
+  protected requestsPerMinute?: number;
+  protected rateLimitKey: string;
   declare ModelOutput: z.infer<T>;
 
   constructor(modelOutputSchema: T, options: BaseAgentOptions, extraOptions?: Partial<ExtraAgentOptions>) {
@@ -59,11 +159,106 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     this.chatModelLibrary = this.chatLLM.constructor.name;
     this.modelName = this.getModelName();
     this.withStructuredOutput = this.setWithStructuredOutput();
+    const normalizedProvider = options.provider?.trim() || ProviderTypeEnum.CustomOpenAI;
+    const explicitRequestsPerMinute =
+      typeof options.requestsPerMinute === 'number' && Number.isFinite(options.requestsPerMinute)
+        ? Math.max(1, Math.round(options.requestsPerMinute))
+        : undefined;
+    this.requestsPerMinute = explicitRequestsPerMinute ?? getDefaultModelRequestsPerMinute(normalizedProvider, this.modelName);
+    this.rateLimitKey = options.rateLimitKey || `${normalizedProvider}:${this.modelName}`;
     // extra options
     this.id = extraOptions?.id || 'agent';
     this.toolCallingMethod = this.setToolCallingMethod(extraOptions?.toolCallingMethod);
     this.callOptions = extraOptions?.callOptions;
     this.modelOutputToolName = `${this.id}_output`;
+  }
+
+  protected async invokeWithTimeout<T>(
+    invokeFn: (signal: AbortSignal) => Promise<T>,
+    operationLabel: string,
+  ): Promise<T> {
+    const parentSignal = this.context.controller.signal;
+    const timeoutMs = this.resolveRequestTimeoutMs(operationLabel);
+    const timeoutErrorMessage = `${operationLabel} timed out after ${timeoutMs}ms`;
+    for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt++) {
+      if (this.requestsPerMinute && this.requestsPerMinute > 0) {
+        await acquireRateLimitSlot({
+          key: this.rateLimitKey,
+          requestsPerMinute: this.requestsPerMinute,
+          signal: parentSignal,
+          logger,
+          operationLabel,
+        });
+      }
+
+      const requestController = new AbortController();
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let timedOut = false;
+
+      const onParentAbort = () => {
+        requestController.abort(parentSignal.reason);
+      };
+
+      if (parentSignal.aborted) {
+        onParentAbort();
+      } else {
+        parentSignal.addEventListener('abort', onParentAbort, { once: true });
+      }
+
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            timedOut = true;
+            requestController.abort(new DOMException('LLM request timeout', 'AbortError'));
+            reject(new LLMTimeoutError(timeoutErrorMessage));
+          }, timeoutMs);
+        });
+
+        const invokePromise = invokeFn(requestController.signal).catch(error => {
+          if (timedOut && isAbortedError(error)) {
+            throw new LLMTimeoutError(timeoutErrorMessage, error);
+          }
+          throw error;
+        });
+
+        return await Promise.race([invokePromise, timeoutPromise]);
+      } catch (error) {
+        if (error instanceof LLMTimeoutError) {
+          logger.warning(error.message);
+          throw error;
+        }
+
+        const shouldRetry = isRateLimitError(error) && attempt < MAX_RATE_LIMIT_RETRIES && !parentSignal.aborted;
+        if (shouldRetry) {
+          const retryDelayMs = resolveRateLimitRetryDelayMs(error, attempt);
+          logger.warning(
+            `[${this.modelName}] Rate limit detected. Retrying in ${retryDelayMs}ms (attempt ${attempt + 1}/${MAX_RATE_LIMIT_RETRIES + 1}).`,
+          );
+          await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+          continue;
+        }
+
+        throw error;
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        parentSignal.removeEventListener('abort', onParentAbort);
+      }
+    }
+
+    throw new Error(`Failed to invoke ${this.modelName}: exhausted rate limit retries`);
+  }
+
+  private resolveRequestTimeoutMs(operationLabel: string): number {
+    void operationLabel;
+    const isGeminiModel = this.modelName.toLowerCase().includes('gemini');
+
+    if (isGeminiModel) {
+      return GEMINI_REQUEST_TIMEOUT_MS;
+    }
+
+    return LLM_REQUEST_TIMEOUT_MS;
   }
 
   // Set the model name
@@ -135,10 +330,14 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
       let response = undefined;
       try {
         logger.debug(`[${this.modelName}] Invoking LLM with structured output...`);
-        response = await structuredLlm.invoke(inputMessages, {
-          signal: this.context.controller.signal,
-          ...this.callOptions,
-        });
+        response = await this.invokeWithTimeout(
+          signal =>
+            structuredLlm.invoke(inputMessages, {
+              ...this.callOptions,
+              signal,
+            }),
+          `[${this.modelName}] structured output invocation`,
+        );
 
         logger.debug(`[${this.modelName}] LLM response received:`, {
           hasParsed: !!response.parsed,
@@ -153,7 +352,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
         logger.error('Failed to parse response', response);
         throw new Error('Could not parse response with structured output');
       } catch (error) {
-        if (isAbortedError(error)) {
+        if (error instanceof LLMTimeoutError || isAbortedError(error)) {
           throw error;
         }
 
@@ -179,10 +378,14 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     const convertedInputMessages = convertInputMessages(inputMessages, this.modelName);
 
     try {
-      const response = await this.chatLLM.invoke(convertedInputMessages, {
-        signal: this.context.controller.signal,
-        ...this.callOptions,
-      });
+      const response = await this.invokeWithTimeout(
+        signal =>
+          this.chatLLM.invoke(convertedInputMessages, {
+            ...this.callOptions,
+            signal,
+          }),
+        `[${this.modelName}] fallback invocation`,
+      );
 
       if (typeof response.content === 'string') {
         const parsed = this.manuallyParseResponse(response.content);
@@ -191,7 +394,12 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
         }
       }
     } catch (error) {
-      logger.error(`[${this.modelName}] LLM call failed in manual extraction mode:`, error);
+      const logDetails = normalizeErrorForLog(error);
+      if (error instanceof LLMTimeoutError) {
+        logger.warning(`[${this.modelName}] LLM call failed in manual extraction mode:`, logDetails);
+      } else {
+        logger.error(`[${this.modelName}] LLM call failed in manual extraction mode:`, logDetails);
+      }
       throw error;
     }
     const errorMessage = `Failed to parse response from ${this.modelName}`;

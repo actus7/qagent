@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { FaMicrophone } from 'react-icons/fa';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import { t } from '@extension/i18n';
@@ -8,15 +8,16 @@ import { Badge } from '@src/components/ui/badge';
 
 interface ChatInputProps {
   onSendMessage: (text: string, displayText?: string) => void;
-  onStopTask: () => void;
-  onMicClick?: () => void;
-  isRecording?: boolean;
-  isProcessingSpeech?: boolean;
+  voice?:
+    | { type: 'idle'; onToggle: () => void }
+    | { type: 'recording'; onToggle: () => void }
+    | { type: 'processing' };
   disabled: boolean;
-  showStopButton: boolean;
   setContent?: (setter: (text: string) => void) => void;
-  historicalSessionId?: string | null;
-  onReplay?: (sessionId: string) => void;
+  action:
+    | { type: 'send' }
+    | { type: 'stop'; onStopTask: () => void }
+    | { type: 'replay'; historicalSessionId: string; onReplay: (sessionId: string) => void };
 }
 
 interface AttachedFile {
@@ -25,24 +26,28 @@ interface AttachedFile {
   type: string;
 }
 
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  '.txt',
+  '.md',
+  '.markdown',
+  '.json',
+  '.csv',
+  '.log',
+  '.xml',
+  '.yaml',
+  '.yml',
+]);
+
 export default function ChatInput({
   onSendMessage,
-  onStopTask,
-  onMicClick,
-  isRecording = false,
-  isProcessingSpeech = false,
+  voice,
   disabled,
-  showStopButton,
   setContent,
-  historicalSessionId,
-  onReplay,
+  action,
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
-  const isSendButtonDisabled = useMemo(
-    () => disabled || (text.trim() === '' && attachedFiles.length === 0),
-    [disabled, text, attachedFiles],
-  );
+  const isSendButtonDisabled = disabled || (text.trim() === '' && attachedFiles.length === 0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,12 +118,6 @@ export default function ChatInput({
     [handleSubmit],
   );
 
-  const handleReplay = useCallback(() => {
-    if (historicalSessionId && onReplay) {
-      onReplay(historicalSessionId);
-    }
-  }, [historicalSessionId, onReplay]);
-
   const handleFileSelect = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -127,34 +126,39 @@ export default function ChatInput({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newFiles: AttachedFile[] = [];
-    const allowedTypes = ['.txt', '.md', '.markdown', '.json', '.csv', '.log', '.xml', '.yaml', '.yml'];
+    const candidates = Array.from(files).filter(file => {
+      const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`;
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
-
-      if (!allowedTypes.includes(fileExt)) {
-        console.warn(`File type ${fileExt} not supported. Only text-based files are allowed.`);
-        continue;
+      if (!ALLOWED_ATTACHMENT_TYPES.has(extension)) {
+        console.warn(`File type ${extension} not supported. Only text-based files are allowed.`);
+        return false;
       }
 
       if (file.size > 1024 * 1024) {
         console.warn(`File ${file.name} is too large. Maximum size is 1MB.`);
-        continue;
+        return false;
       }
 
-      try {
-        const content = await file.text();
-        newFiles.push({
-          name: file.name,
-          content,
-          type: file.type || 'text/plain',
-        });
-      } catch (error) {
-        console.error(`Error reading file ${file.name}:`, error);
-      }
-    }
+      return true;
+    });
+
+    const newFiles = (
+      await Promise.all(
+        candidates.map(async file => {
+          try {
+            const content = await file.text();
+            return {
+              name: file.name,
+              content,
+              type: file.type || 'text/plain',
+            } as AttachedFile;
+          } catch (error) {
+            console.error(`Error reading file ${file.name}:`, error);
+            return null;
+          }
+        }),
+      )
+    ).filter((file): file is AttachedFile => file !== null);
 
     if (newFiles.length > 0) {
       setAttachedFiles(prev => [...prev, ...newFiles]);
@@ -168,6 +172,14 @@ export default function ChatInput({
   const handleRemoveFile = useCallback((index: number) => {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   }, []);
+
+  const isVoiceRecording = voice?.type === 'recording';
+  const isVoiceProcessing = voice?.type === 'processing';
+  const voiceLabel = isVoiceProcessing
+    ? t('chat_stt_processing')
+    : isVoiceRecording
+      ? t('chat_stt_recording_stop')
+      : t('chat_stt_input_start');
 
   return (
     <form
@@ -185,8 +197,8 @@ export default function ChatInput({
                 <button
                   type="button"
                   onClick={() => handleRemoveFile(index)}
-                  className="ml-1 rounded-sm transition-colors hover:bg-muted-foreground/20"
-                  aria-label={`Remove ${file.name}`}>
+                  className="hover:bg-muted-foreground/20 ml-1 rounded-sm transition-colors"
+                  aria-label={t('chat_input_removeFile', file.name)}>
                   <span className="text-xs">✕</span>
                 </button>
               </Badge>
@@ -203,7 +215,7 @@ export default function ChatInput({
           aria-disabled={disabled}
           rows={5}
           className="w-full resize-none border-none bg-card p-2 shadow-none focus-visible:ring-0"
-          placeholder={attachedFiles.length > 0 ? 'Add a message (optional)...' : t('chat_input_placeholder')}
+          placeholder={attachedFiles.length > 0 ? t('chat_input_placeholder_withAttachments') : t('chat_input_placeholder')}
           aria-label={t('chat_input_editor')}
         />
 
@@ -216,8 +228,8 @@ export default function ChatInput({
               size="icon"
               onClick={handleFileSelect}
               disabled={disabled}
-              aria-label="Attach files"
-              title="Attach text files (txt, md, json, csv, etc.)"
+              aria-label={t('chat_input_attachFiles')}
+              title={t('chat_input_attachFiles_title')}
               className="size-8">
               <span className="text-lg">📎</span>
             </Button>
@@ -233,42 +245,34 @@ export default function ChatInput({
               aria-hidden="true"
             />
 
-            {onMicClick && (
+            {voice && (
               <Button
                 type="button"
-                variant={isRecording ? 'destructive' : 'ghost'}
+                variant={isVoiceRecording ? 'destructive' : 'ghost'}
                 size="icon"
-                onClick={onMicClick}
-                disabled={disabled || isProcessingSpeech}
-                aria-label={
-                  isProcessingSpeech
-                    ? t('chat_stt_processing')
-                    : isRecording
-                      ? t('chat_stt_recording_stop')
-                      : t('chat_stt_input_start')
-                }
+                onClick={voice.type === 'processing' ? undefined : voice.onToggle}
+                disabled={disabled || isVoiceProcessing}
+                aria-label={voiceLabel}
                 className="size-8">
-                {isProcessingSpeech ? (
+                {isVoiceProcessing ? (
                   <AiOutlineLoading3Quarters className="size-4 animate-spin" />
                 ) : (
-                  <FaMicrophone className={`size-4 ${isRecording ? 'animate-pulse' : ''}`} />
+                  <FaMicrophone className={`size-4 ${isVoiceRecording ? 'animate-pulse' : ''}`} />
                 )}
               </Button>
             )}
           </div>
 
-          {showStopButton ? (
-            <Button type="button" variant="destructive" size="sm" onClick={onStopTask}>
+          {action.type === 'stop' ? (
+            <Button type="button" variant="destructive" size="sm" onClick={action.onStopTask}>
               {t('chat_buttons_stop')}
             </Button>
-          ) : historicalSessionId ? (
+          ) : action.type === 'replay' ? (
             <Button
               type="button"
               size="sm"
-              onClick={handleReplay}
-              disabled={!historicalSessionId}
-              aria-disabled={!historicalSessionId}
-              className="bg-primary text-primary-foreground hover:bg-primary/90">
+              onClick={() => action.onReplay(action.historicalSessionId)}
+              className="hover:bg-primary/90 bg-primary text-primary-foreground">
               {t('chat_buttons_replay')}
             </Button>
           ) : (
@@ -277,7 +281,7 @@ export default function ChatInput({
               size="sm"
               disabled={isSendButtonDisabled}
               aria-disabled={isSendButtonDisabled}
-              className="bg-primary text-primary-foreground hover:bg-primary/90">
+              className="hover:bg-primary/90 bg-primary text-primary-foreground">
               {t('chat_buttons_send')}
             </Button>
           )}

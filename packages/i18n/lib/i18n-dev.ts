@@ -28,9 +28,9 @@ function translate(key: MessageKey, substitutions?: string | string[]) {
     return message;
   }
   if (Array.isArray(substitutions)) {
-    return substitutions.reduce((acc, cur, idx) => acc.replace(`$${idx + 1}`, cur), message);
+    return substitutions.reduce((acc, cur, idx) => acc.replace(new RegExp(`\\$${idx + 1}`, 'g'), cur), message);
   }
-  return message.replace(/\$(\d+)/, substitutions);
+  return message.replace(/\$1/g, substitutions);
 }
 
 function removePlaceholder(message: string) {

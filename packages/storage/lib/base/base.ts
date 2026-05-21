@@ -11,27 +11,12 @@ const chrome = globalThis.chrome;
  * Sets or updates an arbitrary cache with a new value or the result of an update function.
  */
 async function updateCache<D>(valueOrUpdate: ValueOrUpdate<D>, cache: D | null): Promise<D> {
-  // Type guard to check if our value or update is a function
-  function isFunction<D>(value: ValueOrUpdate<D>): value is (prev: D) => D | Promise<D> {
-    return typeof value === 'function';
+  if (typeof valueOrUpdate === 'function') {
+    const updater = valueOrUpdate as (prev: D) => Promise<D> | D;
+    return await updater(cache as D);
   }
 
-  // Type guard to check in case of a function, if its a Promise
-  function returnsPromise<D>(func: (prev: D) => D | Promise<D>): func is (prev: D) => Promise<D> {
-    // Use ReturnType to infer the return type of the function and check if it's a Promise
-    return (func as (prev: D) => Promise<D>) instanceof Promise;
-  }
-
-  if (isFunction(valueOrUpdate)) {
-    // Check if the function returns a Promise
-    if (returnsPromise(valueOrUpdate)) {
-      return valueOrUpdate(cache as D);
-    } else {
-      return valueOrUpdate(cache as D);
-    }
-  } else {
-    return valueOrUpdate;
-  }
+  return valueOrUpdate;
 }
 
 /**

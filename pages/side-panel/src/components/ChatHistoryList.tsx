@@ -17,7 +17,6 @@ interface ChatHistoryListProps {
   onSessionSelect: (sessionId: string) => void;
   onSessionDelete: (sessionId: string) => void;
   onSessionBookmark: (sessionId: string) => void;
-  visible: boolean;
 }
 
 const ChatHistoryList: React.FC<ChatHistoryListProps> = ({
@@ -25,10 +24,7 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = ({
   onSessionSelect,
   onSessionDelete,
   onSessionBookmark,
-  visible,
 }) => {
-  if (!visible) return null;
-
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });

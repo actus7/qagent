@@ -155,3 +155,44 @@ export const llmProviderParameters = {
     },
   },
 };
+
+const DEFAULT_RPM_BY_PROVIDER: Record<ProviderTypeEnum, number> = {
+  [ProviderTypeEnum.OpenAI]: 20,
+  [ProviderTypeEnum.Anthropic]: 20,
+  [ProviderTypeEnum.DeepSeek]: 20,
+  [ProviderTypeEnum.Gemini]: 15,
+  [ProviderTypeEnum.Grok]: 20,
+  [ProviderTypeEnum.Ollama]: 120,
+  [ProviderTypeEnum.AzureOpenAI]: 20,
+  [ProviderTypeEnum.OpenRouter]: 15,
+  [ProviderTypeEnum.Groq]: 30,
+  [ProviderTypeEnum.Cerebras]: 30,
+  [ProviderTypeEnum.Llama]: 20,
+  [ProviderTypeEnum.CustomOpenAI]: 10,
+};
+
+function normalizeProviderType(providerId: string): ProviderTypeEnum {
+  if (providerId === ProviderTypeEnum.AzureOpenAI || providerId.startsWith(`${ProviderTypeEnum.AzureOpenAI}_`)) {
+    return ProviderTypeEnum.AzureOpenAI;
+  }
+  if (Object.values(ProviderTypeEnum).includes(providerId as ProviderTypeEnum)) {
+    return providerId as ProviderTypeEnum;
+  }
+  return ProviderTypeEnum.CustomOpenAI;
+}
+
+export const llmProviderRequestsPerMinute: Record<ProviderTypeEnum, Record<string, number>> = Object.fromEntries(
+  (Object.entries(llmProviderModelNames) as Array<[ProviderTypeEnum, string[]]>).map(([provider, models]) => [
+    provider,
+    Object.fromEntries(models.map(model => [model, DEFAULT_RPM_BY_PROVIDER[provider]])),
+  ]),
+) as Record<ProviderTypeEnum, Record<string, number>>;
+
+export function getDefaultModelRequestsPerMinute(providerId: string, modelName: string): number {
+  const providerType = normalizeProviderType(providerId);
+  const providerModelLimits = llmProviderRequestsPerMinute[providerType];
+  if (providerModelLimits && providerModelLimits[modelName] !== undefined) {
+    return providerModelLimits[modelName];
+  }
+  return DEFAULT_RPM_BY_PROVIDER[providerType];
+}

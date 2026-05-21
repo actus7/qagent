@@ -76,6 +76,7 @@ Other available tabs:
   ${otherTabs.join('\n')}
 Interactive elements from top layer of the current page inside the viewport:
 ${formattedElementsText}
+Use selectors from this snapshot and prefer refs in format @eN when available.
 ${stepInfoDescription}
 ${actionResultsDescription}
 `;
