@@ -14,7 +14,7 @@ Principais áreas do projeto:
 
 ## Requisitos
 
-- [Node.js](https://nodejs.org/) v22.12.0+
+- [Node.js](https://nodejs.org/) v22.19.0+
 - [pnpm](https://pnpm.io/installation) v9.15.1+
 
 ## Instalação
