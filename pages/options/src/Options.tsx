@@ -79,11 +79,14 @@ const Options = () => {
       {/* Main Content Area */}
       <main className="flex-1 p-8">
         <div className="mx-auto min-w-[512px] max-w-screen-lg">
-          <Suspense fallback={<div>Loading...</div>}>{renderTabContent()}</Suspense>
+          <Suspense fallback={<div>{t('options_common_loading')}</div>}>{renderTabContent()}</Suspense>
         </div>
       </main>
     </div>
   );
 };
 
-export default withErrorBoundary(withSuspense(Options, <div>Loading...</div>), <div>Error Occurred</div>);
+export default withErrorBoundary(
+  withSuspense(Options, <div>{t('options_common_loading')}</div>),
+  <div>{t('options_common_errorOccurred')}</div>,
+);

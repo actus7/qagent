@@ -1019,5 +1019,65 @@
   },
   "settings_version": {
     "message": "Version"
+  },
+  "options_models_labels_reasoningEffort_minimal": {
+    "message": "Minimal"
+  },
+  "options_models_labels_reasoningEffort_low": {
+    "message": "Low"
+  },
+  "options_models_labels_reasoningEffort_medium": {
+    "message": "Medium"
+  },
+  "options_models_labels_reasoningEffort_high": {
+    "message": "High"
+  },
+  "options_models_labels_rpm": {
+    "message": "RPM"
+  },
+  "options_models_labels_requestsPerMinuteUnit": {
+    "message": "Requests/min"
+  },
+  "options_models_aria_requestsPerMinuteInput": {
+    "message": "$AGENT$ requests per minute",
+    "placeholders": {
+      "agent": {
+        "content": "$1",
+        "example": "Planner"
+      }
+    }
+  },
+  "options_models_aria_temperatureInput": {
+    "message": "$AGENT$ temperature number input",
+    "placeholders": {
+      "agent": {
+        "content": "$1",
+        "example": "Planner"
+      }
+    }
+  },
+  "options_models_aria_topPInput": {
+    "message": "$AGENT$ top P number input",
+    "placeholders": {
+      "agent": {
+        "content": "$1",
+        "example": "Planner"
+      }
+    }
+  },
+  "options_models_aria_removeItem": {
+    "message": "Remove $ITEM$",
+    "placeholders": {
+      "item": {
+        "content": "$1",
+        "example": "gpt-4o"
+      }
+    }
+  },
+  "options_common_loading": {
+    "message": "Loading..."
+  },
+  "options_common_errorOccurred": {
+    "message": "Error Occurred"
   }
 }

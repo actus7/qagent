@@ -72,7 +72,7 @@ export function AgentModelSelector({
         {hasModel && (
           <div className="flex items-center">
             <label htmlFor={`${agentName}-rpm`} className="w-24 text-sm font-medium text-foreground">
-              RPM
+              {t('options_models_labels_rpm')}
             </label>
             <div className="flex flex-1 items-center space-x-2">
               <input
@@ -89,9 +89,9 @@ export function AgentModelSelector({
                   }
                 }}
                 className="w-24 rounded-md border border-input bg-card px-2 py-1 text-sm text-foreground focus:border-border focus:ring-2 focus:ring-ring"
-                aria-label={`${agentName} requests per minute`}
+                aria-label={t('options_models_aria_requestsPerMinuteInput', [agentName])}
               />
-              <span className="text-xs text-muted-foreground">Requests/min</span>
+              <span className="text-xs text-muted-foreground">{t('options_models_labels_requestsPerMinuteUnit')}</span>
             </div>
           </div>
         )}
@@ -105,7 +105,7 @@ export function AgentModelSelector({
             max={2}
             step={0.01}
             decimals={2}
-            numberAriaLabel={`${agentName} temperature number input`}
+            numberAriaLabel={t('options_models_aria_temperatureInput', [agentName])}
             onChange={(value, options) => onParameterChange('temperature', value, options)}
           />
         )}
@@ -119,7 +119,7 @@ export function AgentModelSelector({
             max={1}
             step={0.001}
             decimals={3}
-            numberAriaLabel={`${agentName} top P number input`}
+            numberAriaLabel={t('options_models_aria_topPInput', [agentName])}
             onChange={(value, options) => onParameterChange('topP', value, options)}
           />
         )}
@@ -135,10 +135,10 @@ export function AgentModelSelector({
                 value={reasoningEffort || getDefaultReasoningEffort(agentName)}
                 onChange={e => onReasoningEffortChange(normalizeReasoningEffort(e.target.value) || 'minimal')}
                 className={SELECT_CLASS}>
-                <option value="minimal">Minimal</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                <option value="minimal">{t('options_models_labels_reasoningEffort_minimal')}</option>
+                <option value="low">{t('options_models_labels_reasoningEffort_low')}</option>
+                <option value="medium">{t('options_models_labels_reasoningEffort_medium')}</option>
+                <option value="high">{t('options_models_labels_reasoningEffort_high')}</option>
               </select>
             </div>
           </div>

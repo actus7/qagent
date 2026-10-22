@@ -1,3 +1,4 @@
+import { t } from '@extension/i18n';
 import type { KeyboardEvent } from 'react';
 import { TAG_CHIP_CLASS, TAG_CONTAINER_CLASS, TAG_INPUT_CLASS } from './constants';
 
@@ -36,7 +37,7 @@ export function TagListInput({
               type="button"
               onClick={() => onRemove(tag)}
               className="ml-1 font-bold text-primary hover:text-primary"
-              aria-label={`Remove ${tag}`}>
+              aria-label={t('options_models_aria_removeItem', [tag])}>
               ×
             </button>
           </div>
