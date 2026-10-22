@@ -2,8 +2,6 @@ import 'webextension-polyfill';
 import {
   connect,
   ExtensionTransport,
-  type HTTPRequest,
-  type HTTPResponse,
   type ProtocolType,
   type KeyInput,
 } from 'puppeteer-core/lib/esm/puppeteer/puppeteer-core-browser.js';
@@ -21,47 +19,19 @@ import { type BrowserContextConfig, DEFAULT_BROWSER_CONTEXT_CONFIG, type PageSta
 import { createLogger } from '@src/background/log';
 import { ClickableElementProcessor } from './dom/clickable/service';
 import { isUrlAllowed } from './util';
+import { build_initial_state, CachedStateClickableElementsHashes, parseSelectorIndex } from './page-state';
+import { parseKeyCombination, convertKey, isMacUserAgent } from './page-keys';
+import { typeIntoElementNode, typeIntoSelectorElement } from './page-input';
+import { applyAntiDetectionScripts } from './page-anti-detection';
+import { findNearestScrollableElement, scrollIntoViewIfNeeded, waitForElementStability } from './page-scroll';
+import { waitForStableNetwork } from './page-network';
+
+export { build_initial_state, CachedStateClickableElementsHashes };
 
 const logger = createLogger('Page');
-const REF_SELECTOR_REGEX = /^@e(\d+)$/i;
-const LEGACY_INDEX_SELECTOR_REGEX = /^\[(\d+)\]$/;
 
 interface InputTextBySelectorOptions {
   clearBeforeTyping?: boolean;
-}
-
-export function build_initial_state(tabId?: number, url?: string, title?: string): PageState {
-  return {
-    elementTree: new DOMElementNode({
-      tagName: 'root',
-      isVisible: true,
-      parent: null,
-      xpath: '',
-      attributes: {},
-      children: [],
-    }),
-    selectorMap: new Map(),
-    tabId: tabId || 0,
-    url: url || '',
-    title: title || '',
-    screenshot: null,
-    scrollY: 0,
-    scrollHeight: 0,
-    visualViewportHeight: 0,
-  };
-}
-
-/**
- * Cached clickable elements hashes for the last state
- */
-export class CachedStateClickableElementsHashes {
-  url: string;
-  hashes: Set<string>;
-
-  constructor(url: string, hashes: Set<string>) {
-    this.url = url;
-    this.hashes = hashes;
-  }
 }
 
 export default class Page {
@@ -141,45 +111,7 @@ export default class Page {
   }
 
   private async _addAntiDetectionScripts(): Promise<void> {
-    if (!this._puppeteerPage) {
-      return;
-    }
-
-    await this._puppeteerPage.evaluateOnNewDocument(`
-      // Webdriver property
-      Object.defineProperty(navigator, 'webdriver', {
-        get: () => undefined
-      });
-
-      // Languages
-      // Object.defineProperty(navigator, 'languages', {
-      //   get: () => ['en-US']
-      // });
-
-      // Plugins
-      // Object.defineProperty(navigator, 'plugins', {
-      //   get: () => [1, 2, 3, 4, 5]
-      // });
-
-      // Chrome runtime
-      window.chrome = { runtime: {} };
-
-      // Permissions
-      const originalQuery = window.navigator.permissions.query;
-      window.navigator.permissions.query = (parameters) => (
-        parameters.name === 'notifications' ?
-          Promise.resolve({ state: Notification.permission }) :
-          originalQuery(parameters)
-      );
-
-      // Shadow DOM
-      (function () {
-        const originalAttachShadow = Element.prototype.attachShadow;
-        Element.prototype.attachShadow = function attachShadow(options) {
-          return originalAttachShadow.call(this, { ...options, mode: "open" });
-        };
-      })();
-    `);
+    await applyAntiDetectionScripts(this._puppeteerPage);
   }
 
   async detachPuppeteer(): Promise<void> {
@@ -259,98 +191,7 @@ export default class Page {
    * @returns The nearest scrollable ancestor or null if none found
    */
   private async _findNearestScrollableElement(element: ElementHandle): Promise<ElementHandle | null> {
-    if (!this._puppeteerPage) {
-      return null;
-    }
-
-    // Check if the current element is scrollable
-    const isScrollable = await element.evaluate((el: Element) => {
-      if (!(el instanceof HTMLElement)) return false;
-      const style = window.getComputedStyle(el);
-      const hasVerticalScrollbar = el.scrollHeight > el.clientHeight;
-      const canScrollVertically =
-        style.overflowY === 'scroll' ||
-        style.overflowY === 'auto' ||
-        style.overflow === 'scroll' ||
-        style.overflow === 'auto';
-
-      return hasVerticalScrollbar && canScrollVertically;
-    });
-
-    if (isScrollable) {
-      return element;
-    }
-
-    // Check parent elements
-    let currentElement: ElementHandle<Element> | null = element;
-
-    try {
-      while (currentElement) {
-        // Get the parent element (as an ElementHandle) of the current element
-        const parentHandle = (await currentElement.evaluateHandle(
-          (el: Element) => el.parentElement,
-        )) as ElementHandle<Element> | null;
-
-        const parentElement = parentHandle ? await parentHandle.asElement() : null;
-
-        if (!parentElement) {
-          // Reached the root without finding a scrollable ancestor
-          currentElement = null;
-          break;
-        }
-
-        const parentIsScrollable = await parentElement.evaluate((el: Element) => {
-          if (!(el instanceof HTMLElement)) return false;
-          const style = window.getComputedStyle(el);
-          const hasVerticalScrollbar = el.scrollHeight > el.clientHeight;
-          const canScrollVertically =
-            ['scroll', 'auto'].includes(style.overflowY) || ['scroll', 'auto'].includes(style.overflow);
-
-          return hasVerticalScrollbar && canScrollVertically;
-        });
-
-        if (parentIsScrollable) {
-          // Found a scrollable ancestor – return it (the caller should dispose when finished)
-          return parentElement;
-        }
-
-        // Move up the DOM tree – dispose the previous element handle before continuing
-        if (currentElement !== element) {
-          try {
-            await currentElement.dispose();
-          } catch (disposeErr) {
-            logger.debug('Failed to dispose element handle:', disposeErr);
-          }
-        }
-
-        currentElement = parentElement;
-      }
-    } catch (error) {
-      // Error accessing parent, break out of loop
-      logger.error('Error finding scrollable parent:', error);
-    }
-
-    // If no scrollable ancestor found, return the document body or documentElement
-    try {
-      const bodyElement = await this._puppeteerPage.$('body');
-      if (bodyElement) {
-        const bodyIsScrollable = await bodyElement.evaluate(el => {
-          if (!(el instanceof HTMLElement)) return false;
-          return el.scrollHeight > el.clientHeight;
-        });
-        if (bodyIsScrollable) {
-          return bodyElement;
-        }
-      }
-
-      // Last resort: return document element for page-level scrolling
-      const documentElement = await this._puppeteerPage.evaluateHandle(() => document.documentElement);
-      const docElement = (await documentElement.asElement()) as ElementHandle<Element> | null;
-      return docElement;
-    } catch (error) {
-      logger.error('Failed to find scrollable element:', error);
-      return null;
-    }
+    return findNearestScrollableElement(this._puppeteerPage, element);
   }
 
   async getContent(): Promise<string> {
@@ -752,9 +593,7 @@ export default class Page {
     }
 
     // Split combination keys (e.g., "Control+A" or "Shift+ArrowLeft")
-    const keyParts = keys.split('+');
-    const modifiers = keyParts.slice(0, -1);
-    const mainKey = keyParts[keyParts.length - 1];
+    const { modifiers, mainKey } = parseKeyCombination(keys);
 
     // Press modifiers and main key, ensure modifiers are released even if an error occurs.
     try {
@@ -785,82 +624,7 @@ export default class Page {
   }
 
   private _convertKey(key: string): KeyInput {
-    const lowerKey = key.trim().toLowerCase();
-    const isMac = navigator.userAgent.toLowerCase().includes('mac os x');
-
-    if (isMac) {
-      if (lowerKey === 'control' || lowerKey === 'ctrl') {
-        return 'Meta' as KeyInput; // Use Command key on Mac
-      }
-      if (lowerKey === 'command' || lowerKey === 'cmd') {
-        return 'Meta' as KeyInput; // Map Command/Cmd to Meta on Mac
-      }
-      if (lowerKey === 'option' || lowerKey === 'opt') {
-        return 'Alt' as KeyInput; // Map Option/Opt to Alt on Mac
-      }
-    }
-
-    const keyMap: { [key: string]: string } = {
-      // Letters
-      a: 'KeyA',
-      b: 'KeyB',
-      c: 'KeyC',
-      d: 'KeyD',
-      e: 'KeyE',
-      f: 'KeyF',
-      g: 'KeyG',
-      h: 'KeyH',
-      i: 'KeyI',
-      j: 'KeyJ',
-      k: 'KeyK',
-      l: 'KeyL',
-      m: 'KeyM',
-      n: 'KeyN',
-      o: 'KeyO',
-      p: 'KeyP',
-      q: 'KeyQ',
-      r: 'KeyR',
-      s: 'KeyS',
-      t: 'KeyT',
-      u: 'KeyU',
-      v: 'KeyV',
-      w: 'KeyW',
-      x: 'KeyX',
-      y: 'KeyY',
-      z: 'KeyZ',
-
-      // Numbers
-      '0': 'Digit0',
-      '1': 'Digit1',
-      '2': 'Digit2',
-      '3': 'Digit3',
-      '4': 'Digit4',
-      '5': 'Digit5',
-      '6': 'Digit6',
-      '7': 'Digit7',
-      '8': 'Digit8',
-      '9': 'Digit9',
-
-      // Special keys
-      control: 'Control',
-      shift: 'Shift',
-      alt: 'Alt',
-      meta: 'Meta',
-      enter: 'Enter',
-      backspace: 'Backspace',
-      delete: 'Delete',
-      arrowleft: 'ArrowLeft',
-      arrowright: 'ArrowRight',
-      arrowup: 'ArrowUp',
-      arrowdown: 'ArrowDown',
-      escape: 'Escape',
-      tab: 'Tab',
-      space: 'Space',
-    };
-
-    const convertedKey = keyMap[lowerKey] || key;
-    logger.info('convertedKey', convertedKey);
-    return convertedKey as KeyInput;
+    return convertKey(key, isMacUserAgent());
   }
 
   async scrollToText(text: string, nth: number = 1): Promise<boolean> {
@@ -1137,72 +901,7 @@ export default class Page {
         throw new Error(`Element: ${elementNode} not found`);
       }
 
-      // Ensure element is ready for input
-      try {
-        // First wait for element stability
-        await this._waitForElementStability(element, 1500);
-
-        // Then check visibility and scroll into view if needed
-        const isHidden = await element.isHidden();
-        if (!isHidden) {
-          await this._scrollIntoViewIfNeeded(element, 1500);
-        }
-      } catch (e) {
-        // Continue even if these operations fail
-        logger.debug(`Non-critical error preparing element: ${e}`);
-      }
-
-      // Get element properties to determine input method
-      const tagName = await element.evaluate(el => el.tagName.toLowerCase());
-      const isContentEditable = await element.evaluate(el => {
-        if (el instanceof HTMLElement) {
-          return el.isContentEditable;
-        }
-        return false;
-      });
-      const isReadOnly = await element.evaluate(el => {
-        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-          return el.readOnly;
-        }
-        return false;
-      });
-      const isDisabled = await element.evaluate(el => {
-        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-          return el.disabled;
-        }
-        return false;
-      });
-
-      // Choose appropriate input method based on element properties
-      if ((isContentEditable || tagName === 'input') && !isReadOnly && !isDisabled) {
-        // Clear content and set value directly
-        await element.evaluate(el => {
-          if (el instanceof HTMLElement) {
-            el.textContent = '';
-          }
-          if ('value' in el) {
-            (el as HTMLInputElement).value = '';
-          }
-          // Dispatch events
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-
-        // Type the text with a small delay between keypresses
-        await element.type(text, { delay: 50 });
-      } else {
-        // Use direct value setting for other types of elements
-        await element.evaluate((el, value) => {
-          if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-            el.value = value;
-          } else if (el instanceof HTMLElement && el.isContentEditable) {
-            el.textContent = value;
-          }
-          // Dispatch events
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
-        }, text);
-      }
+      await typeIntoElementNode(element, text);
 
       // Wait for page stability after input
       await this.waitForPageAndFramesLoad();
@@ -1218,91 +917,11 @@ export default class Page {
    * Similar to Playwright's wait_for_element_state('stable')
    */
   private async _waitForElementStability(element: ElementHandle, timeout = 1000): Promise<void> {
-    const startTime = Date.now();
-    let lastRect = await element.boundingBox();
-
-    while (Date.now() - startTime < timeout) {
-      // Wait a short time
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // Get current position and size
-      const currentRect = await element.boundingBox();
-
-      // If element is no longer in DOM or not visible
-      if (!currentRect) {
-        break;
-      }
-
-      // Compare with previous position/size
-      if (
-        lastRect &&
-        Math.abs(lastRect.x - currentRect.x) < 2 &&
-        Math.abs(lastRect.y - currentRect.y) < 2 &&
-        Math.abs(lastRect.width - currentRect.width) < 2 &&
-        Math.abs(lastRect.height - currentRect.height) < 2
-      ) {
-        // Position is stable - wait a bit more to be sure and then return
-        await new Promise(resolve => setTimeout(resolve, 50));
-        return;
-      }
-
-      // Update last position
-      lastRect = currentRect;
-    }
-
-    // If we got here, either the element stabilized or we timed out
-    logger.debug('Element stability check completed (timeout or stable)');
+    return waitForElementStability(element, timeout);
   }
 
   private async _scrollIntoViewIfNeeded(element: ElementHandle, timeout = 1000): Promise<void> {
-    const startTime = Date.now();
-
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      // Check if element is in viewport
-      const isVisible = await element.evaluate(el => {
-        const rect = el.getBoundingClientRect();
-
-        // Check if element has size
-        if (rect.width === 0 || rect.height === 0) return false;
-
-        // Check if element is hidden
-        const style = window.getComputedStyle(el);
-        if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
-          return false;
-        }
-
-        // Check if element is in viewport
-        const isInViewport =
-          rect.top >= 0 &&
-          rect.left >= 0 &&
-          rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-          rect.right <= (window.innerWidth || document.documentElement.clientWidth);
-
-        if (!isInViewport) {
-          // Scroll into view if not visible
-          el.scrollIntoView({
-            behavior: 'auto',
-            block: 'center',
-            inline: 'center',
-          });
-          return false;
-        }
-
-        return true;
-      });
-
-      if (isVisible) break;
-
-      // Check timeout - log warning and return instead of throwing
-      if (Date.now() - startTime > timeout) {
-        logger.warning('Timed out while trying to scroll element into view, continuing anyway');
-        break;
-      }
-
-      // Small delay before next check
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+    return scrollIntoViewIfNeeded(element, timeout);
   }
 
   async clickElementNode(useVision: boolean, elementNode: DOMElementNode): Promise<void> {
@@ -1376,18 +995,7 @@ export default class Page {
   }
 
   private selectorToIndex(selector: string): number | null {
-    const trimmedSelector = selector.trim();
-    const refMatch = REF_SELECTOR_REGEX.exec(trimmedSelector);
-    if (refMatch) {
-      return Number.parseInt(refMatch[1], 10);
-    }
-
-    const legacyIndexMatch = LEGACY_INDEX_SELECTOR_REGEX.exec(trimmedSelector);
-    if (legacyIndexMatch) {
-      return Number.parseInt(legacyIndexMatch[1], 10);
-    }
-
-    return null;
+    return parseSelectorIndex(selector);
   }
 
   getDomElementBySelector(
@@ -1504,45 +1112,7 @@ export default class Page {
       throw new Error(`Element not found for selector: ${selector}`);
     }
 
-    try {
-      await this._waitForElementStability(element, 1500);
-      await this._scrollIntoViewIfNeeded(element, 1500);
-    } catch (error) {
-      logger.debug(`Non-critical error preparing selector ${selector}: ${error}`);
-    }
-
-    if (clearBeforeTyping) {
-      await element.evaluate(el => {
-        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-          el.value = '';
-        } else if (el instanceof HTMLElement && el.isContentEditable) {
-          el.textContent = '';
-        }
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      });
-    }
-
-    try {
-      await element.type(text, { delay: 50 });
-    } catch (error) {
-      await element.evaluate(
-        (el, payload) => {
-          if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-            el.value = payload.clearBeforeTyping ? payload.text : `${el.value}${payload.text}`;
-          } else if (el instanceof HTMLElement && el.isContentEditable) {
-            const current = el.textContent || '';
-            el.textContent = payload.clearBeforeTyping ? payload.text : `${current}${payload.text}`;
-          } else if (el instanceof HTMLElement) {
-            el.textContent = payload.clearBeforeTyping ? payload.text : `${el.textContent || ''}${payload.text}`;
-          }
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
-        },
-        { text, clearBeforeTyping },
-      );
-      logger.debug(`Type fallback used for selector ${selector}:`, error);
-    }
+    await typeIntoSelectorElement(element, selector, text, clearBeforeTyping);
 
     await this.waitForPageAndFramesLoad();
   }
@@ -1631,167 +1201,7 @@ export default class Page {
       throw new Error('Puppeteer page is not connected');
     }
 
-    const RELEVANT_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'font', 'script', 'iframe']);
-
-    const RELEVANT_CONTENT_TYPES = new Set([
-      'text/html',
-      'text/css',
-      'application/javascript',
-      'image/',
-      'font/',
-      'application/json',
-    ]);
-
-    const IGNORED_URL_PATTERNS = new Set([
-      // Analytics and tracking
-      'analytics',
-      'tracking',
-      'telemetry',
-      'beacon',
-      'metrics',
-      // Ad-related
-      'doubleclick',
-      'adsystem',
-      'adserver',
-      'advertising',
-      // Social media widgets
-      'facebook.com/plugins',
-      'platform.twitter',
-      'linkedin.com/embed',
-      // Live chat and support
-      'livechat',
-      'zendesk',
-      'intercom',
-      'crisp.chat',
-      'hotjar',
-      // Push notifications
-      'push-notifications',
-      'onesignal',
-      'pushwoosh',
-      // Background sync/heartbeat
-      'heartbeat',
-      'ping',
-      'alive',
-      // WebRTC and streaming
-      'webrtc',
-      'rtmp://',
-      'wss://',
-      // Common CDNs
-      'cloudfront.net',
-      'fastly.net',
-    ]);
-
-    const pendingRequests = new Set();
-    let lastActivity = Date.now();
-
-    const onRequest = (request: HTTPRequest) => {
-      // Filter by resource type
-      const resourceType = request.resourceType();
-      if (!RELEVANT_RESOURCE_TYPES.has(resourceType)) {
-        return;
-      }
-
-      // Filter out streaming, websocket, and other real-time requests
-      if (['websocket', 'media', 'eventsource', 'manifest', 'other'].includes(resourceType)) {
-        return;
-      }
-
-      // Filter out by URL patterns
-      const url = request.url().toLowerCase();
-      if (Array.from(IGNORED_URL_PATTERNS).some(pattern => url.includes(pattern))) {
-        return;
-      }
-
-      // Filter out data URLs and blob URLs
-      if (url.startsWith('data:') || url.startsWith('blob:')) {
-        return;
-      }
-
-      // Filter out requests with certain headers
-      const headers = request.headers();
-      if (
-        // biome-ignore lint/complexity/useLiteralKeys: <explanation>
-        headers['purpose'] === 'prefetch' ||
-        headers['sec-fetch-dest'] === 'video' ||
-        headers['sec-fetch-dest'] === 'audio'
-      ) {
-        return;
-      }
-
-      pendingRequests.add(request);
-      lastActivity = Date.now();
-    };
-
-    const onResponse = (response: HTTPResponse) => {
-      const request = response.request();
-      if (!pendingRequests.has(request)) {
-        return;
-      }
-
-      // Filter by content type
-      const contentType = response.headers()['content-type']?.toLowerCase() || '';
-
-      // Skip streaming content
-      if (
-        ['streaming', 'video', 'audio', 'webm', 'mp4', 'event-stream', 'websocket', 'protobuf'].some(t =>
-          contentType.includes(t),
-        )
-      ) {
-        pendingRequests.delete(request);
-        return;
-      }
-
-      // Only process relevant content types
-      if (!Array.from(RELEVANT_CONTENT_TYPES).some(ct => contentType.includes(ct))) {
-        pendingRequests.delete(request);
-        return;
-      }
-
-      // Skip large responses
-      const contentLength = response.headers()['content-length'];
-      if (contentLength && Number.parseInt(contentLength) > 5 * 1024 * 1024) {
-        // 5MB
-        pendingRequests.delete(request);
-        return;
-      }
-
-      pendingRequests.delete(request);
-      lastActivity = Date.now();
-    };
-
-    // Add event listeners
-    this._puppeteerPage.on('request', onRequest);
-    this._puppeteerPage.on('response', onResponse);
-
-    try {
-      const startTime = Date.now();
-
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        const now = Date.now();
-        const timeSinceLastActivity = (now - lastActivity) / 1000; // Convert to seconds
-
-        if (pendingRequests.size === 0 && timeSinceLastActivity >= this._config.waitForNetworkIdlePageLoadTime) {
-          break;
-        }
-
-        const elapsedTime = (now - startTime) / 1000; // Convert to seconds
-        if (elapsedTime > this._config.maximumWaitPageLoadTime) {
-          logger.debug(
-            `Network timeout after ${this._config.maximumWaitPageLoadTime}s with ${pendingRequests.size} pending requests:`,
-            Array.from(pendingRequests).map(r => (r as HTTPRequest).url()),
-          );
-          break;
-        }
-      }
-    } finally {
-      // Clean up event listeners
-      this._puppeteerPage.off('request', onRequest);
-      this._puppeteerPage.off('response', onResponse);
-    }
-    logger.debug(`Network stabilized for ${this._config.waitForNetworkIdlePageLoadTime} seconds`);
+    await waitForStableNetwork(this._puppeteerPage, this._config);
   }
 
   async waitForPageAndFramesLoad(timeoutOverwrite?: number): Promise<void> {
