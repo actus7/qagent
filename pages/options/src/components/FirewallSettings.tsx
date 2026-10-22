@@ -2,11 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { firewallStore, type FirewallConfig } from '@extension/storage';
 import { Button } from '@extension/ui';
 import { t } from '@extension/i18n';
-import { useTheme } from '@extension/shared';
 
 export const FirewallSettings = () => {
-  const { resolvedTheme } = useTheme();
-  const isDarkMode = resolvedTheme === 'dark';
   const [isEnabled, setIsEnabled] = useState(true);
   const [allowList, setAllowList] = useState<string[]>([]);
   const [denyList, setDenyList] = useState<string[]>([]);
@@ -94,18 +91,18 @@ export const FirewallSettings = () => {
   return (
     <section className="space-y-6">
       <div
-        className={`rounded-lg border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-emerald-100 bg-emerald-50/40'} p-6 text-left shadow-sm`}>
-        <h2 className={`mb-4 text-xl font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+        className={`rounded-lg border border-border bg-card p-6 text-left shadow-sm`}>
+        <h2 className={`mb-4 text-xl font-semibold text-foreground`}>
           {t('options_firewall_header')}
         </h2>
 
         <div className="space-y-6">
           <div
-            className={`my-6 rounded-lg border p-4 ${isDarkMode ? 'border-slate-700 bg-slate-700' : 'border-emerald-100 bg-white'}`}>
+            className={`my-6 rounded-lg border border-border bg-card p-4`}>
             <div className="flex items-center justify-between">
               <label
                 htmlFor="toggle-firewall"
-                className={`text-base font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                className={`text-base font-medium text-foreground`}>
                 {t('options_firewall_enableToggle')}
               </label>
               <div className="relative inline-block w-12 select-none">
@@ -118,11 +115,11 @@ export const FirewallSettings = () => {
                 />
                 <label
                   htmlFor="toggle-firewall"
-                  className={`block h-6 cursor-pointer overflow-hidden rounded-full ${isEnabled ? 'bg-emerald-500' : isDarkMode ? 'bg-gray-600' : 'bg-gray-300'
+                  className={`block h-6 cursor-pointer overflow-hidden rounded-full ${isEnabled ? 'bg-primary' : 'bg-input'
                     }`}>
                   <span className="sr-only">{t('options_firewall_toggleFirewall_a11y')}</span>
                   <span
-                    className={`block size-6 rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-0'
+                    className={`block size-6 rounded-full bg-card shadow transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-0'
                       }`}
                   />
                 </label>
@@ -135,24 +132,16 @@ export const FirewallSettings = () => {
               <Button
                 onClick={() => setActiveList('allow')}
                 className={`px-4 py-2 text-base ${activeList === 'allow'
-                  ? isDarkMode
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-emerald-500 text-white'
-                  : isDarkMode
-                    ? 'bg-slate-700 text-gray-200'
-                    : 'bg-gray-200 text-gray-700'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-foreground'
                   }`}>
                 {t('options_firewall_allowList_header')}
               </Button>
               <Button
                 onClick={() => setActiveList('deny')}
                 className={`px-4 py-2 text-base ${activeList === 'deny'
-                  ? isDarkMode
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-emerald-500 text-white'
-                  : isDarkMode
-                    ? 'bg-slate-700 text-gray-200'
-                    : 'bg-gray-200 text-gray-700'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-foreground'
                   }`}>
                 {t('options_firewall_denyList_header')}
               </Button>
@@ -171,13 +160,11 @@ export const FirewallSettings = () => {
                 }
               }}
               placeholder={t('options_firewall_placeholders_domainUrl')}
-              className={`flex-1 rounded-md border px-3 py-2 text-sm ${isDarkMode ? 'border-gray-600 bg-slate-700 text-white' : 'border-gray-300 bg-white text-gray-700'
-                }`}
+              className={`flex-1 rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground`}
             />
             <Button
               onClick={handleAddUrl}
-              className={`px-4 py-2 text-sm ${isDarkMode ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                }`}>
+              className={`bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90`}>
               {t('options_firewall_btnAdd')}
             </Button>
           </div>
@@ -189,22 +176,18 @@ export const FirewallSettings = () => {
                   {allowList.map(url => (
                     <li
                       key={url}
-                      className={`flex items-center justify-between rounded-md p-2 pr-0 ${isDarkMode ? 'bg-slate-700' : 'bg-gray-100'
-                        }`}>
-                      <span className={`text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{url}</span>
+                      className={`flex items-center justify-between rounded-md bg-muted p-2 pr-0`}>
+                      <span className={`text-sm text-foreground`}>{url}</span>
                       <Button
                         onClick={() => handleRemoveUrl(url, 'allow')}
-                        className={`rounded-l-none px-2 py-1 text-xs ${isDarkMode
-                          ? 'bg-red-600 text-white hover:bg-red-700'
-                          : 'bg-red-500 text-white hover:bg-red-600'
-                          }`}>
+                        className={`rounded-l-none bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:opacity-90`}>
                         {t('options_firewall_btnRemove')}
                       </Button>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className={`text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <p className={`text-center text-sm text-muted-foreground`}>
                   {t('options_firewall_allowList_empty')}
                 </p>
               )
@@ -213,20 +196,18 @@ export const FirewallSettings = () => {
                 {denyList.map(url => (
                   <li
                     key={url}
-                    className={`flex items-center justify-between rounded-md p-2 pr-0 ${isDarkMode ? 'bg-slate-700' : 'bg-gray-100'
-                      }`}>
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{url}</span>
+                    className={`flex items-center justify-between rounded-md bg-muted p-2 pr-0`}>
+                    <span className={`text-sm text-foreground`}>{url}</span>
                     <Button
                       onClick={() => handleRemoveUrl(url, 'deny')}
-                      className={`rounded-l-none px-2 py-1 text-xs ${isDarkMode ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-500 text-white hover:bg-red-600'
-                        }`}>
+                      className={`rounded-l-none bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:opacity-90`}>
                       Remove
                     </Button>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className={`text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-center text-sm text-muted-foreground`}>
                 {t('options_firewall_denyList_empty')}
               </p>
             )}
@@ -235,11 +216,11 @@ export const FirewallSettings = () => {
       </div>
 
       <div
-        className={`rounded-lg border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-emerald-100 bg-emerald-50/40'} p-6 text-left shadow-sm`}>
-        <h2 className={`mb-4 text-xl font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+        className={`rounded-lg border border-border bg-card p-6 text-left shadow-sm`}>
+        <h2 className={`mb-4 text-xl font-semibold text-foreground`}>
           {t('options_firewall_howItWorks_header')}
         </h2>
-        <ul className={`list-disc space-y-2 pl-5 text-left text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        <ul className={`list-disc space-y-2 pl-5 text-left text-sm text-muted-foreground`}>
           {t('options_firewall_howItWorks')
             .split('\n')
             .map((rule, index) => (

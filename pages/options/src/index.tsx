@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
+import '@extension/tailwindcss-config/tokens.css';
 import '@src/index.css';
-import '@extension/ui/lib/global.css';
 import Options from '@src/Options';
 import { LanguageProvider } from './context/LanguageContext';
 

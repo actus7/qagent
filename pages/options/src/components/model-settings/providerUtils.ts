@@ -1,0 +1,189 @@
+import { t } from '@extension/i18n';
+import { ProviderTypeEnum, getDefaultDisplayNameFromProviderId, llmProviderModelNames } from '@extension/storage';
+import type { ProviderConfig } from '@extension/storage';
+import { BASE_URL_PROVIDER_TYPES } from './constants';
+import type { AvailableModel, ListField, ProviderMap } from './types';
+
+export type ProviderSaveError = 'spacesInName' | 'baseUrlRequired';
+
+export function getDefaultModelNames(providerId: string): string[] {
+  return llmProviderModelNames[providerId as keyof typeof llmProviderModelNames] || [];
+}
+
+export function buildAvailableModels(storedProviders: ProviderMap): AvailableModel[] {
+  return Object.entries(storedProviders).flatMap(([provider, config]) => {
+    const providerName = config.name || provider;
+    if (config.type === ProviderTypeEnum.AzureOpenAI) {
+      return (config.azureDeploymentNames || []).map(deployment => ({ provider, providerName, model: deployment }));
+    }
+    const models = config.modelNames || getDefaultModelNames(provider);
+    return models.map(model => ({ provider, providerName, model }));
+  });
+}
+
+/** Mirrors the original rule: custom/ollama/openrouter/llama/azure each need specific fields. */
+function hasRequiredSaveInputs(config: ProviderConfig | undefined): boolean {
+  const hasApiKey = Boolean(config?.apiKey?.trim());
+  const hasBaseUrl = Boolean(config?.baseUrl?.trim());
+  switch (config?.type) {
+    case ProviderTypeEnum.CustomOpenAI:
+    case ProviderTypeEnum.Ollama:
+      return hasBaseUrl;
+    case ProviderTypeEnum.AzureOpenAI:
+      return (
+        hasApiKey &&
+        hasBaseUrl &&
+        Boolean(config?.azureDeploymentNames?.length) &&
+        Boolean(config?.azureApiVersion?.trim())
+      );
+    case ProviderTypeEnum.OpenRouter:
+    case ProviderTypeEnum.Llama:
+      return hasApiKey && hasBaseUrl;
+    default:
+      return hasApiKey;
+  }
+}
+
+export function getProviderActionState(
+  config: ProviderConfig,
+  isInStorage: boolean,
+  isModified: boolean,
+): { isDelete: boolean; variant: 'danger' | 'primary'; label: string; disabled: boolean } {
+  if (isInStorage && !isModified) {
+    return {
+      isDelete: true,
+      variant: 'danger',
+      label: t('options_models_providers_btnDelete'),
+      disabled: false,
+    };
+  }
+  return {
+    isDelete: false,
+    variant: 'primary',
+    label: t('options_models_providers_btnSave'),
+    disabled: !hasRequiredSaveInputs(config) || !isModified,
+  };
+}
+
+export function requiresBaseUrl(type: ProviderTypeEnum | undefined): boolean {
+  return type !== undefined && BASE_URL_PROVIDER_TYPES.includes(type);
+}
+
+export function getProviderSaveError(config: ProviderConfig): ProviderSaveError | null {
+  if (config.type === ProviderTypeEnum.CustomOpenAI && config.name?.includes(' ')) {
+    return 'spacesInName';
+  }
+  if (requiresBaseUrl(config.type) && !config.baseUrl?.trim()) {
+    return 'baseUrlRequired';
+  }
+  return null;
+}
+
+/** Builds the payload for llmProviderStore.setProvider. Azure never stores modelNames. */
+export function buildProviderConfigToSave(providerId: string, config: ProviderConfig): ProviderConfig {
+  const configToSave: Partial<ProviderConfig> = {
+    ...config,
+    apiKey: config.apiKey || '',
+    name: config.name || getDefaultDisplayNameFromProviderId(providerId),
+    type: config.type,
+    createdAt: config.createdAt || Date.now(),
+    modelNames:
+      config.type === ProviderTypeEnum.AzureOpenAI ? undefined : config.modelNames || getDefaultModelNames(providerId),
+  };
+  return configToSave as ProviderConfig;
+}
+
+export function getNextCustomProviderNumber(providers: ProviderMap): number {
+  let maxNumber = 0;
+  for (const providerId of Object.keys(providers)) {
+    if (providerId.startsWith('custom_openai_')) {
+      const match = providerId.match(/custom_openai_(\d+)/);
+      if (match) {
+        maxNumber = Math.max(maxNumber, Number.parseInt(match[1], 10));
+      }
+    }
+  }
+  return maxNumber + 1;
+}
+
+export function getNextAzureProviderId(providers: ProviderMap): { providerId: string; nextNumber: number } {
+  const azureCount = Object.keys(providers).filter(
+    key => key === ProviderTypeEnum.AzureOpenAI || key.startsWith(`${ProviderTypeEnum.AzureOpenAI}_`),
+  ).length;
+  const nextNumber = azureCount + 1;
+  const providerId = nextNumber === 1 ? ProviderTypeEnum.AzureOpenAI : `${ProviderTypeEnum.AzureOpenAI}_${nextNumber}`;
+  return { providerId, nextNumber };
+}
+
+/** Appends a trimmed value to a list field unless it is already present. Returns the same object when nothing changes. */
+export function addToListField(
+  providers: ProviderMap,
+  provider: string,
+  field: ListField,
+  value: string,
+  fallback: string[],
+): ProviderMap {
+  const providerData: Partial<ProviderConfig> = providers[provider] || {};
+  const current = providerData[field] ?? fallback;
+  if (current.includes(value)) {
+    return providers;
+  }
+  return { ...providers, [provider]: { ...providerData, [field]: [...current, value] } as ProviderConfig };
+}
+
+export function removeFromListField(
+  providers: ProviderMap,
+  provider: string,
+  field: ListField,
+  value: string,
+  fallback: string[],
+): ProviderMap {
+  const providerData: Partial<ProviderConfig> = providers[provider] || {};
+  const current = providerData[field] ?? fallback;
+  return {
+    ...providers,
+    [provider]: { ...providerData, [field]: current.filter(item => item !== value) } as ProviderConfig,
+  };
+}
+
+function compareProviderEntries(
+  [keyA, configA]: [string, ProviderConfig],
+  [keyB, configB]: [string, ProviderConfig],
+  providersFromStorage: Set<string>,
+  modifiedProviders: Set<string>,
+): number {
+  // Newly added (unsaved) providers go to the end
+  const isNewA = !providersFromStorage.has(keyA) && modifiedProviders.has(keyA);
+  const isNewB = !providersFromStorage.has(keyB) && modifiedProviders.has(keyB);
+  if (isNewA && !isNewB) return 1;
+  if (!isNewA && isNewB) return -1;
+
+  // Oldest first when both have createdAt; the one without createdAt goes last
+  if (configA.createdAt && configB.createdAt) {
+    return configA.createdAt - configB.createdAt;
+  }
+  if (configA.createdAt) return -1;
+  if (configB.createdAt) return 1;
+
+  // Built-in providers before custom ones, then alphabetical by name
+  const isCustomA = configA.type === ProviderTypeEnum.CustomOpenAI;
+  const isCustomB = configB.type === ProviderTypeEnum.CustomOpenAI;
+  if (isCustomA && !isCustomB) return 1;
+  if (!isCustomA && isCustomB) return -1;
+  return (configA.name || keyA).localeCompare(configB.name || keyB);
+}
+
+export function sortProviderEntries(
+  providers: ProviderMap,
+  providersFromStorage: Set<string>,
+  modifiedProviders: Set<string>,
+): Array<[string, ProviderConfig]> {
+  const visibleEntries = Object.entries(providers).filter(([providerId, config]) => {
+    if (!config || !config.type) {
+      console.warn(`Filtering out provider ${providerId} with missing config or type.`);
+      return false;
+    }
+    return providersFromStorage.has(providerId) || modifiedProviders.has(providerId);
+  });
+  return visibleEntries.sort((a, b) => compareProviderEntries(a, b, providersFromStorage, modifiedProviders));
+}

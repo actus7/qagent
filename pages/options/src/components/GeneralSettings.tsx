@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
 import { type GeneralSettingsConfig, generalSettingsStore, DEFAULT_GENERAL_SETTINGS } from '@extension/storage';
 import { t } from '@extension/i18n';
-import { useTheme } from '@extension/shared';
 
 export const GeneralSettings = () => {
-  const { resolvedTheme } = useTheme();
-  const isDarkMode = resolvedTheme === 'dark';
   const [settings, setSettings] = useState<GeneralSettingsConfig>(DEFAULT_GENERAL_SETTINGS);
 
   const parseIntegerInput = (rawValue: string): number | null => {
@@ -79,18 +76,18 @@ export const GeneralSettings = () => {
   return (
     <section className="space-y-6">
       <div
-        className={`rounded-lg border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-emerald-100 bg-emerald-50/40'} p-6 text-left shadow-sm`}>
-        <h2 className={`mb-4 text-left text-xl font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+        className={`rounded-lg border border-border bg-card p-6 text-left shadow-sm`}>
+        <h2 className={`mb-4 text-left text-xl font-semibold text-foreground`}>
           {t('options_general_header')}
         </h2>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <h3 className={`text-base font-medium text-foreground`}>
                 {t('options_general_maxSteps')}
               </h3>
-              <p className={`text-sm font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_maxSteps_desc')}
               </p>
             </div>
@@ -104,16 +101,16 @@ export const GeneralSettings = () => {
               max={100}
               value={settings.maxSteps}
               onChange={e => void updateClampedIntegerSetting('maxSteps', e.target.value, 1, 100)}
-              className={`w-20 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200' : 'border-gray-300 bg-white text-gray-700'} px-3 py-2`}
+              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <h3 className={`text-base font-medium text-foreground`}>
                 {t('options_general_maxActions')}
               </h3>
-              <p className={`text-sm font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_maxActions_desc')}
               </p>
             </div>
@@ -127,16 +124,16 @@ export const GeneralSettings = () => {
               max={50}
               value={settings.maxActionsPerStep}
               onChange={e => void updateClampedIntegerSetting('maxActionsPerStep', e.target.value, 1, 50)}
-              className={`w-20 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200' : 'border-gray-300 bg-white text-gray-700'} px-3 py-2`}
+              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <h3 className={`text-base font-medium text-foreground`}>
                 {t('options_general_maxFailures')}
               </h3>
-              <p className={`text-sm font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_maxFailures_desc')}
               </p>
             </div>
@@ -150,16 +147,16 @@ export const GeneralSettings = () => {
               max={10}
               value={settings.maxFailures}
               onChange={e => void updateClampedIntegerSetting('maxFailures', e.target.value, 1, 10)}
-              className={`w-20 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200' : 'border-gray-300 bg-white text-gray-700'} px-3 py-2`}
+              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <h3 className={`text-base font-medium text-foreground`}>
                 {t('options_general_enableVision')}
               </h3>
-              <p className={`text-sm font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_enableVision_desc')}
               </p>
             </div>
@@ -173,7 +170,7 @@ export const GeneralSettings = () => {
               />
               <label
                 htmlFor="useVision"
-                className={`peer h-6 w-11 rounded-full ${isDarkMode ? 'bg-slate-600' : 'bg-gray-200'} after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-emerald-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300`}>
+                className={`peer h-6 w-11 rounded-full bg-input after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-card peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ring`}>
                 <span className="sr-only">{t('options_general_enableVision')}</span>
               </label>
             </div>
@@ -181,10 +178,10 @@ export const GeneralSettings = () => {
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <h3 className={`text-base font-medium text-foreground`}>
                 {t('options_general_displayHighlights')}
               </h3>
-              <p className={`text-sm font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_displayHighlights_desc')}
               </p>
             </div>
@@ -198,7 +195,7 @@ export const GeneralSettings = () => {
               />
               <label
                 htmlFor="displayHighlights"
-                className={`peer h-6 w-11 rounded-full ${isDarkMode ? 'bg-slate-600' : 'bg-gray-200'} after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-emerald-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300`}>
+                className={`peer h-6 w-11 rounded-full bg-input after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-card peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ring`}>
                 <span className="sr-only">{t('options_general_displayHighlights')}</span>
               </label>
             </div>
@@ -206,10 +203,10 @@ export const GeneralSettings = () => {
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <h3 className={`text-base font-medium text-foreground`}>
                 {t('options_general_planningInterval')}
               </h3>
-              <p className={`text-sm font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_planningInterval_desc')}
               </p>
             </div>
@@ -223,16 +220,16 @@ export const GeneralSettings = () => {
               max={20}
               value={settings.planningInterval}
               onChange={e => void updateClampedIntegerSetting('planningInterval', e.target.value, 1, 20)}
-              className={`w-20 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200' : 'border-gray-300 bg-white text-gray-700'} px-3 py-2`}
+              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <h3 className={`text-base font-medium text-foreground`}>
                 {t('options_general_minWaitPageLoad')}
               </h3>
-              <p className={`text-sm font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_minWaitPageLoad_desc')}
               </p>
             </div>
@@ -248,17 +245,17 @@ export const GeneralSettings = () => {
               step={50}
               value={settings.minWaitPageLoad}
               onChange={e => void updateClampedIntegerSetting('minWaitPageLoad', e.target.value, 250, 5000)}
-              className={`w-20 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200' : 'border-gray-300 bg-white text-gray-700'} px-3 py-2`}
+              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
             />
             </div>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <h3 className={`text-base font-medium text-foreground`}>
                 {t('options_general_replayHistoricalTasks')}
               </h3>
-              <p className={`text-sm font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_replayHistoricalTasks_desc')}
               </p>
             </div>
@@ -272,7 +269,7 @@ export const GeneralSettings = () => {
               />
               <label
                 htmlFor="replayHistoricalTasks"
-                className={`peer h-6 w-11 rounded-full ${isDarkMode ? 'bg-slate-600' : 'bg-gray-200'} after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-emerald-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300`}>
+                className={`peer h-6 w-11 rounded-full bg-input after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-card peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ring`}>
                 <span className="sr-only">{t('options_general_replayHistoricalTasks')}</span>
               </label>
             </div>

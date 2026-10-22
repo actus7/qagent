@@ -1,0 +1,131 @@
+/*
+ * QAgent design tokens — single source of truth for every extension page.
+ * Mapped to Tailwind classes (bg-background, text-primary, border-border, ...) in tailwind.config.ts.
+ * Plain CSS (no @layer): it is imported from JS, outside the @tailwind entry file.
+ * Dark mode is driven by the `.dark` class that useTheme() toggles on <html>.
+ */
+:root {
+  color-scheme: light;
+  --background: #faf9f6;
+  --foreground: #302e2b;
+  --card: #ffffff;
+  --card-foreground: #302e2b;
+  --popover: #ffffff;
+  --popover-foreground: #302e2b;
+  --primary: #bd5836;
+  --primary-foreground: #ffffff;
+  --secondary: #eeede9;
+  --secondary-foreground: #55524c;
+  --muted: #f0efeb;
+  --muted-foreground: #77736d;
+  --accent: #ece9e2;
+  --accent-foreground: #302e2b;
+  --destructive: #c4413a;
+  --destructive-foreground: #ffffff;
+  --success: #3f7f5a;
+  --warning: #b7791f;
+  --border: #e6e3dc;
+  --input: #dedad1;
+  --ring: #bd5836;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-mono: 'Cascadia Code', Consolas, monospace;
+  --radius: 0.75rem;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #242321;
+  --foreground: #e9e7e0;
+  --card: #2e2d2a;
+  --card-foreground: #e9e7e0;
+  --popover: #302f2c;
+  --popover-foreground: #e9e7e0;
+  --primary: #de916d;
+  --primary-foreground: #242321;
+  --secondary: #353430;
+  --secondary-foreground: #d0cdc5;
+  --muted: #302f2c;
+  --muted-foreground: #aaa69d;
+  --accent: #3c3830;
+  --accent-foreground: #e9e7e0;
+  --destructive: #e5736b;
+  --destructive-foreground: #242321;
+  --success: #7fbf95;
+  --warning: #e0b061;
+  --border: #403e38;
+  --input: #504d45;
+  --ring: #de916d;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+select,
+textarea {
+  color: var(--foreground);
+  caret-color: var(--foreground);
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range'])::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.dark select,
+.dark textarea {
+  -webkit-text-fill-color: var(--foreground);
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill,
+.dark select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--card) inset;
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+}
+
+select option {
+  background-color: var(--card);
+  color: var(--foreground);
+}
+
+button:focus-visible,
+summary:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
