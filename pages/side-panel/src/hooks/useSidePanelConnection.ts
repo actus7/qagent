@@ -9,6 +9,7 @@ import {
   SIDE_PANEL_CONNECTION_PORT_NAME,
   type ExecutionPortEventMessage,
   type SidePanelCommandMessage,
+  type SidePanelResponseMessage,
 } from '@src/types/port';
 
 interface UseSidePanelConnectionArgs {
@@ -22,6 +23,7 @@ interface UseSidePanelConnectionArgs {
   setInputText: (text: string) => void;
   setBrowserFrame: (frame: BrowserFramePayload | null) => void;
   setBrowserStatus: (status: BrowserStatusPayload) => void;
+  onAssistantMessage: (message: SidePanelResponseMessage) => void;
 }
 
 const formatDebugPayload = (label: string, payload: unknown) => {
@@ -39,6 +41,7 @@ export const useSidePanelConnection = ({
   setInputText,
   setBrowserFrame,
   setBrowserStatus,
+  onAssistantMessage,
 }: UseSidePanelConnectionArgs) => {
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const heartbeatIntervalRef = useRef<number | null>(null);
@@ -85,6 +88,14 @@ export const useSidePanelConnection = ({
         }
 
         const message = incomingMessage;
+        if (
+          message.type === 'assistant_delta' ||
+          message.type === 'approval_required' ||
+          message.type === 'approval_resolved'
+        ) {
+          onAssistantMessage(message);
+          return;
+        }
         if (
           message.type !== EventType.EXECUTION &&
           message.type !== 'heartbeat_ack' &&
@@ -197,6 +208,7 @@ export const useSidePanelConnection = ({
     setShowStopButton,
     stopConnection,
     toAgentEvent,
+    onAssistantMessage,
   ]);
 
   const sendMessage = useCallback(
@@ -230,3 +242,5 @@ export const useSidePanelConnection = ({
     sendMessage,
   };
 };
+
+export type SidePanelConnection = ReturnType<typeof useSidePanelConnection>;

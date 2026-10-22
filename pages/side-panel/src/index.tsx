@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import '@extension/tailwindcss-config/tokens.css';
 import '@src/index.css';
 import SidePanel from '@src/SidePanel';
 

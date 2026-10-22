@@ -74,6 +74,5 @@ export const useFavoritePromptHandlers = ({
     handleBookmarkUpdateTitle,
     handleBookmarkDelete,
     handleBookmarkReorder,
-    refreshFavoritePrompts,
   };
 };

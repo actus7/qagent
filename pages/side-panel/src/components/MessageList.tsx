@@ -1,109 +1,101 @@
-import type { Message } from '@extension/storage';
-import { ACTOR_PROFILES } from '../types/message';
-import { memo } from 'react';
-import { Separator } from '@src/components/ui/separator';
+import { memo, useState, lazy, Suspense } from 'react';
+import { FiCheck, FiCopy, FiChevronRight, FiAlertCircle } from 'react-icons/fi';
+import { Actors, type Message } from '@extension/storage';
+import { t } from '@extension/i18n';
+import { useLanguage } from '../context/LanguageContext';
+import { assistantCopy } from '../lib/assistant-copy';
 
-interface MessageListProps {
-  messages: Message[];
-}
+const Markdown = lazy(() => import('./ResponseMarkdown'));
 
-export default memo(function MessageList({ messages }: MessageListProps) {
+export default memo(function MessageList({ messages }: { messages: Message[] }) {
+  const groups: Message[][] = [];
+  for (const message of messages) {
+    const previous = groups.at(-1);
+    if (message.kind === 'activity' && previous?.[0].kind === 'activity') previous.push(message);
+    else groups.push([message]);
+  }
   return (
-    <div className="max-w-full space-y-4">
-      {messages.map((message, index) => (
-        <MessageBlock
-          key={`${message.actor}-${message.timestamp}-${message.content}`}
-          message={message}
-          isSameActor={index > 0 ? messages[index - 1].actor === message.actor : false}
-        />
-      ))}
+    <div className="assistant-messages">
+      {groups.map((group, index) =>
+        group[0].kind === 'activity' ? (
+          <ActivityGroup key={`activity-${index}`} messages={group} />
+        ) : (
+          <MessageBlock key={group[0].streamId ?? `${group[0].timestamp}-${index}`} message={group[0]} />
+        ),
+      )}
     </div>
   );
 });
 
-interface MessageBlockProps {
-  message: Message;
-  isSameActor: boolean;
-}
-
-function MessageBlock({ message, isSameActor }: MessageBlockProps) {
-  if (!message.actor) {
-    console.error('No actor found');
-    return <div />;
-  }
-  const actor = ACTOR_PROFILES[message.actor as keyof typeof ACTOR_PROFILES];
-  const isProgress = message.content === 'Showing progress...';
-
+function ActivityGroup({ messages }: { messages: Message[] }) {
+  const { currentLocale } = useLanguage();
+  const copy = assistantCopy(currentLocale);
   return (
-    <div className={`flex max-w-full gap-3 ${!isSameActor ? 'mt-4 pt-4 first:mt-0 first:pt-0' : ''}`}>
-      {!isSameActor && (
-        <>
-          <Separator className="bg-border/50 absolute inset-x-0 -top-0" />
-          <div
-            className="flex size-8 shrink-0 items-center justify-center rounded-full"
-            style={{ backgroundColor: actor.iconBackground }}>
-            <img src={actor.icon} alt={actor.name} className="size-6" />
-          </div>
-        </>
-      )}
-      {isSameActor ? <div className="w-8" /> : null}
-
-      <div className="min-w-0 flex-1">
-        {!isSameActor && (
-          <div className="mb-1 text-sm font-semibold text-foreground">
-            {actor.name}
-          </div>
-        )}
-
-        <div className="space-y-0.5">
-          <div className="text-foreground/80 whitespace-pre-wrap break-words text-sm">
-            {isProgress ? (
-              <div className="h-1 overflow-hidden rounded bg-muted">
-                <div className="h-full animate-progress bg-primary" />
-              </div>
-            ) : (
-              message.content
-            )}
-          </div>
-          {!isProgress && (
-            <div className="text-right text-xs text-muted-foreground">
-              {formatTimestamp(message.timestamp)}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <details className="assistant-activity-log">
+      <summary>
+        <FiChevronRight />
+        <span>{copy.activity}</span>
+        <span>{messages.length}</span>
+      </summary>
+      <ol>
+        {messages.map((message, index) => (
+          <li key={index}>
+            <FiCheck />
+            <span>{message.content}</span>
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }
 
-/**
- * Formats a timestamp (in milliseconds) to a readable time string
- */
-function formatTimestamp(timestamp: number): string {
-  const date = new Date(timestamp);
-  const now = new Date();
-
-  const isToday = date.toDateString() === now.toDateString();
-
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const isYesterday = date.toDateString() === yesterday.toDateString();
-
-  const isThisYear = date.getFullYear() === now.getFullYear();
-
-  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  if (isToday) {
-    return timeStr;
-  }
-
-  if (isYesterday) {
-    return `Yesterday, ${timeStr}`;
-  }
-
-  if (isThisYear) {
-    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
-  }
-
-  return `${date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })}, ${timeStr}`;
-}
+const MessageBlock = memo(function MessageBlock({ message }: { message: Message }) {
+  const { currentLocale } = useLanguage();
+  const copy = assistantCopy(currentLocale);
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState('');
+  const isUser = message.actor === Actors.USER;
+  const isNotice = message.actor === Actors.SYSTEM;
+  if (message.content === t('sidepanel_progress_message')) return null;
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setCopyError('');
+    } catch (error) {
+      setCopyError(error instanceof Error ? error.message : String(error));
+    }
+  };
+  return (
+    <article
+      className={`assistant-message ${isUser ? 'assistant-message-user' : isNotice ? 'assistant-message-notice' : 'assistant-message-answer'}`}>
+      {isNotice ? <FiAlertCircle className="assistant-notice-icon" /> : null}
+      {!isUser && !isNotice ? (
+        <div className="assistant-answer-author">
+          <span className="assistant-small-mark">Q</span>QAgent
+        </div>
+      ) : null}
+      <div className="assistant-message-body">
+        {isUser || isNotice ? (
+          <div className="whitespace-pre-wrap break-words">{message.content}</div>
+        ) : (
+          <Suspense fallback={<div className="whitespace-pre-wrap">{message.content}</div>}>
+            <Markdown content={message.content} />
+          </Suspense>
+        )}
+      </div>
+      {!isUser && !isNotice ? (
+        <div className="assistant-answer-actions">
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label={copied ? copy.copied : copy.copy}
+            title={copied ? copy.copied : copy.copy}>
+            {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
+          </button>
+          {copyError ? <span role="alert">{copyError}</span> : null}
+        </div>
+      ) : null}
+    </article>
+  );
+});

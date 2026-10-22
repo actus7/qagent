@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { FiArrowUp, FiPaperclip, FiSquare } from 'react-icons/fi';
 import { FaMicrophone } from 'react-icons/fa';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import { t } from '@extension/i18n';
@@ -7,12 +8,11 @@ import { Textarea } from '@src/components/ui/textarea';
 import { Badge } from '@src/components/ui/badge';
 
 interface ChatInputProps {
-  onSendMessage: (text: string, displayText?: string) => void;
-  voice?:
-    | { type: 'idle'; onToggle: () => void }
-    | { type: 'recording'; onToggle: () => void }
-    | { type: 'processing' };
+  onSendMessage: (text: string, displayText?: string) => boolean | void | Promise<boolean | void>;
+  voice?: { type: 'idle'; onToggle: () => void } | { type: 'recording'; onToggle: () => void } | { type: 'processing' };
   disabled: boolean;
+  placeholder?: string;
+  footer?: ReactNode;
   setContent?: (setter: (text: string) => void) => void;
   action:
     | { type: 'send' }
@@ -44,12 +44,16 @@ export default function ChatInput({
   disabled,
   setContent,
   action,
+  placeholder,
+  footer,
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [fileError, setFileError] = useState('');
   const isSendButtonDisabled = disabled || (text.trim() === '' && attachedFiles.length === 0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
@@ -74,11 +78,12 @@ export default function ChatInput({
       textarea.style.height = 'auto';
       textarea.style.height = `${Math.min(textarea.scrollHeight, 100)}px`;
     }
-  }, []);
+  }, [text]);
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
+      if (disabled || action.type !== 'send' || submittingRef.current) return;
       const trimmedText = text.trim();
 
       if (trimmedText || attachedFiles.length > 0) {
@@ -100,12 +105,14 @@ export default function ChatInput({
           displayContent = trimmedText ? `${trimmedText}\n\n${fileList}` : fileList;
         }
 
-        onSendMessage(messageContent, displayContent);
-        setText('');
-        setAttachedFiles([]);
+        submittingRef.current = true;
+        try {
+          const accepted = await onSendMessage(messageContent, displayContent);
+          if (accepted !== false) { setText(''); setAttachedFiles([]); }
+        } finally { submittingRef.current = false; }
       }
     },
-    [text, attachedFiles, onSendMessage],
+    [text, attachedFiles, onSendMessage, disabled, action.type],
   );
 
   const handleKeyDown = useCallback(
@@ -126,21 +133,24 @@ export default function ChatInput({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const candidates = Array.from(files).filter(file => {
-      const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`;
+    setFileError('');
+    const candidates = Array.from(files)
+      .slice(0, 5)
+      .filter(file => {
+        const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`;
 
-      if (!ALLOWED_ATTACHMENT_TYPES.has(extension)) {
-        console.warn(`File type ${extension} not supported. Only text-based files are allowed.`);
-        return false;
-      }
+        if (!ALLOWED_ATTACHMENT_TYPES.has(extension)) {
+          setFileError(`${file.name}: use TXT, Markdown, JSON, CSV, LOG, XML ou YAML.`);
+          return false;
+        }
 
-      if (file.size > 1024 * 1024) {
-        console.warn(`File ${file.name} is too large. Maximum size is 1MB.`);
-        return false;
-      }
+        if (file.size > 1024 * 1024) {
+          setFileError(`${file.name}: tamanho máximo de 1 MB.`);
+          return false;
+        }
 
-      return true;
-    });
+        return true;
+      });
 
     const newFiles = (
       await Promise.all(
@@ -161,7 +171,7 @@ export default function ChatInput({
     ).filter((file): file is AttachedFile => file !== null);
 
     if (newFiles.length > 0) {
-      setAttachedFiles(prev => [...prev, ...newFiles]);
+      setAttachedFiles(prev => [...prev, ...newFiles].slice(0, 5));
     }
 
     if (fileInputRef.current) {
@@ -182,10 +192,7 @@ export default function ChatInput({
       : t('chat_stt_input_start');
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={`overflow-hidden rounded-lg border border-border bg-card transition-colors ${disabled ? 'cursor-not-allowed' : 'focus-within:border-primary hover:border-primary'}`}
-      aria-label={t('chat_input_form')}>
+    <form onSubmit={handleSubmit} className="assistant-composer" aria-label={t('chat_input_form')}>
       <div className="flex flex-col">
         {/* File attachments display */}
         {attachedFiles.length > 0 && (
@@ -213,9 +220,13 @@ export default function ChatInput({
           onKeyDown={handleKeyDown}
           disabled={disabled}
           aria-disabled={disabled}
-          rows={5}
-          className="w-full resize-none border-none bg-card p-2 shadow-none focus-visible:ring-0"
-          placeholder={attachedFiles.length > 0 ? t('chat_input_placeholder_withAttachments') : t('chat_input_placeholder')}
+          rows={3}
+          className="assistant-editor w-full resize-none border-none bg-card shadow-none focus-visible:ring-0"
+          placeholder={
+            attachedFiles.length > 0
+              ? t('chat_input_placeholder_withAttachments')
+              : (placeholder ?? t('chat_input_placeholder'))
+          }
           aria-label={t('chat_input_editor')}
         />
 
@@ -231,7 +242,7 @@ export default function ChatInput({
               aria-label={t('chat_input_attachFiles')}
               title={t('chat_input_attachFiles_title')}
               className="size-8">
-              <span className="text-lg">📎</span>
+              <FiPaperclip size={17} />
             </Button>
 
             {/* Hidden file input */}
@@ -265,6 +276,7 @@ export default function ChatInput({
 
           {action.type === 'stop' ? (
             <Button type="button" variant="destructive" size="sm" onClick={action.onStopTask}>
+              <FiSquare size={13} className="mr-1.5" />
               {t('chat_buttons_stop')}
             </Button>
           ) : action.type === 'replay' ? (
@@ -281,12 +293,20 @@ export default function ChatInput({
               size="sm"
               disabled={isSendButtonDisabled}
               aria-disabled={isSendButtonDisabled}
+              aria-label={t('chat_buttons_send')}
+              title={t('chat_buttons_send')}
               className="hover:bg-primary/90 bg-primary text-primary-foreground">
-              {t('chat_buttons_send')}
+              <FiArrowUp size={18} />
             </Button>
           )}
         </div>
       </div>
+      {fileError ? (
+        <p role="alert" className="px-3 pb-2 text-xs text-destructive">
+          {fileError}
+        </p>
+      ) : null}
+      {footer}
     </form>
   );
 }

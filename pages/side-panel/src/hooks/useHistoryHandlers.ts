@@ -111,7 +111,6 @@ export const useHistoryHandlers = ({
   );
 
   return {
-    loadChatSessions,
     handleLoadHistory,
     handleBackToChat,
     handleSessionSelect,
