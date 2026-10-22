@@ -1,11 +1,11 @@
 {
   "app_metadata_description": {
     "description": "Extension description",
-    "message": "Automate web QA with AI. Run test cases, validate UI elements, and report bugs with QAgent."
+    "message": "Chat about pages, plan and complete tasks in your browser tabs with AI and configurable providers."
   },
   "app_metadata_name": {
     "description": "Extension name",
-    "message": "QAgent: QA and Test Automation Agent with AI"
+    "message": "QAgent: AI Browser Assistant"
   },
   "errors_unknown": {
     "message": "An unknown error has occurred"

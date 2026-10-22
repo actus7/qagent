@@ -1,10 +1,24 @@
 # AQgent
 
-Extensão de navegador para QA automatizado com um sistema multi-agente e suporte a múltiplos provedores de LLM.
+Assistente de navegador com conversa, planejamento e execução de tarefas, com suporte a múltiplos provedores de LLM.
 
 ## Visão geral
 
 O AQgent executa tarefas de automação e validação diretamente no navegador, combinando navegação, planejamento e validação em um fluxo local.
+
+## Assistente lateral
+
+O painel oferece três modos:
+
+- **Conversar**: responde sobre as páginas selecionadas, com streaming e Markdown, sem ferramentas de interação.
+- **Planejar**: lê o contexto e propõe um plano. O botão de execução transfere esse plano para o compositor no modo Executar.
+- **Executar**: interage com as abas do próprio navegador usando `chrome.debugger`. O acesso fica limitado às abas selecionadas e às abas criadas pela tarefa.
+
+Escolha as páginas no seletor de abas, configure um provedor em Configurações e selecione um dos modelos configurados no compositor. O modo Executar pergunta antes de ações por padrão; a opção **Agir automaticamente** permite executá-las sem essa pausa. Recusar uma ação ou interromper a tarefa cancela a execução.
+
+O histórico permanece local e permite continuar conversas anteriores. Anexos de texto, ditado, prompts salvos, firewall e replay continuam disponíveis. O atalho `Ctrl+Shift+.` abre o painel, caso não esteja atribuído a outra extensão; ele pode ser alterado em `chrome://extensions/shortcuts`.
+
+A implementação e as diferenças em relação às extensões usadas como referência estão documentadas em [docs/browser-assistant.md](docs/browser-assistant.md).
 
 Principais áreas do projeto:
 
@@ -34,7 +48,7 @@ Para manter o TUI limpo, os logs do companion ficam em `.logs/companion.log`.
 
 ## Companion local
 
-O runtime usa `BrowserManager` (`agent-browser`) como engine padrão. Para iniciar o companion local:
+O runtime usa as abas nativas por padrão e não precisa do companion. Para optar pelo navegador isolado `BrowserManager` (`agent-browser`), configure `VITE_BROWSER_ENGINE=agent-browser` e inicie o companion local:
 
 ```bash
 pnpm companion:agent-browser
@@ -43,7 +57,7 @@ pnpm companion:agent-browser
 No ambiente local, mantenha algo como:
 
 ```bash
-VITE_BROWSER_ENGINE=agent-browser
+VITE_BROWSER_ENGINE=chrome-debugger
 VITE_AGENT_BROWSER_WS_URL=ws://127.0.0.1:9223
 ```
 

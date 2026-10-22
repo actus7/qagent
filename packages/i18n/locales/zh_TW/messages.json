@@ -1,11 +1,11 @@
 {
   "app_metadata_description": {
     "description": "Extension description",
-    "message": "使用 AI 自動化網頁測試與 QA 任務！QAgent 是一款開放原始碼的 QA 瀏覽器代理程式，能協助您執行測試案例、驗證 UI 元素並報告錯誤。"
+    "message": "使用可自訂的 AI 模型討論網頁、規劃並完成瀏覽器分頁中的任務。"
   },
   "app_metadata_name": {
     "description": "Extension name",
-    "message": "QAgent：AI QA 與自動化測試代理程式"
+    "message": "QAgent：AI 瀏覽器助理"
   },
   "errors_unknown": {
     "message": "發生未知錯誤"

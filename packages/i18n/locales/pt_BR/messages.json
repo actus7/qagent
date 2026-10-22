@@ -1,11 +1,11 @@
 {
   "app_metadata_description": {
     "description": "Descrição da extensão",
-    "message": "Automatize QA na web com IA. Execute casos de teste, valide elementos de UI e reporte bugs com o QAgent."
+    "message": "Converse sobre páginas, planeje e execute tarefas nas suas abas com IA e provedores configuráveis."
   },
   "app_metadata_name": {
     "description": "Nome da extensão",
-    "message": "QAgent: Agente de QA e Testes com IA"
+    "message": "QAgent: Assistente de Navegador com IA"
   },
   "errors_unknown": {
     "message": "Ocorreu um erro desconhecido"
