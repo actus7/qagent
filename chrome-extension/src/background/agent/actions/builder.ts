@@ -1,48 +1,47 @@
-import { ActionResult, type AgentContext } from '@src/background/agent/types';
-import { t } from '@extension/i18n';
+import type { AgentContext } from '@src/background/agent/types';
+import { createDoneAction } from './completion';
 import {
-  backActionSchema,
-  clickActionSchema,
-  clickElementActionSchema,
-  closeTabActionSchema,
-  fillActionSchema,
-  forwardActionSchema,
-  getDropdownOptionsActionSchema,
-  getTextActionSchema,
-  getTitleActionSchema,
-  getUrlActionSchema,
-  goBackActionSchema,
-  goToUrlActionSchema,
-  inputTextActionSchema,
-  nextPageActionSchema,
-  openActionSchema,
-  openTabActionSchema,
-  pressActionSchema,
-  previousPageActionSchema,
-  reloadActionSchema,
-  scrollActionSchema,
-  scrollIntoViewActionSchema,
-  scrollToBottomActionSchema,
-  scrollToPercentActionSchema,
-  scrollToTextActionSchema,
-  scrollToTopActionSchema,
-  searchGoogleActionSchema,
-  selectDropdownOptionActionSchema,
-  sendKeysActionSchema,
-  snapshotActionSchema,
-  switchTabActionSchema,
-  typeActionSchema,
-  waitActionSchema,
-  doneActionSchema,
-  type ActionSchema,
-  cacheContentActionSchema,
-} from './schemas';
-import { z } from 'zod';
-import { createLogger } from '@src/background/log';
-import { ExecutionState, Actors } from '../event/types';
-import { wrapUntrustedContent } from '../messages/utils';
+  createBackAction,
+  createForwardAction,
+  createGoBackAction,
+  createGoToUrlAction,
+  createOpenAction,
+  createReloadAction,
+  createSearchGoogleAction,
+  createWaitAction,
+} from './navigation';
+import {
+  createClickAction,
+  createClickElementAction,
+  createFillAction,
+  createGetDropdownOptionsAction,
+  createInputTextAction,
+  createPressAction,
+  createSelectDropdownOptionAction,
+  createSendKeysAction,
+  createTypeAction,
+} from './interaction';
+import {
+  createNextPageAction,
+  createPreviousPageAction,
+  createScrollAction,
+  createScrollIntoViewAction,
+  createScrollToBottomAction,
+  createScrollToPercentAction,
+  createScrollToTextAction,
+  createScrollToTopAction,
+} from './scroll';
+import {
+  createCacheContentAction,
+  createGetTextAction,
+  createGetTitleAction,
+  createGetUrlAction,
+  createSnapshotAction,
+} from './content';
+import { createCloseTabAction, createOpenTabAction, createSwitchTabAction } from './tabs';
 
-const logger = createLogger('Action');
+export { Action, InvalidInputError, buildDynamicActionSchema } from './action';
+
 const AGENT_BROWSER_V1_ALLOWED_ACTIONS = new Set([
   'done',
   'search_google',
@@ -67,156 +66,6 @@ const AGENT_BROWSER_V1_ALLOWED_ACTIONS = new Set([
   'cache_content',
 ]);
 
-export class InvalidInputError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'InvalidInputError';
-  }
-}
-
-function getObjectSchemaShape(schema: z.ZodType): Record<string, z.ZodTypeAny> | null {
-  if (!(schema instanceof z.ZodObject)) {
-    return null;
-  }
-  return schema.shape as Record<string, z.ZodTypeAny>;
-}
-
-function parseRefToIndex(selector: unknown): number | null {
-  if (typeof selector !== 'string') {
-    return null;
-  }
-  const trimmed = selector.trim();
-  const match = /^@e(\d+)$/i.exec(trimmed);
-  if (!match) {
-    return null;
-  }
-  return Number.parseInt(match[1], 10);
-}
-
-/**
- * An action is a function that takes an input and returns an ActionResult
- */
-export class Action<TInput = unknown> {
-  beforeCall?: (action: string, input: unknown) => Promise<void>;
-  constructor(
-    private readonly handler: (input: TInput) => Promise<ActionResult>,
-    public readonly schema: ActionSchema,
-    // Whether this action has an index argument
-    public readonly hasIndex: boolean = false,
-  ) {}
-
-  async call(input: unknown): Promise<ActionResult> {
-    // Validate input before calling the handler
-    const schema = this.schema.schema;
-    const schemaShape = getObjectSchemaShape(schema);
-
-    // check if the schema is schema: z.object({}), if so, ignore the input
-    const isEmptySchema = schemaShape !== null && Object.keys(schemaShape).length === 0;
-
-    if (isEmptySchema) {
-      await this.beforeCall?.(this.name(), {});
-      return await this.handler({} as TInput);
-    }
-
-    const parsedArgs = this.schema.schema.safeParse(input);
-    if (!parsedArgs.success) {
-      const errorMessage = parsedArgs.error.message;
-      throw new InvalidInputError(errorMessage);
-    }
-    await this.beforeCall?.(this.name(), parsedArgs.data);
-    return await this.handler(parsedArgs.data as TInput);
-  }
-
-  name() {
-    return this.schema.name;
-  }
-
-  /**
-   * Returns the prompt for the action
-   * @returns {string} The prompt for the action
-   */
-  prompt() {
-    const schemaShape = getObjectSchemaShape(this.schema.schema) ?? {};
-    const schemaProperties = Object.entries(schemaShape).map(([key, value]) => {
-      const zodValue = value as z.ZodTypeAny;
-      return `'${key}': {'type': '${zodValue.description}', ${zodValue.isOptional() ? "'optional': true" : "'required': true"}}`;
-    });
-
-    const schemaStr =
-      schemaProperties.length > 0 ? `{${this.name()}: {${schemaProperties.join(', ')}}}` : `{${this.name()}: {}}`;
-
-    return `${this.schema.description}:\n${schemaStr}`;
-  }
-
-  /**
-   * Get the index argument from the input if this action has an index
-   * @param input The input to extract the index from
-   * @returns The index value if found, null otherwise
-   */
-  getIndexArg(input: unknown): number | null {
-    if (!this.hasIndex) {
-      return null;
-    }
-    if (!input || typeof input !== 'object') {
-      return null;
-    }
-
-    if ('index' in input) {
-      const index = (input as { index?: unknown }).index;
-      if (typeof index === 'number' && Number.isInteger(index)) {
-        return index;
-      }
-    }
-
-    if ('selector' in input) {
-      return parseRefToIndex((input as { selector?: unknown }).selector);
-    }
-
-    return null;
-  }
-
-  /**
-   * Set the index argument in the input if this action has an index
-   * @param input The input to update the index in
-   * @param newIndex The new index value to set
-   * @returns Whether the index was set successfully
-   */
-  setIndexArg(input: unknown, newIndex: number): boolean {
-    if (!this.hasIndex) {
-      return false;
-    }
-    if (input && typeof input === 'object') {
-      if ('selector' in input && typeof (input as { selector?: unknown }).selector === 'string') {
-        (input as { selector: string }).selector = `@e${newIndex}`;
-        return true;
-      }
-
-      if ('index' in input) {
-        (input as { index: number }).index = newIndex;
-        return true;
-      }
-
-      (input as { index: number }).index = newIndex;
-      return true;
-    }
-    return false;
-  }
-}
-
-// TODO: can not make every action optional, don't know why
-export function buildDynamicActionSchema(actions: Action[]): z.ZodType {
-  let schema = z.object({});
-  for (const action of actions) {
-    // create a schema for the action, it could be action.schema.schema or null
-    // but don't use default: null as it causes issues with Google Generative AI
-    const actionSchema = action.schema.schema;
-    schema = schema.extend({
-      [action.name()]: actionSchema.nullable().optional().describe(action.schema.description),
-    });
-  }
-  return schema;
-}
-
 export class ActionBuilder {
   private readonly context: AgentContext;
 
@@ -224,710 +73,45 @@ export class ActionBuilder {
     this.context = context;
   }
 
+  // The order of this list is part of the prompt contract: do not reorder without updating the order-guard test.
   buildDefaultActions() {
-    const actions = [];
-
-    const done = new Action(async (input: z.infer<typeof doneActionSchema.schema>) => {
-      this.context.finalAnswer = input.text;
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, doneActionSchema.name);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, input.text);
-      return new ActionResult({
-        isDone: true,
-        extractedContent: input.text,
-      });
-    }, doneActionSchema);
-    actions.push(done);
-
-    const searchGoogle = new Action(async (input: z.infer<typeof searchGoogleActionSchema.schema>) => {
-      const context = this.context;
-      const intent = input.intent || t('act_searchGoogle_start', [input.query]);
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-
-      await context.browserContext.navigateTo(`https://www.google.com/search?q=${input.query}`);
-
-      const msg2 = t('act_searchGoogle_ok', [input.query]);
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg2);
-      return new ActionResult({
-        // Mark this as a completion checkpoint so the executor can trigger a planner validation
-        // on the next cycle instead of continuing blind navigation loops.
-        isDone: true,
-        extractedContent: msg2,
-        includeInMemory: true,
-      });
-    }, searchGoogleActionSchema);
-    actions.push(searchGoogle);
-
-    const navigateToUrl = async (intent: string, url: string): Promise<ActionResult> => {
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      await this.context.browserContext.navigateTo(url);
-      const msg = t('act_goToUrl_ok', [url]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({
-        extractedContent: msg,
-        includeInMemory: true,
-      });
-    };
-
-    const open = new Action(async (input: z.infer<typeof openActionSchema.schema>) => {
-      const intent = input.intent || t('act_goToUrl_start', [input.url]);
-      return navigateToUrl(intent, input.url);
-    }, openActionSchema);
-    actions.push(open);
-
-    // Legacy alias kept for compatibility with older histories/prompts.
-    const goToUrl = new Action(async (input: z.infer<typeof goToUrlActionSchema.schema>) => {
-      const intent = input.intent || t('act_goToUrl_start', [input.url]);
-      return navigateToUrl(intent, input.url);
-    }, goToUrlActionSchema);
-    actions.push(goToUrl);
-
-    const navigateBack = async (intent: string): Promise<ActionResult> => {
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      await page.goBack();
-      const msg = t('act_goBack_ok');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({
-        extractedContent: msg,
-        includeInMemory: true,
-      });
-    };
-
-    const back = new Action(async (input: z.infer<typeof backActionSchema.schema>) => {
-      const intent = input.intent || t('act_goBack_start');
-      return navigateBack(intent);
-    }, backActionSchema);
-    actions.push(back);
-
-    // Legacy alias kept for compatibility with older histories/prompts.
-    const goBack = new Action(async (input: z.infer<typeof goBackActionSchema.schema>) => {
-      const intent = input.intent || t('act_goBack_start');
-      return navigateBack(intent);
-    }, goBackActionSchema);
-    actions.push(goBack);
-
-    const forward = new Action(async (input: z.infer<typeof forwardActionSchema.schema>) => {
-      const intent = input.intent || 'Navigate forward';
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      await page.goForward();
-      const msg = 'Navigated forward';
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, forwardActionSchema);
-    actions.push(forward);
-
-    const reload = new Action(async (input: z.infer<typeof reloadActionSchema.schema>) => {
-      const intent = input.intent || 'Reload current page';
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      await page.refreshPage();
-      const msg = 'Page reloaded';
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, reloadActionSchema);
-    actions.push(reload);
-
-    const wait = new Action(async (input: z.infer<typeof waitActionSchema.schema>) => {
-      const seconds = input.seconds || 3;
-      const intent = input.intent || t('act_wait_start', [seconds.toString()]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      await new Promise(resolve => setTimeout(resolve, seconds * 1000));
-      const msg = t('act_wait_ok', [seconds.toString()]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, waitActionSchema);
-    actions.push(wait);
-
-    // Element Interaction Actions
-    const clickBySelector = async (selector: string, intent: string): Promise<ActionResult> => {
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-
-      const normalizedSelector = selector.trim();
-      if (!normalizedSelector) {
-        throw new Error('Selector cannot be empty');
-      }
-
-      const page = await this.context.browserContext.getCurrentPage();
-      const state = await page.getState();
-      const elementNode = page.getDomElementBySelector(normalizedSelector, state.selectorMap);
-
-      if (elementNode && page.isFileUploader(elementNode)) {
-        const msg = t('act_click_fileUploader', [normalizedSelector]);
-        logger.info(msg);
-        return new ActionResult({
-          extractedContent: msg,
-          includeInMemory: true,
-        });
-      }
-
-      try {
-        const initialTabIds = await this.context.browserContext.getAllTabIds();
-        await page.clickBySelector(this.context.options.useVision, normalizedSelector, elementNode);
-
-        // Send ripple effect to overlay when selector maps to a known interactive element.
-        if (elementNode?.viewportCoordinates?.center) {
-          const tabId = this.context.browserContext.currentTabId;
-          if (tabId) {
-            chrome.tabs
-              .sendMessage(tabId, {
-                type: 'qagent:overlay:ripple',
-                x: elementNode.viewportCoordinates.center.x,
-                y: elementNode.viewportCoordinates.center.y,
-              })
-              .catch(() => {});
-          }
-        }
-
-        const elementText = elementNode?.getAllTextTillNextClickableElement(2) || normalizedSelector;
-        let msg = t('act_click_ok', [normalizedSelector, elementText]);
-        logger.info(msg);
-
-        // TODO: could be optimized by chrome extension tab api
-        const currentTabIds = await this.context.browserContext.getAllTabIds();
-        if (currentTabIds.size > initialTabIds.size) {
-          const newTabMsg = t('act_click_newTabOpened');
-          msg += ` - ${newTabMsg}`;
-          logger.info(newTabMsg);
-          const newTabId = Array.from(currentTabIds).find(id => !initialTabIds.has(id));
-          if (newTabId) {
-            await this.context.browserContext.switchTab(newTabId);
-          }
-        }
-        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-        return new ActionResult({ extractedContent: msg, includeInMemory: true });
-      } catch (error) {
-        const msg = t('act_errors_elementNoLongerAvailable', [normalizedSelector]);
-        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-        return new ActionResult({
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    };
-
-    const writeTextBySelector = async (
-      selector: string,
-      text: string,
-      intent: string,
-      clearBeforeTyping: boolean,
-    ): Promise<ActionResult> => {
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-
-      const normalizedSelector = selector.trim();
-      if (!normalizedSelector) {
-        throw new Error('Selector cannot be empty');
-      }
-
-      const page = await this.context.browserContext.getCurrentPage();
-      await page.inputTextBySelector(this.context.options.useVision, normalizedSelector, text, {
-        clearBeforeTyping,
-      });
-
-      const msg = t('act_inputText_ok', [text, normalizedSelector]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    };
-
-    const click = new Action(
-      async (input: z.infer<typeof clickActionSchema.schema>) => {
-        const intent = input.intent || t('act_click_start', [input.selector]);
-        return clickBySelector(input.selector, intent);
-      },
-      clickActionSchema,
-      true,
-    );
-    actions.push(click);
-
-    // Legacy alias kept for compatibility with older histories/prompts.
-    const clickElement = new Action(
-      async (input: z.infer<typeof clickElementActionSchema.schema>) => {
-        const intent = input.intent || t('act_click_start', [input.index.toString()]);
-        return clickBySelector(`@e${input.index}`, intent);
-      },
-      clickElementActionSchema,
-      true,
-    );
-    actions.push(clickElement);
-
-    const fill = new Action(
-      async (input: z.infer<typeof fillActionSchema.schema>) => {
-        const intent = input.intent || t('act_inputText_start', [input.selector]);
-        return writeTextBySelector(input.selector, input.text, intent, true);
-      },
-      fillActionSchema,
-      true,
-    );
-    actions.push(fill);
-
-    const type = new Action(
-      async (input: z.infer<typeof typeActionSchema.schema>) => {
-        const intent = input.intent || t('act_inputText_start', [input.selector]);
-        return writeTextBySelector(input.selector, input.text, intent, false);
-      },
-      typeActionSchema,
-      true,
-    );
-    actions.push(type);
-
-    // Legacy alias kept for compatibility with older histories/prompts.
-    const inputText = new Action(
-      async (input: z.infer<typeof inputTextActionSchema.schema>) => {
-        const intent = input.intent || t('act_inputText_start', [input.index.toString()]);
-        return writeTextBySelector(`@e${input.index}`, input.text, intent, true);
-      },
-      inputTextActionSchema,
-      true,
-    );
-    actions.push(inputText);
-
-    const press = new Action(async (input: z.infer<typeof pressActionSchema.schema>) => {
-      const intent = input.intent || t('act_sendKeys_start', [input.key]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      await page.sendKeys(input.key);
-      const msg = t('act_sendKeys_ok', [input.key]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, pressActionSchema);
-    actions.push(press);
-
-    const scroll = new Action(async (input: z.infer<typeof scrollActionSchema.schema>) => {
-      const amount = input.pixels ?? 700;
-      const intent = input.intent || `Scroll ${input.direction} by ${amount}px`;
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-
-      const page = await this.context.browserContext.getCurrentPage();
-      await page.scrollByDirection(input.direction, amount);
-
-      const msg = `Scrolled ${input.direction} by ${amount}px`;
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, scrollActionSchema);
-    actions.push(scroll);
-
-    const scrollIntoView = new Action(async (input: z.infer<typeof scrollIntoViewActionSchema.schema>) => {
-      const intent = input.intent || `Scroll ${input.selector} into view`;
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      await page.scrollIntoViewBySelector(input.selector);
-      const msg = `Scrolled ${input.selector} into view`;
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, scrollIntoViewActionSchema);
-    actions.push(scrollIntoView);
-
-    const getText = new Action(async (input: z.infer<typeof getTextActionSchema.schema>) => {
-      const intent = input.intent || `Get text from ${input.selector}`;
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      const text = await page.getTextBySelector(input.selector);
-      const msg = wrapUntrustedContent(text || '(empty)');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, 'Text captured');
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, getTextActionSchema);
-    actions.push(getText);
-
-    const getTitle = new Action(async (input: z.infer<typeof getTitleActionSchema.schema>) => {
-      const intent = input.intent || 'Get current page title';
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      const msg = await page.title();
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, 'Title captured');
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, getTitleActionSchema);
-    actions.push(getTitle);
-
-    const getUrl = new Action(async (input: z.infer<typeof getUrlActionSchema.schema>) => {
-      const intent = input.intent || 'Get current page URL';
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      const msg = page.url();
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, 'URL captured');
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, getUrlActionSchema);
-    actions.push(getUrl);
-
-    const snapshot = new Action(async (input: z.infer<typeof snapshotActionSchema.schema>) => {
-      const intent = input.intent || 'Capture page snapshot';
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const browserState = await this.context.browserContext.getState(this.context.options.useVision);
-      const rawSnapshot = browserState.elementTree.clickableElementsToString(this.context.options.includeAttributes);
-      const msg = rawSnapshot ? wrapUntrustedContent(rawSnapshot) : 'empty page';
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, 'Snapshot captured');
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, snapshotActionSchema);
-    actions.push(snapshot);
-
-    // Tab Management Actions
-    const switchTab = new Action(async (input: z.infer<typeof switchTabActionSchema.schema>) => {
-      const intent = input.intent || t('act_switchTab_start', [input.tab_id.toString()]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      await this.context.browserContext.switchTab(input.tab_id);
-      const msg = t('act_switchTab_ok', [input.tab_id.toString()]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, switchTabActionSchema);
-    actions.push(switchTab);
-
-    const openTab = new Action(async (input: z.infer<typeof openTabActionSchema.schema>) => {
-      const intent = input.intent || t('act_openTab_start', [input.url]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      await this.context.browserContext.openTab(input.url);
-      const msg = t('act_openTab_ok', [input.url]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, openTabActionSchema);
-    actions.push(openTab);
-
-    const closeTab = new Action(async (input: z.infer<typeof closeTabActionSchema.schema>) => {
-      const intent = input.intent || t('act_closeTab_start', [input.tab_id.toString()]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      await this.context.browserContext.closeTab(input.tab_id);
-      const msg = t('act_closeTab_ok', [input.tab_id.toString()]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, closeTabActionSchema);
-    actions.push(closeTab);
-
-    // cache content for future use
-    const cacheContent = new Action(async (input: z.infer<typeof cacheContentActionSchema.schema>) => {
-      const intent = input.intent || t('act_cache_start', [input.content]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-
-      // cache content is untrusted content, it is not instructions
-      const rawMsg = t('act_cache_ok', [input.content]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, rawMsg);
-
-      const msg = wrapUntrustedContent(rawMsg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, cacheContentActionSchema);
-    actions.push(cacheContent);
-
-    // Scroll to percent
-    const scrollToPercent = new Action(async (input: z.infer<typeof scrollToPercentActionSchema.schema>) => {
-      const intent = input.intent || t('act_scrollToPercent_start');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-
-      if (input.index) {
-        const state = await page.getCachedState();
-        const elementNode = state?.selectorMap.get(input.index);
-        if (!elementNode) {
-          const errorMsg = t('act_errors_elementNotExist', [input.index.toString()]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({ error: errorMsg, includeInMemory: true });
-        }
-        logger.info(`Scrolling to percent: ${input.yPercent} with elementNode: ${elementNode.xpath}`);
-        await page.scrollToPercent(input.yPercent, elementNode);
-      } else {
-        await page.scrollToPercent(input.yPercent);
-      }
-      const msg = t('act_scrollToPercent_ok', [input.yPercent.toString()]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, scrollToPercentActionSchema);
-    actions.push(scrollToPercent);
-
-    // Scroll to top
-    const scrollToTop = new Action(async (input: z.infer<typeof scrollToTopActionSchema.schema>) => {
-      const intent = input.intent || t('act_scrollToTop_start');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      if (input.index) {
-        const state = await page.getCachedState();
-        const elementNode = state?.selectorMap.get(input.index);
-        if (!elementNode) {
-          const errorMsg = t('act_errors_elementNotExist', [input.index.toString()]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({ error: errorMsg, includeInMemory: true });
-        }
-        await page.scrollToPercent(0, elementNode);
-      } else {
-        await page.scrollToPercent(0);
-      }
-      const msg = t('act_scrollToTop_ok');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, scrollToTopActionSchema);
-    actions.push(scrollToTop);
-
-    // Scroll to bottom
-    const scrollToBottom = new Action(async (input: z.infer<typeof scrollToBottomActionSchema.schema>) => {
-      const intent = input.intent || t('act_scrollToBottom_start');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-      if (input.index) {
-        const state = await page.getCachedState();
-        const elementNode = state?.selectorMap.get(input.index);
-        if (!elementNode) {
-          const errorMsg = t('act_errors_elementNotExist', [input.index.toString()]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({ error: errorMsg, includeInMemory: true });
-        }
-        await page.scrollToPercent(100, elementNode);
-      } else {
-        await page.scrollToPercent(100);
-      }
-      const msg = t('act_scrollToBottom_ok');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, scrollToBottomActionSchema);
-    actions.push(scrollToBottom);
-
-    // Scroll to previous page
-    const previousPage = new Action(async (input: z.infer<typeof previousPageActionSchema.schema>) => {
-      const intent = input.intent || t('act_previousPage_start');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-
-      if (input.index) {
-        const state = await page.getCachedState();
-        const elementNode = state?.selectorMap.get(input.index);
-        if (!elementNode) {
-          const errorMsg = t('act_errors_elementNotExist', [input.index.toString()]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({ error: errorMsg, includeInMemory: true });
-        }
-
-        // Check if element is already at top of its scrollable area
-        try {
-          const [elementScrollTop] = await page.getElementScrollInfo(elementNode);
-          if (elementScrollTop === 0) {
-            const msg = t('act_errors_alreadyAtTop', [input.index.toString()]);
-            this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-            return new ActionResult({ extractedContent: msg, includeInMemory: true });
-          }
-        } catch (error) {
-          // If we can't get scroll info, let the scrollToPreviousPage method handle it
-          logger.warning(
-            `Could not get element scroll info: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }
-
-        await page.scrollToPreviousPage(elementNode);
-      } else {
-        // Check if page is already at top
-        const [initialScrollY] = await page.getScrollInfo();
-        if (initialScrollY === 0) {
-          const msg = t('act_errors_pageAlreadyAtTop');
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-          return new ActionResult({ extractedContent: msg, includeInMemory: true });
-        }
-
-        await page.scrollToPreviousPage();
-      }
-      const msg = t('act_previousPage_ok');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, previousPageActionSchema);
-    actions.push(previousPage);
-
-    // Scroll to next page
-    const nextPage = new Action(async (input: z.infer<typeof nextPageActionSchema.schema>) => {
-      const intent = input.intent || t('act_nextPage_start');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-      const page = await this.context.browserContext.getCurrentPage();
-
-      if (input.index) {
-        const state = await page.getCachedState();
-        const elementNode = state?.selectorMap.get(input.index);
-        if (!elementNode) {
-          const errorMsg = t('act_errors_elementNotExist', [input.index.toString()]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({ error: errorMsg, includeInMemory: true });
-        }
-
-        // Check if element is already at bottom of its scrollable area
-        try {
-          const [elementScrollTop, elementClientHeight, elementScrollHeight] =
-            await page.getElementScrollInfo(elementNode);
-          if (elementScrollTop + elementClientHeight >= elementScrollHeight) {
-            const msg = t('act_errors_alreadyAtBottom', [input.index.toString()]);
-            this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-            return new ActionResult({ extractedContent: msg, includeInMemory: true });
-          }
-        } catch (error) {
-          // If we can't get scroll info, let the scrollToNextPage method handle it
-          logger.warning(
-            `Could not get element scroll info: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }
-
-        await page.scrollToNextPage(elementNode);
-      } else {
-        // Check if page is already at bottom
-        const [initialScrollY, initialVisualViewportHeight, initialScrollHeight] = await page.getScrollInfo();
-        if (initialScrollY + initialVisualViewportHeight >= initialScrollHeight) {
-          const msg = t('act_errors_pageAlreadyAtBottom');
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-          return new ActionResult({ extractedContent: msg, includeInMemory: true });
-        }
-
-        await page.scrollToNextPage();
-      }
-      const msg = t('act_nextPage_ok');
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, nextPageActionSchema);
-    actions.push(nextPage);
-
-    // Scroll to text
-    const scrollToText = new Action(async (input: z.infer<typeof scrollToTextActionSchema.schema>) => {
-      const intent = input.intent || t('act_scrollToText_start', [input.text, input.nth.toString()]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-
-      const page = await this.context.browserContext.getCurrentPage();
-      try {
-        const scrolled = await page.scrollToText(input.text, input.nth);
-        const msg = scrolled
-          ? t('act_scrollToText_ok', [input.text, input.nth.toString()])
-          : t('act_scrollToText_notFound', [input.text, input.nth.toString()]);
-        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-        return new ActionResult({ extractedContent: msg, includeInMemory: true });
-      } catch (error) {
-        const msg = t('act_scrollToText_failed', [error instanceof Error ? error.message : String(error)]);
-        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-        return new ActionResult({ error: msg, includeInMemory: true });
-      }
-    }, scrollToTextActionSchema);
-    actions.push(scrollToText);
-
-    // Keyboard Actions
-    const sendKeys = new Action(async (input: z.infer<typeof sendKeysActionSchema.schema>) => {
-      const intent = input.intent || t('act_sendKeys_start', [input.keys]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-
-      const page = await this.context.browserContext.getCurrentPage();
-      await page.sendKeys(input.keys);
-      const msg = t('act_sendKeys_ok', [input.keys]);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-      return new ActionResult({ extractedContent: msg, includeInMemory: true });
-    }, sendKeysActionSchema);
-    actions.push(sendKeys);
-
-    // Get all options from a native dropdown
-    const getDropdownOptions = new Action(
-      async (input: z.infer<typeof getDropdownOptionsActionSchema.schema>) => {
-        const intent = input.intent || t('act_getDropdownOptions_start', [input.index.toString()]);
-        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-
-        const page = await this.context.browserContext.getCurrentPage();
-        const state = await page.getState();
-
-        const elementNode = state?.selectorMap.get(input.index);
-        if (!elementNode) {
-          const errorMsg = t('act_errors_elementNotExist', [input.index.toString()]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({
-            error: errorMsg,
-            includeInMemory: true,
-          });
-        }
-
-        try {
-          // Use the existing getDropdownOptions method
-          const options = await page.getDropdownOptions(input.index);
-
-          if (options && options.length > 0) {
-            // Format options for display
-            const formattedOptions: string[] = options.map(opt => {
-              // Encoding ensures AI uses the exact string in select_dropdown_option
-              const encodedText = JSON.stringify(opt.text);
-              return `${opt.index}: text=${encodedText}`;
-            });
-
-            let msg = formattedOptions.join('\n');
-            msg += '\n' + t('act_getDropdownOptions_useExactText');
-            this.context.emitEvent(
-              Actors.NAVIGATOR,
-              ExecutionState.ACT_OK,
-              t('act_getDropdownOptions_ok', [options.length.toString()]),
-            );
-            return new ActionResult({
-              extractedContent: msg,
-              includeInMemory: true,
-            });
-          }
-
-          // This code should not be reached as getDropdownOptions throws an error when no options found
-          // But keeping as fallback
-          const msg = t('act_getDropdownOptions_noOptions');
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-          return new ActionResult({
-            extractedContent: msg,
-            includeInMemory: true,
-          });
-        } catch (error) {
-          const errorMsg = t('act_getDropdownOptions_failed', [error instanceof Error ? error.message : String(error)]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({
-            error: errorMsg,
-            includeInMemory: true,
-          });
-        }
-      },
-      getDropdownOptionsActionSchema,
-      true,
-    );
-    actions.push(getDropdownOptions);
-
-    // Select dropdown option for interactive element index by the text of the option you want to select'
-    const selectDropdownOption = new Action(
-      async (input: z.infer<typeof selectDropdownOptionActionSchema.schema>) => {
-        const intent = input.intent || t('act_selectDropdownOption_start', [input.text, input.index.toString()]);
-        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-
-        const page = await this.context.browserContext.getCurrentPage();
-        const state = await page.getState();
-
-        const elementNode = state?.selectorMap.get(input.index);
-        if (!elementNode) {
-          const errorMsg = t('act_errors_elementNotExist', [input.index.toString()]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({
-            error: errorMsg,
-            includeInMemory: true,
-          });
-        }
-
-        // Validate that we're working with a select element
-        if (!elementNode.tagName || elementNode.tagName.toLowerCase() !== 'select') {
-          const errorMsg = t('act_selectDropdownOption_notSelect', [
-            input.index.toString(),
-            elementNode.tagName || 'unknown',
-          ]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({
-            error: errorMsg,
-            includeInMemory: true,
-          });
-        }
-
-        logger.debug(`Attempting to select '${input.text}' using xpath: ${elementNode.xpath}`);
-
-        try {
-          const result = await page.selectDropdownOption(input.index, input.text);
-          const msg = t('act_selectDropdownOption_ok', [input.text, input.index.toString()]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
-          return new ActionResult({
-            extractedContent: result,
-            includeInMemory: true,
-          });
-        } catch (error) {
-          const errorMsg = t('act_selectDropdownOption_failed', [
-            error instanceof Error ? error.message : String(error),
-          ]);
-          this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-          return new ActionResult({
-            error: errorMsg,
-            includeInMemory: true,
-          });
-        }
-      },
-      selectDropdownOptionActionSchema,
-      true,
-    );
-    actions.push(selectDropdownOption);
+    const context = this.context;
+    const actions = [
+      createDoneAction(context),
+      createSearchGoogleAction(context),
+      createOpenAction(context),
+      createGoToUrlAction(context),
+      createBackAction(context),
+      createGoBackAction(context),
+      createForwardAction(context),
+      createReloadAction(context),
+      createWaitAction(context),
+      createClickAction(context),
+      createClickElementAction(context),
+      createFillAction(context),
+      createTypeAction(context),
+      createInputTextAction(context),
+      createPressAction(context),
+      createScrollAction(context),
+      createScrollIntoViewAction(context),
+      createGetTextAction(context),
+      createGetTitleAction(context),
+      createGetUrlAction(context),
+      createSnapshotAction(context),
+      createSwitchTabAction(context),
+      createOpenTabAction(context),
+      createCloseTabAction(context),
+      createCacheContentAction(context),
+      createScrollToPercentAction(context),
+      createScrollToTopAction(context),
+      createScrollToBottomAction(context),
+      createPreviousPageAction(context),
+      createNextPageAction(context),
+      createScrollToTextAction(context),
+      createSendKeysAction(context),
+      createGetDropdownOptionsAction(context),
+      createSelectDropdownOptionAction(context),
+    ];
 
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
       return actions

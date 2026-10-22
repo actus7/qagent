@@ -1,0 +1,15 @@
+import { ActionResult, type AgentContext } from '@src/background/agent/types';
+import { t } from '@extension/i18n';
+import { createLogger } from '@src/background/log';
+import { Actors, ExecutionState } from '../event/types';
+
+export const logger = createLogger('Action');
+
+/**
+ * Emits the failure event and builds the result returned when an indexed element is missing.
+ */
+export function elementNotExistResult(context: AgentContext, index: number): ActionResult {
+  const errorMsg = t('act_errors_elementNotExist', [index.toString()]);
+  context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
+  return new ActionResult({ error: errorMsg, includeInMemory: true });
+}
