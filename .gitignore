@@ -38,3 +38,4 @@ chrome-extension/public/manifest.json
 # local AI tooling (not project code)
 .agent/
 .agents/
+.claude/worktrees/

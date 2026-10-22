@@ -14,7 +14,7 @@ import {
   removeHighlights as _removeHighlights,
   getScrollInfo as _getScrollInfo,
 } from './dom/service';
-import { DOMElementNode, type DOMState } from './dom/views';
+import type { DOMElementNode, DOMState } from './dom/views';
 import { type BrowserContextConfig, DEFAULT_BROWSER_CONTEXT_CONFIG, type PageState, URLNotAllowedError } from './views';
 import { createLogger } from '@src/background/log';
 import { ClickableElementProcessor } from './dom/clickable/service';
