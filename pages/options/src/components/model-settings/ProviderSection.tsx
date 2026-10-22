@@ -6,8 +6,7 @@ import type { ProviderSettings } from './useProviderSettings';
 
 /** "LLM Providers" card: the list of configured providers plus the add menu. */
 export function ProviderSection({ settings }: { settings: ProviderSettings }) {
-  const { sortedProviders, providers } = settings;
-  const providerIds = Object.keys(providers);
+  const { sortedProviders } = settings;
 
   return (
     <div className={SECTION_CARD_CLASS}>
@@ -18,12 +17,12 @@ export function ProviderSection({ settings }: { settings: ProviderSettings }) {
             <p className="mb-4">{t('options_models_providers_notConfigured')}</p>
           </div>
         ) : (
-          sortedProviders.map(([providerId, config]) => (
+          sortedProviders.map(([providerId, config], index) => (
             <ProviderCard
               key={providerId}
               providerId={providerId}
               config={config}
-              showDivider={providerIds.indexOf(providerId) < providerIds.length - 1}
+              showDivider={index < sortedProviders.length - 1}
               settings={settings}
             />
           ))
