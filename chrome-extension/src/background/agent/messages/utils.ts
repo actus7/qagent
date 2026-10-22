@@ -7,20 +7,17 @@ import { ResponseParseError } from '../agents/errors';
 /**
  * Tag for untrusted content
  */
-export const UNTRUSTED_CONTENT_TAG_START = '<nano_untrusted_content>';
-export const UNTRUSTED_CONTENT_TAG_END = '</nano_untrusted_content>';
+const UNTRUSTED_CONTENT_TAG_START = '<nano_untrusted_content>';
+const UNTRUSTED_CONTENT_TAG_END = '</nano_untrusted_content>';
 
 /**
  * Tag for user request
  */
-export const USER_REQUEST_TAG_START = '<nano_user_request>';
-export const USER_REQUEST_TAG_END = '</nano_user_request>';
+const USER_REQUEST_TAG_START = '<nano_user_request>';
+const USER_REQUEST_TAG_END = '</nano_user_request>';
 
-export const ATTACHED_FILES_TAG_START = '<nano_attached_files>';
-export const ATTACHED_FILES_TAG_END = '</nano_attached_files>';
-
-export const FILE_CONTENT_TAG_START = '<nano_file_content>';
-export const FILE_CONTENT_TAG_END = '</nano_file_content>';
+const ATTACHED_FILES_TAG_START = '<nano_attached_files>';
+const ATTACHED_FILES_TAG_END = '</nano_attached_files>';
 
 /**
  * Remove think tags from model output

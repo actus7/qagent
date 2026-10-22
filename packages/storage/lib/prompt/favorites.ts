@@ -100,7 +100,9 @@ function createDefaultFavoritePrompts(locale: SupportedLocale): FavoritePrompt[]
 
 function inferTemplateId(prompt: FavoritePrompt): QuickStartTemplateId | undefined {
   for (const templateId of quickStartTemplateOrder) {
-    const matchesAnyContent = supportedLocales.some(locale => quickStartTemplates[locale][templateId].content === prompt.content);
+    const matchesAnyContent = supportedLocales.some(
+      locale => quickStartTemplates[locale][templateId].content === prompt.content,
+    );
     if (!matchesAnyContent) {
       continue;
     }
@@ -178,13 +180,13 @@ export interface FavoritePrompt {
 }
 
 // Define the favorites storage type
-export interface FavoritesStorage {
+interface FavoritesStorage {
   nextId: number;
   prompts: FavoritePrompt[];
 }
 
 // Define the interface for favorite prompts storage operations
-export interface FavoritePromptsStorage {
+interface FavoritePromptsStorage {
   addPrompt: (title: string, content: string) => Promise<FavoritePrompt>;
   updatePrompt: (id: number, title: string, content: string) => Promise<FavoritePrompt | undefined>;
   updatePromptTitle: (id: number, title: string) => Promise<FavoritePrompt | undefined>;
@@ -209,7 +211,7 @@ const favoritesStorage: BaseStorage<FavoritesStorage> = createStorage('favorites
 /**
  * Creates a storage interface for managing favorite prompts
  */
-export function createFavoritesStorage(): FavoritePromptsStorage {
+function createFavoritesStorage(): FavoritePromptsStorage {
   return {
     addPrompt: async (title: string, content: string): Promise<FavoritePrompt> => {
       // Check if prompt with same content already exists

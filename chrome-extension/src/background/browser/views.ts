@@ -1,7 +1,7 @@
 import type { DOMState } from './dom/views';
 import type { DOMHistoryElement } from './dom/history/view';
 
-export interface BrowserContextWindowSize {
+interface BrowserContextWindowSize {
   width: number;
   height: number;
 }
@@ -126,11 +126,10 @@ export class BrowserStateHistory {
     this.title = state.title;
     this.tabs = state.tabs;
     this.interactedElements = interactedElements ?? [];
-    // this.screenshot = state.screenshot;
   }
 }
 
-export class BrowserError extends Error {
+class BrowserError extends Error {
   /**
    * Base class for all browser errors
    */

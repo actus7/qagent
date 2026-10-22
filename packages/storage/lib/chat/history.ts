@@ -50,10 +50,14 @@ const getSessionAgentStepHistoryStorage = (sessionId: string) => {
   const cachedStorage = sessionAgentStepHistoryStorageCache.get(sessionId);
   if (cachedStorage) return cachedStorage;
 
-  const storage = createStorage<ChatAgentStepHistory>(getSessionAgentStepHistoryKey(sessionId), EMPTY_AGENT_STEP_HISTORY, {
-    storageEnum: StorageEnum.Local,
-    liveUpdate: false,
-  });
+  const storage = createStorage<ChatAgentStepHistory>(
+    getSessionAgentStepHistoryKey(sessionId),
+    EMPTY_AGENT_STEP_HISTORY,
+    {
+      storageEnum: StorageEnum.Local,
+      liveUpdate: false,
+    },
+  );
   sessionAgentStepHistoryStorageCache.set(sessionId, storage);
   return storage;
 };
@@ -190,38 +194,47 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
     },
 
     addMessage: async (sessionId: string, message: Message): Promise<ChatMessage> => {
-      const newMessage: ChatMessage = {
-        ...message,
-        id: crypto.randomUUID(),
-      };
+      const writeMessage = async (): Promise<ChatMessage> => {
+        const newMessage: ChatMessage = {
+          ...message,
+          id: crypto.randomUUID(),
+        };
 
-      // First check if session exists and update metadata in a single operation
-      let sessionFound = false;
+        // First check if session exists and update metadata in a single operation
+        let sessionFound = false;
 
-      await chatSessionsMetaStorage.set(prevSessions => {
-        return prevSessions.map(session => {
-          if (session.id === sessionId) {
-            sessionFound = true;
-            return {
-              ...session,
-              updatedAt: getCurrentTimestamp(),
-              messageCount: session.messageCount + 1,
-            };
-          }
-          return session;
+        await chatSessionsMetaStorage.set(prevSessions => {
+          return prevSessions.map(session => {
+            if (session.id === sessionId) {
+              sessionFound = true;
+              return {
+                ...session,
+                updatedAt: getCurrentTimestamp(),
+                messageCount: session.messageCount + 1,
+              };
+            }
+            return session;
+          });
         });
-      });
 
-      // Throw error if session wasn't found
-      if (!sessionFound) {
-        throw new Error(`Session with ID ${sessionId} not found`);
-      }
+        // Throw error if session wasn't found
+        if (!sessionFound) {
+          throw new Error(`Session with ID ${sessionId} not found`);
+        }
 
-      // Only add the message if the session exists
-      const messagesStorage = getSessionMessagesStorage(sessionId);
-      await messagesStorage.set(prevMessages => [...prevMessages, newMessage]);
+        // Only add the message if the session exists
+        const messagesStorage = getSessionMessagesStorage(sessionId);
+        // Both the panel and the service worker write messages. This storage intentionally does not
+        // keep a live listener per session, so refresh before appending instead of using its old cache.
+        const currentMessages = await messagesStorage.get();
+        await messagesStorage.set([...currentMessages, newMessage]);
 
-      return newMessage;
+        return newMessage;
+      };
+      // Panel and service worker share an origin, so a Web Lock also serializes cross-context writes.
+      return globalThis.navigator?.locks
+        ? await navigator.locks.request('qagent-chat-history-write', writeMessage)
+        : await writeMessage();
     },
 
     deleteMessage: async (sessionId: string, messageId: string): Promise<void> => {

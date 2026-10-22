@@ -2,16 +2,16 @@ import { StorageEnum } from '../base/enums';
 import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
 
-export interface SpeechToTextModelConfig {
+interface SpeechToTextModelConfig {
   provider: string;
   modelName: string;
 }
 
-export interface SpeechToTextRecord {
+interface SpeechToTextRecord {
   speechToTextModel?: SpeechToTextModelConfig;
 }
 
-export type SpeechToTextStorage = BaseStorage<SpeechToTextRecord> & {
+type SpeechToTextStorage = BaseStorage<SpeechToTextRecord> & {
   setSpeechToTextModel: (config: SpeechToTextModelConfig) => Promise<void>;
   getSpeechToTextModel: () => Promise<SpeechToTextModelConfig | undefined>;
   resetSpeechToTextModel: () => Promise<void>;

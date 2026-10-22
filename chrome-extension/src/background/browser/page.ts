@@ -110,8 +110,22 @@ export default class Page {
     }
 
     logger.info('attaching puppeteer', this._tabId);
+    let transport: ExtensionTransport;
+    try {
+      transport = await ExtensionTransport.connectTab(this._tabId);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Host access is restricted by policy.')) {
+        throw new Error(
+          'O navegador bloqueou o controle da aba pela API chrome.debugger. ' +
+            'Isso também pode ocorrer no Comet sem políticas administrativas configuradas. ' +
+            'Use Conversar/Planejar ou execute a tarefa no Chrome/Chromium. ' +
+            `Detalhe: ${error.message}`,
+        );
+      }
+      throw error;
+    }
     const browser = await connect({
-      transport: await ExtensionTransport.connectTab(this._tabId),
+      transport,
       defaultViewport: null,
       protocol: 'cdp' as ProtocolType,
     });
@@ -1117,9 +1131,6 @@ export default class Page {
 
     try {
       // Highlight before typing
-      // if (elementNode.highlightIndex != null) {
-      //   await this._updateState(useVision, elementNode.highlightIndex);
-      // }
 
       const element = await this.locateElement(elementNode);
       if (!element) {
@@ -1301,9 +1312,6 @@ export default class Page {
 
     try {
       // Highlight before clicking
-      // if (elementNode.highlightIndex !== null) {
-      //   await this._updateState(useVision, elementNode.highlightIndex);
-      // }
 
       const element = await this.locateElement(elementNode);
       if (!element) {
@@ -1771,7 +1779,7 @@ export default class Page {
 
         const elapsedTime = (now - startTime) / 1000; // Convert to seconds
         if (elapsedTime > this._config.maximumWaitPageLoadTime) {
-          console.debug(
+          logger.debug(
             `Network timeout after ${this._config.maximumWaitPageLoadTime}s with ${pendingRequests.size} pending requests:`,
             Array.from(pendingRequests).map(r => (r as HTTPRequest).url()),
           );
@@ -1783,7 +1791,7 @@ export default class Page {
       this._puppeteerPage.off('request', onRequest);
       this._puppeteerPage.off('response', onResponse);
     }
-    console.debug(`Network stabilized for ${this._config.waitForNetworkIdlePageLoadTime} seconds`);
+    logger.debug(`Network stabilized for ${this._config.waitForNetworkIdlePageLoadTime} seconds`);
   }
 
   async waitForPageAndFramesLoad(timeoutOverwrite?: number): Promise<void> {
@@ -1802,7 +1810,7 @@ export default class Page {
       if (error instanceof URLNotAllowedError) {
         throw error;
       }
-      console.warn('Page load failed, continuing...', error);
+      logger.warning('Page load failed, continuing...', error);
     }
 
     // Calculate remaining time to meet minimum wait time
@@ -1810,7 +1818,7 @@ export default class Page {
     const minWaitTime = timeoutOverwrite || this._config.minimumWaitPageLoadTime;
     const remaining = Math.max(minWaitTime - elapsed, 0);
 
-    console.debug(
+    logger.debug(
       `--Page loaded in ${elapsed.toFixed(2)} seconds, waiting for additional ${remaining.toFixed(2)} seconds`,
     );
 

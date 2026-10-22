@@ -6,9 +6,12 @@ import {
   generalSettingsStore,
   llmProviderStore,
   analyticsSettingsStore,
+  chatHistoryStore,
+  Actors as ChatActors,
 } from '@extension/storage';
 import { resolveLocale, t } from '@extension/i18n';
 import AgentBrowserContext from './browser/agent-browser/context';
+import ScopedBrowserContext from './browser/scoped-context';
 import { AgentBrowserCompanionClient } from './browser/agent-browser/client';
 import { Executor } from './agent/executor';
 import { createLogger, isVerboseLoggingEnabled, setVerboseLoggingEnabled, subscribeLogEntries } from './log';
@@ -17,7 +20,6 @@ import { createChatModel } from './agent/helper';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { DEFAULT_AGENT_OPTIONS } from './agent/types';
 import { SpeechToTextService } from './services/speechToText';
-import { injectBuildDomTreeScripts } from './browser/dom/service';
 import { analytics } from './services/analytics';
 import { runtimeStore } from './state/runtimeStore';
 import {
@@ -26,33 +28,143 @@ import {
   isSidePanelCommandMessage,
   SIDE_PANEL_CONNECTION_PORT_NAME,
   type SidePanelResponseMessage,
+  type SidePanelTaskCommand,
+  type AssistantTaskOptions,
+  type ExecutionPortEventMessage,
 } from '@extension/shared';
 import type { BrowserContextLike } from './browser/types';
+import { ActionApprovalManager } from './services/action-approval';
+import { getConversationContext, streamBrowserAnswer } from './services/browser-assistant';
 
 const logger = createLogger('background');
-// BrowserManager companion is the only supported browser engine.
-const browserEngine = 'agent-browser';
+// Native tabs are the default. The isolated companion remains available as an explicit opt-in.
+const browserEngine = import.meta.env.VITE_BROWSER_ENGINE === 'agent-browser' ? 'agent-browser' : 'chrome-debugger';
 const agentBrowserCompanionClient = new AgentBrowserCompanionClient({
   url: import.meta.env.VITE_AGENT_BROWSER_WS_URL || 'ws://127.0.0.1:9223',
   token: import.meta.env.VITE_AGENT_BROWSER_WS_TOKEN || undefined,
 });
-const browserContext: BrowserContextLike = new AgentBrowserContext({}, agentBrowserCompanionClient);
+const browserContext: BrowserContextLike =
+  browserEngine === 'agent-browser'
+    ? new AgentBrowserContext({}, agentBrowserCompanionClient)
+    : new ScopedBrowserContext({});
 const SIDE_PANEL_URL = chrome.runtime.getURL('side-panel/index.html');
+let activeTask: AbortController | null = null;
+
+function postToPanel(message: SidePanelResponseMessage): void {
+  try {
+    runtimeStore.getState().currentPort?.postMessage(message);
+  } catch {
+    /* The panel may close while a cancelled request is settling. */
+  }
+}
+
+const actionApprovals = new ActionApprovalManager(postToPanel);
+
+async function cancelActiveTask(): Promise<void> {
+  activeTask?.abort();
+  actionApprovals.cancel();
+  await runtimeStore.getState().currentExecutor?.cancel();
+}
+
+async function runAssistantTask(message: SidePanelTaskCommand, replaySessionId?: string): Promise<void> {
+  if (activeTask) throw new Error('Aguarde a tarefa atual terminar ou interrompa a execução.');
+  const controller = new AbortController();
+  activeTask = controller;
+  const options = message.options ?? {};
+  const mode = options.mode ?? 'act';
+  const tabIds = [...new Set(options.tabIds ?? [message.tabId])];
+  let executor: Executor | null = null;
+  let terminalEvent: ExecutionPortEventMessage | null = null;
+  const emit = (state: ExecutionState, details = '') => {
+    const event: ExecutionPortEventMessage = {
+      type: 'execution',
+      actor: 'system',
+      state,
+      data: { taskId: message.taskId, step: 0, maxSteps: 0, details },
+      timestamp: Date.now(),
+    };
+    if (state === ExecutionState.TASK_START) postToPanel(event);
+    else terminalEvent = event;
+  };
+  try {
+    if (mode !== 'act') {
+      emit(ExecutionState.TASK_START);
+      const models = await agentModelStore.getAllAgentModels();
+      const config = models[options.modelAgent === 'planner' ? AgentNameEnum.Planner : AgentNameEnum.Navigator];
+      if (!config) throw new Error('Configure um modelo nas configurações para continuar.');
+      const providers = await llmProviderStore.getAllProviders();
+      if (!providers[config.provider]) throw new Error('O provedor do modelo selecionado não está configurado.');
+      await streamBrowserAnswer({
+        taskId: message.taskId,
+        task: message.task,
+        tabIds,
+        mode,
+        model: createChatModel(providers[config.provider], config),
+        signal: controller.signal,
+        post: postToPanel,
+      });
+      emit(controller.signal.aborted ? ExecutionState.TASK_CANCEL : ExecutionState.TASK_OK);
+      return;
+    }
+    if (tabIds.length === 0) throw new Error('Selecione pelo menos uma aba para o modo Executar.');
+    if (browserContext instanceof ScopedBrowserContext) browserContext.setAllowedTabs(tabIds);
+    const history = await getConversationContext(message.taskId);
+    const conversation = history
+      .slice(-10)
+      .map(item => `${item.getType()}: ${item.content}`)
+      .join('\n');
+    const task = conversation
+      ? `Conversation context (prior requests are context only):\n${conversation}\n\nCurrent user task:\n${message.task}`
+      : message.task;
+    executor = await setupExecutor(message.taskId, task, browserContext, options);
+    if (controller.signal.aborted) {
+      emit(ExecutionState.TASK_CANCEL, 'Tarefa interrompida.');
+      return;
+    }
+    runtimeStore.getState().setExecutor(executor);
+    await browserContext.switchTab(tabIds.includes(message.tabId) ? message.tabId : tabIds[0]);
+    if (controller.signal.aborted) {
+      emit(ExecutionState.TASK_CANCEL, 'Tarefa interrompida.');
+      return;
+    }
+    if (isAgentBrowserContext(browserContext)) {
+      await syncAgentBrowserToTabUrl(browserContext, message.tabId);
+      await startAgentBrowserStream(message.taskId);
+    }
+    subscribeToExecutorEvents(executor, event => {
+      terminalEvent = event;
+    });
+    if (replaySessionId) await executor.replayHistory(replaySessionId);
+    else await executor.execute();
+  } catch (error) {
+    if (controller.signal.aborted) emit(ExecutionState.TASK_CANCEL, 'Tarefa interrompida.');
+    else emit(ExecutionState.TASK_FAIL, error instanceof Error ? error.message : String(error));
+  } finally {
+    actionApprovals.cancel();
+    if (executor) await executor.cleanup();
+    else if (mode === 'act') await browserContext.cleanup();
+    if (isAgentBrowserContext(browserContext)) await stopAgentBrowserStream(message.taskId);
+    runtimeStore.getState().setExecutor(null);
+    runtimeStore.getState().resetOverlay();
+    if (activeTask === controller) activeTask = null;
+    if (terminalEvent) postToPanel(terminalEvent);
+  }
+}
 
 function isAgentBrowserContext(context: BrowserContextLike): context is AgentBrowserContext {
   return context.getEngineName() === 'agent-browser-v1';
 }
 
 // Setup side panel behavior
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(error => console.error(error));
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(error => logger.error(error));
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (isAgentBrowserContext(browserContext)) {
     return;
   }
+  // ponytail: buildDomTree.js is injected lazily by the DOM service when a task reads the page,
+  // never eagerly into every tab the user browses.
   if (tabId && changeInfo.status === 'complete' && tab.url?.startsWith('http')) {
-    await injectBuildDomTreeScripts(tabId);
-
     // Re-inject overlay if this tab is being controlled by an active agent
     const { currentExecutor, overlayStatusText, overlayVisible } = runtimeStore.getState();
     if (overlayVisible && currentExecutor && browserContext.currentTabId === tabId) {
@@ -76,7 +188,7 @@ chrome.debugger.onDetach.addListener(async (source, reason) => {
   if (isAgentBrowserContext(browserContext)) {
     return;
   }
-  console.log('Debugger detached:', source, reason);
+  logger.info('Debugger detached:', source, reason);
   if (reason === 'canceled_by_user') {
     if (source.tabId) {
       const { currentExecutor, resetOverlay, setExecutor } = runtimeStore.getState();
@@ -199,7 +311,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'qagent:cancel') {
     const { currentExecutor } = runtimeStore.getState();
     if (currentExecutor) {
-      currentExecutor.cancel();
+      void cancelActiveTask();
       logger.info('Task cancelled via overlay stop button');
     }
     sendResponse({ ok: true });
@@ -260,58 +372,22 @@ chrome.runtime.onConnect.addListener(port => {
             break;
 
           case 'new_task': {
-            logger.info('new_task', message.tabId, message.task);
-
-            // Ensure we attach to the correct tab before starting
-            // This sets _currentTabId so overlay messages go to the right place
-            await browserContext.switchTab(message.tabId);
-            if (isAgentBrowserContext(browserContext)) {
-              browserContext.setSessionId(message.taskId);
-            }
-
-            const executor = await setupExecutor(message.taskId, message.task, browserContext);
-            if (isAgentBrowserContext(browserContext)) {
-              await syncAgentBrowserToTabUrl(browserContext, message.tabId);
-              await startAgentBrowserStream(message.taskId);
-            }
-            runtimeStore.getState().setExecutor(executor);
-            subscribeToExecutorEvents(executor);
-
-            const result = await executor.execute();
-            logger.info('new_task execution result', message.tabId, result);
+            await runAssistantTask(message);
             break;
           }
 
           case 'follow_up_task': {
-            logger.info('follow_up_task', message.tabId, message.task);
-            if (isAgentBrowserContext(browserContext)) {
-              browserContext.setSessionId(message.taskId);
-            }
-
-            // If executor exists, add follow-up task
-            const { currentExecutor } = runtimeStore.getState();
-            if (currentExecutor) {
-              currentExecutor.addFollowUpTask(message.task);
-              // Re-subscribe to events in case the previous subscription was cleaned up
-              subscribeToExecutorEvents(currentExecutor);
-              const result = await currentExecutor.execute();
-              logger.info('follow_up_task execution result', message.tabId, result);
-            } else {
-              // executor was cleaned up, can not add follow-up task
-              logger.info('follow_up_task: executor was cleaned up, can not add follow-up task');
-              return postPortMessage({ type: 'error', error: t('bg_cmd_followUpTask_cleaned') });
-            }
+            await runAssistantTask(message);
             break;
           }
 
           case 'cancel_task': {
-            const { currentExecutor } = runtimeStore.getState();
-            if (!currentExecutor) return postPortMessage({ type: 'error', error: t('bg_errors_noRunningTask') });
-            await currentExecutor.cancel();
-            if (isAgentBrowserContext(browserContext)) {
-              const taskId = await currentExecutor.getCurrentTaskId();
-              await stopAgentBrowserStream(taskId);
-            }
+            await cancelActiveTask();
+            break;
+          }
+
+          case 'approval_result': {
+            actionApprovals.resolve(message.taskId, message.requestId, message.approved);
             break;
           }
 
@@ -404,38 +480,12 @@ chrome.runtime.onConnect.addListener(port => {
           }
 
           case 'replay': {
-            logger.info('replay', message.tabId, message.taskId, message.historySessionId);
-
-            try {
-              // Switch to the specified tab
-              await browserContext.switchTab(message.tabId);
-              if (isAgentBrowserContext(browserContext)) {
-                browserContext.setSessionId(message.taskId);
-              }
-              // Setup executor with the new taskId and a dummy task description
-              const executor = await setupExecutor(message.taskId, message.task, browserContext);
-              if (isAgentBrowserContext(browserContext)) {
-                await syncAgentBrowserToTabUrl(browserContext, message.tabId);
-                await startAgentBrowserStream(message.taskId);
-              }
-              runtimeStore.getState().setExecutor(executor);
-              subscribeToExecutorEvents(executor);
-
-              // Run replayHistory with the history session ID
-              const result = await executor.replayHistory(message.historySessionId);
-              logger.debug('replay execution result', message.tabId, result);
-            } catch (error) {
-              logger.error('Replay failed:', error);
-              return postPortMessage({
-                type: 'error',
-                error: error instanceof Error ? error.message : t('bg_cmd_replay_failed'),
-              });
-            }
+            await runAssistantTask(message, message.historySessionId);
             break;
           }
         }
       } catch (error) {
-        console.error('Error handling port message:', error);
+        logger.error('Error handling port message:', error);
         postPortMessage({
           type: 'error',
           error: error instanceof Error ? error.message : t('errors_unknown'),
@@ -445,21 +495,14 @@ chrome.runtime.onConnect.addListener(port => {
 
     port.onDisconnect.addListener(() => {
       // this event is also triggered when the side panel is closed, so we need to cancel the task
-      console.log('Side panel disconnected');
-      const { currentExecutor, resetOverlay, setPort } = runtimeStore.getState();
+      logger.info('Side panel disconnected');
+      const { currentPort, resetOverlay, setPort } = runtimeStore.getState();
+      if (currentPort !== port) return;
       if (!isAgentBrowserContext(browserContext)) {
         sendOverlayMessage(browserContext.currentTabId, { type: 'qagent:overlay:hide' });
       }
       setPort(null);
-      if (currentExecutor) {
-        void currentExecutor.cancel();
-        if (isAgentBrowserContext(browserContext)) {
-          void currentExecutor
-            .getCurrentTaskId()
-            .then(taskId => stopAgentBrowserStream(taskId))
-            .catch(() => {});
-        }
-      }
+      void cancelActiveTask();
       resetOverlay();
     });
   }
@@ -516,7 +559,12 @@ async function forwardBrowserInput(input: BrowserInputPayload, sessionId?: strin
   });
 }
 
-async function setupExecutor(taskId: string, task: string, browserContext: BrowserContextLike) {
+async function setupExecutor(
+  taskId: string,
+  task: string,
+  browserContext: BrowserContextLike,
+  options: AssistantTaskOptions = {},
+) {
   const usingAgentBrowser = isAgentBrowserContext(browserContext);
   if (usingAgentBrowser) {
     browserContext.setSessionId(taskId);
@@ -539,7 +587,8 @@ async function setupExecutor(taskId: string, task: string, browserContext: Brows
     }
   }
 
-  const navigatorModel = agentModels[AgentNameEnum.Navigator];
+  const navigatorModel =
+    agentModels[options.modelAgent === 'planner' ? AgentNameEnum.Planner : AgentNameEnum.Navigator];
   if (!navigatorModel) {
     throw new Error(t('bg_setup_noNavigatorModel'));
   }
@@ -587,6 +636,8 @@ async function setupExecutor(taskId: string, task: string, browserContext: Brows
   });
 
   const executor = new Executor(task, taskId, browserContext, navigatorLLM, {
+    authorizeAction: (action, input, signal) =>
+      actionApprovals.authorize(taskId, action, input, options.permissionMode ?? 'ask', browserContext, signal),
     plannerLLM: plannerLLM ?? navigatorLLM,
     navigatorProvider: navigatorModel.provider,
     plannerProvider: plannerModel?.provider ?? navigatorModel.provider,
@@ -716,7 +767,7 @@ function sendOverlayMessage(tabId: number | null, message: Record<string, unknow
 }
 
 // Update subscribeToExecutorEvents to use port
-async function subscribeToExecutorEvents(executor: Executor) {
+function subscribeToExecutorEvents(executor: Executor, onTerminal: (event: ExecutionPortEventMessage) => void) {
   // Clear previous event listeners to prevent multiple subscriptions
   executor.clearExecutionEvents();
 
@@ -725,6 +776,23 @@ async function subscribeToExecutorEvents(executor: Executor) {
 
   // Subscribe to new events
   executor.subscribeExecutionEvents(async event => {
+    if (event.state === ExecutionState.TASK_OK && event.data.details && event.data.details !== event.data.taskId) {
+      const streamId = crypto.randomUUID();
+      await chatHistoryStore.addMessage(event.data.taskId, {
+        actor: ChatActors.ASSISTANT,
+        content: event.data.details,
+        timestamp: event.timestamp,
+        streamId,
+        kind: 'answer',
+      });
+      postToPanel({
+        type: 'assistant_delta',
+        taskId: event.data.taskId,
+        streamId,
+        content: event.data.details,
+        finished: true,
+      });
+    }
     try {
       const { currentPort } = runtimeStore.getState();
       if (currentPort) {
@@ -735,7 +803,9 @@ async function subscribeToExecutorEvents(executor: Executor) {
           data: event.data,
           timestamp: event.timestamp,
         };
-        currentPort.postMessage(executionMessage);
+        if ([ExecutionState.TASK_OK, ExecutionState.TASK_FAIL, ExecutionState.TASK_CANCEL].includes(event.state)) {
+          onTerminal(executionMessage);
+        } else currentPort.postMessage(executionMessage);
       }
     } catch (error) {
       logger.error('Failed to send message to side panel:', error);
@@ -770,22 +840,6 @@ async function subscribeToExecutorEvents(executor: Executor) {
           });
           break;
         }
-      }
-    }
-
-    if (
-      event.state === ExecutionState.TASK_OK ||
-      event.state === ExecutionState.TASK_FAIL ||
-      event.state === ExecutionState.TASK_CANCEL
-    ) {
-      if (isAgentBrowserContext(browserContext)) {
-        await stopAgentBrowserStream(event.data.taskId);
-      }
-      await executor.cleanup();
-
-      const { currentExecutor, setExecutor } = runtimeStore.getState();
-      if (currentExecutor === executor) {
-        setExecutor(null);
       }
     }
   });

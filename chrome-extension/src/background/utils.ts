@@ -122,6 +122,5 @@ export function convertZodToJsonSchema(zodSchema: z.ZodType, name: string, addTi
       : undefined,
   });
 
-  // logger.info('Navigator json schema', JSON.stringify(jsonSchema, null, 2));
   return jsonSchema;
 }

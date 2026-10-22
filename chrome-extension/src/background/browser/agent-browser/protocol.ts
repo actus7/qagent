@@ -7,7 +7,7 @@ export interface RefMap {
   };
 }
 
-export type CompanionLoadState = 'load' | 'domcontentloaded' | 'networkidle';
+type CompanionLoadState = 'load' | 'domcontentloaded' | 'networkidle';
 
 export type CompanionAction =
   | { action: 'open'; url: string; waitUntil?: CompanionLoadState }
@@ -62,7 +62,7 @@ export interface CompanionRpcRequest {
   action: CompanionAction;
 }
 
-export interface CompanionRpcSuccess {
+interface CompanionRpcSuccess {
   type: 'rpc_response';
   id: string;
   success: true;
@@ -87,7 +87,7 @@ export interface CompanionRpcSuccess {
   };
 }
 
-export interface CompanionRpcFailure {
+interface CompanionRpcFailure {
   type: 'rpc_response';
   id: string;
   success: false;
@@ -124,12 +124,7 @@ export interface CompanionStatusMessage {
   message?: string;
 }
 
-export interface CompanionHelloMessage {
-  type: 'hello';
-  token: string;
-}
-
-export interface CompanionMouseInputMessage {
+interface CompanionMouseInputMessage {
   type: 'input_mouse';
   sessionId?: string;
   eventType: 'mousePressed' | 'mouseReleased' | 'mouseMoved' | 'mouseWheel';
@@ -142,7 +137,7 @@ export interface CompanionMouseInputMessage {
   modifiers?: number;
 }
 
-export interface CompanionKeyboardInputMessage {
+interface CompanionKeyboardInputMessage {
   type: 'input_keyboard';
   sessionId?: string;
   eventType: 'keyDown' | 'keyUp' | 'char';
@@ -152,7 +147,7 @@ export interface CompanionKeyboardInputMessage {
   modifiers?: number;
 }
 
-export interface CompanionTouchInputMessage {
+interface CompanionTouchInputMessage {
   type: 'input_touch';
   sessionId?: string;
   eventType: 'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel';
@@ -160,6 +155,9 @@ export interface CompanionTouchInputMessage {
   modifiers?: number;
 }
 
-export type CompanionInputMessage = CompanionMouseInputMessage | CompanionKeyboardInputMessage | CompanionTouchInputMessage;
+export type CompanionInputMessage =
+  | CompanionMouseInputMessage
+  | CompanionKeyboardInputMessage
+  | CompanionTouchInputMessage;
 
 export type CompanionInboundMessage = CompanionRpcResponse | CompanionFrameMessage | CompanionStatusMessage;

@@ -17,7 +17,7 @@ export interface GeneralSettingsConfig {
   language: string;
 }
 
-export type GeneralSettingsStorage = BaseStorage<GeneralSettingsConfig> & {
+type GeneralSettingsStorage = BaseStorage<GeneralSettingsConfig> & {
   updateSettings: (settings: Partial<GeneralSettingsConfig>) => Promise<void>;
   getSettings: () => Promise<GeneralSettingsConfig>;
   resetToDefaults: () => Promise<void>;

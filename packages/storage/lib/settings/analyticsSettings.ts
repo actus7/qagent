@@ -3,12 +3,12 @@ import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
 
 // Interface for analytics settings configuration
-export interface AnalyticsSettingsConfig {
+interface AnalyticsSettingsConfig {
   enabled: boolean;
   anonymousUserId: string;
 }
 
-export type AnalyticsSettingsStorage = BaseStorage<AnalyticsSettingsConfig> & {
+type AnalyticsSettingsStorage = BaseStorage<AnalyticsSettingsConfig> & {
   updateSettings: (settings: Partial<AnalyticsSettingsConfig>) => Promise<void>;
   getSettings: () => Promise<AnalyticsSettingsConfig>;
   resetToDefaults: () => Promise<void>;
@@ -21,7 +21,7 @@ function generateAnonymousUserId(): string {
 }
 
 // Default settings - enabled by default as per requirements
-export const DEFAULT_ANALYTICS_SETTINGS: AnalyticsSettingsConfig = {
+const DEFAULT_ANALYTICS_SETTINGS: AnalyticsSettingsConfig = {
   enabled: true,
   anonymousUserId: '',
 };

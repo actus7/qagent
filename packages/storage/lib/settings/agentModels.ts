@@ -31,11 +31,11 @@ export interface ModelConfig {
 }
 
 // Interface for storing multiple agent model configurations
-export interface AgentModelRecord {
+interface AgentModelRecord {
   agents: Record<AgentNameEnum, ModelConfig>;
 }
 
-export type AgentModelStorage = BaseStorage<AgentModelRecord> & {
+type AgentModelStorage = BaseStorage<AgentModelRecord> & {
   setAgentModel: (agent: AgentNameEnum, config: ModelConfig) => Promise<void>;
   getAgentModel: (agent: AgentNameEnum) => Promise<ModelConfig | undefined>;
   resetAgentModel: (agent: AgentNameEnum) => Promise<void>;

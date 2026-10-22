@@ -249,7 +249,7 @@ export default class MessageManager {
     const messages = this.history.messages
       .filter(m => {
         if (!m.message) {
-          console.error(`[MessageManager] Filtering out message with undefined message property:`, m);
+          logger.error(`[MessageManager] Filtering out message with undefined message property:`, m);
           return false;
         }
         return true;
@@ -264,7 +264,7 @@ export default class MessageManager {
       if (m.message) {
         logger.debug(`${m.message.constructor.name} - Token count: ${m.metadata.tokens}`);
       } else {
-        console.error(`[MessageManager] Found message with undefined message property:`, m);
+        logger.error(`[MessageManager] Found message with undefined message property:`, m);
         logger.debug(`Message with undefined message property - Token count: ${m.metadata.tokens}`);
       }
     }

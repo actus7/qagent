@@ -1,4 +1,5 @@
 import { DOMElementNode } from '../views';
+import { createSHA256Hash } from '../hash';
 
 /**
  * Get all clickable elements hashes in the DOM tree
@@ -58,7 +59,6 @@ export async function hashDomElement(domElement: DOMElementNode): Promise<string
     _parentBranchPathHash(parentBranchPath),
     _attributesHash(domElement.attributes),
     _xpathHash(domElement.xpath),
-    // _textHash(domElement) // Uncomment if needed
   ]);
 
   return _hashString(`${branchPathHash}-${attributesHash}-${xpathHash}`);
@@ -104,28 +104,6 @@ async function _attributesHash(attributes: Record<string, string>): Promise<stri
  */
 async function _xpathHash(xpath: string | null): Promise<string> {
   return createSHA256Hash(xpath || '');
-}
-
-/**
- * Create a hash from the element text
- * Currently unused but kept for potential future use
- */
-/* 
-async function _textHash(domElement: DOMElementNode): Promise<string> {
-  const textString = domElement.getAllTextTillNextClickableElement();
-  return createSHA256Hash(textString);
-}
-*/
-
-/**
- * Create a SHA-256 hash from a string using Web Crypto API
- */
-async function createSHA256Hash(input: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**

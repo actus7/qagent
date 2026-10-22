@@ -20,11 +20,11 @@ export interface ProviderConfig {
 
 // Interface for storing multiple LLM provider configurations
 // The key is the provider id, which is the same as the provider type for built-in providers, but is custom for custom providers
-export interface LLMKeyRecord {
+interface LLMKeyRecord {
   providers: Record<string, ProviderConfig>;
 }
 
-export type LLMProviderStorage = BaseStorage<LLMKeyRecord> & {
+type LLMProviderStorage = BaseStorage<LLMKeyRecord> & {
   setProvider: (providerId: string, config: ProviderConfig) => Promise<void>;
   getProvider: (providerId: string) => Promise<ProviderConfig | undefined>;
   removeProvider: (providerId: string) => Promise<void>;
@@ -45,7 +45,7 @@ const storage = createStorage<LLMKeyRecord>(
 
 // Helper function to determine provider type from provider name
 // Make sure to update this function if you add a new provider type
-export function getProviderTypeByProviderId(providerId: string): ProviderTypeEnum {
+function getProviderTypeByProviderId(providerId: string): ProviderTypeEnum {
   // Check if this is an Azure provider (either the main one or one with a custom ID)
   if (providerId === ProviderTypeEnum.AzureOpenAI) {
     return ProviderTypeEnum.AzureOpenAI;
@@ -172,9 +172,6 @@ export function getDefaultAgentModelParams(providerId: string, agentName: AgentN
 
 // Helper function to ensure backward compatibility for provider configs
 function ensureBackwardCompatibility(providerId: string, config: ProviderConfig): ProviderConfig {
-  // Log input config
-  // console.log(`[ensureBackwardCompatibility] Input for ${providerId}:`, JSON.stringify(config));
-
   const updatedConfig = { ...config };
 
   // Ensure name exists
@@ -190,7 +187,6 @@ function ensureBackwardCompatibility(providerId: string, config: ProviderConfig)
   if (updatedConfig.type === ProviderTypeEnum.AzureOpenAI) {
     // Ensure Azure fields exist, provide defaults if missing
     if (updatedConfig.azureApiVersion === undefined) {
-      // console.log(`[ensureBackwardCompatibility] Adding default azureApiVersion for ${providerId}`);
       updatedConfig.azureApiVersion = AZURE_API_VERSION;
     }
 
@@ -201,13 +197,11 @@ function ensureBackwardCompatibility(providerId: string, config: ProviderConfig)
 
     // CRITICAL: Delete modelNames if it exists for Azure type to clean up old configs
     if (Object.prototype.hasOwnProperty.call(updatedConfig, 'modelNames')) {
-      // console.log(`[ensureBackwardCompatibility] Deleting modelNames for Azure config ${providerId}`);
       delete updatedConfig.modelNames;
     }
   } else {
     // Ensure modelNames exists ONLY for non-Azure types
     if (!updatedConfig.modelNames) {
-      // console.log(`[ensureBackwardCompatibility] Adding default modelNames for non-Azure ${providerId}`);
       updatedConfig.modelNames = llmProviderModelNames[providerId as keyof typeof llmProviderModelNames] || [];
     }
   }
@@ -217,8 +211,6 @@ function ensureBackwardCompatibility(providerId: string, config: ProviderConfig)
     updatedConfig.createdAt = new Date('03/04/2025').getTime();
   }
 
-  // Log output config
-  // console.log(`[ensureBackwardCompatibility] Output for ${providerId}:`, JSON.stringify(updatedConfig));
   return updatedConfig;
 }
 

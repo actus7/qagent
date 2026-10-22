@@ -1,7 +1,7 @@
 import type { CoordinateSet, ViewportInfo } from './history/view';
 // define the raw types used in pure javascript files that are injected into the page
 
-export type RawDomTextNode = {
+type RawDomTextNode = {
   type: string;
   text: string;
   isVisible: boolean;
@@ -33,7 +33,7 @@ export interface BuildDomTreeArgs {
   debugMode?: boolean;
 }
 
-export interface PerfMetrics {
+interface PerfMetrics {
   nodeMetrics: {
     totalNodes: number;
     processedNodes: number;

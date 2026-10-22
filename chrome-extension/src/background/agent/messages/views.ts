@@ -10,7 +10,7 @@ export class MessageMetadata {
   }
 }
 
-export class ManagedMessage {
+class ManagedMessage {
   message: BaseMessage;
   metadata: MessageMetadata;
 

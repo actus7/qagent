@@ -1,9 +1,30 @@
 export const SIDE_PANEL_CONNECTION_PORT_NAME = 'side-panel-connection' as const;
 
+export type AssistantMode = 'chat' | 'plan' | 'act';
+export type PermissionMode = 'ask' | 'auto';
+
+export interface AssistantTaskOptions {
+  mode?: AssistantMode;
+  permissionMode?: PermissionMode;
+  tabIds?: number[];
+  modelAgent?: 'navigator' | 'planner';
+}
+
+export interface ActionApproval {
+  id: string;
+  taskId: string;
+  action: string;
+  description: string;
+  parameters?: string;
+  tabId: number | null;
+  url: string;
+}
+
 export interface SidePanelTaskCommand {
   task: string;
   taskId: string;
   tabId: number;
+  options?: AssistantTaskOptions;
 }
 
 export interface BrowserFramePayload {
@@ -66,13 +87,14 @@ export type SidePanelCommandMessage =
   | { type: 'cancel_task' }
   | { type: 'resume_task' }
   | { type: 'pause_task' }
+  | { type: 'approval_result'; taskId: string; requestId: string; approved: boolean }
   | { type: 'screenshot'; tabId: number }
   | { type: 'state' }
   | { type: 'nohighlight' }
   | { type: 'speech_to_text'; audio: string }
   | { type: 'replay'; task: string; taskId: string; tabId: number; historySessionId: string };
 
-export interface ExecutionEventPayload {
+interface ExecutionEventPayload {
   taskId: string;
   step: number;
   maxSteps: number;
@@ -87,7 +109,7 @@ export interface ExecutionPortEventMessage {
   timestamp: number;
 }
 
-export interface BackgroundDebugLogMessage {
+interface BackgroundDebugLogMessage {
   type: 'debug_log';
   entry: {
     namespace: string;
@@ -100,6 +122,9 @@ export interface BackgroundDebugLogMessage {
 export type SidePanelResponseMessage =
   | ExecutionPortEventMessage
   | BackgroundDebugLogMessage
+  | { type: 'assistant_delta'; taskId: string; streamId: string; content: string; finished: boolean }
+  | { type: 'approval_required'; request: ActionApproval }
+  | { type: 'approval_resolved'; requestId: string }
   | { type: 'browser_frame'; frame: BrowserFramePayload }
   | { type: 'browser_status'; status: BrowserStatusPayload }
   | { type: 'heartbeat_ack' }
@@ -108,10 +133,24 @@ export type SidePanelResponseMessage =
   | { type: 'speech_to_text_result'; text: string }
   | { type: 'speech_to_text_error'; error: string };
 
-export type BackgroundRuntimeMessage = { type: 'qagent:cancel' } | { type: 'qagent:overlay:state' };
+type BackgroundRuntimeMessage = { type: 'qagent:cancel' } | { type: 'qagent:overlay:state' };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function isTaskOptions(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  return (
+    (value.mode === undefined || ['chat', 'plan', 'act'].includes(String(value.mode))) &&
+    (value.permissionMode === undefined || ['ask', 'auto'].includes(String(value.permissionMode))) &&
+    (value.modelAgent === undefined || ['navigator', 'planner'].includes(String(value.modelAgent))) &&
+    (value.tabIds === undefined ||
+      (Array.isArray(value.tabIds) &&
+        value.tabIds.length <= 12 &&
+        value.tabIds.every(id => Number.isSafeInteger(id) && id >= 0)))
+  );
 }
 
 export function isSidePanelCommandMessage(message: unknown): message is SidePanelCommandMessage {
@@ -129,7 +168,21 @@ export function isSidePanelCommandMessage(message: unknown): message is SidePane
       return true;
     case 'new_task':
     case 'follow_up_task':
-      return typeof message.task === 'string' && typeof message.taskId === 'string' && typeof message.tabId === 'number';
+      return (
+        typeof message.task === 'string' &&
+        message.task.trim().length > 0 &&
+        typeof message.taskId === 'string' &&
+        message.taskId.length > 0 &&
+        Number.isSafeInteger(message.tabId) &&
+        Number(message.tabId) >= 0 &&
+        isTaskOptions(message.options)
+      );
+    case 'approval_result':
+      return (
+        typeof message.taskId === 'string' &&
+        typeof message.requestId === 'string' &&
+        typeof message.approved === 'boolean'
+      );
     case 'browser_input':
       return isRecord(message.input) && typeof message.input.type === 'string';
     case 'screenshot':
@@ -154,6 +207,24 @@ export function isSidePanelResponseMessage(message: unknown): message is SidePan
   }
 
   switch (message.type) {
+    case 'assistant_delta':
+      return (
+        typeof message.taskId === 'string' &&
+        typeof message.streamId === 'string' &&
+        typeof message.content === 'string' &&
+        typeof message.finished === 'boolean'
+      );
+    case 'approval_required':
+      return (
+        isRecord(message.request) &&
+        typeof message.request.id === 'string' &&
+        typeof message.request.taskId === 'string' &&
+        typeof message.request.action === 'string' &&
+        typeof message.request.description === 'string' &&
+        typeof message.request.url === 'string'
+      );
+    case 'approval_resolved':
+      return typeof message.requestId === 'string';
     case 'heartbeat_ack':
       return true;
     case 'browser_frame':

@@ -1,4 +1,5 @@
 import { createLogger } from '@src/background/log';
+import { sleep } from '../util';
 import type {
   CompanionInboundMessage,
   CompanionInputMessage,
@@ -20,7 +21,7 @@ type StatusListener = (message: CompanionStatusMessage) => void;
 
 const logger = createLogger('AgentBrowserCompanionClient');
 
-export interface AgentBrowserCompanionClientOptions {
+interface AgentBrowserCompanionClientOptions {
   url: string;
   token?: string;
   requestTimeoutMs?: number;
@@ -29,10 +30,6 @@ export interface AgentBrowserCompanionClientOptions {
 const DEFAULT_REQUEST_TIMEOUT_MS = 45_000;
 const DEFAULT_CONNECT_MAX_ATTEMPTS = 3;
 const CONNECT_RETRY_DELAYS_MS = [250, 500];
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 function buildCompanionOfflineError(url: string): Error {
   return new Error(

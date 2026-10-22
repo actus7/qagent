@@ -4,12 +4,15 @@ export enum Actors {
   PLANNER = 'planner',
   NAVIGATOR = 'navigator',
   VALIDATOR = 'validator',
+  ASSISTANT = 'assistant',
 }
 
 export interface Message {
   actor: Actors;
   content: string;
   timestamp: number; // Unix timestamp in milliseconds
+  streamId?: string;
+  kind?: 'answer' | 'activity';
 }
 
 export interface ChatMessage extends Message {

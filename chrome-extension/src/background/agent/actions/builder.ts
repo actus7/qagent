@@ -40,7 +40,6 @@ import {
 import { z } from 'zod';
 import { createLogger } from '@src/background/log';
 import { ExecutionState, Actors } from '../event/types';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { wrapUntrustedContent } from '../messages/utils';
 
 const logger = createLogger('Action');
@@ -98,6 +97,7 @@ function parseRefToIndex(selector: unknown): number | null {
  * An action is a function that takes an input and returns an ActionResult
  */
 export class Action<TInput = unknown> {
+  beforeCall?: (action: string, input: unknown) => Promise<void>;
   constructor(
     private readonly handler: (input: TInput) => Promise<ActionResult>,
     public readonly schema: ActionSchema,
@@ -114,6 +114,7 @@ export class Action<TInput = unknown> {
     const isEmptySchema = schemaShape !== null && Object.keys(schemaShape).length === 0;
 
     if (isEmptySchema) {
+      await this.beforeCall?.(this.name(), {});
       return await this.handler({} as TInput);
     }
 
@@ -122,6 +123,7 @@ export class Action<TInput = unknown> {
       const errorMessage = parsedArgs.error.message;
       throw new InvalidInputError(errorMessage);
     }
+    await this.beforeCall?.(this.name(), parsedArgs.data);
     return await this.handler(parsedArgs.data as TInput);
   }
 
@@ -217,17 +219,16 @@ export function buildDynamicActionSchema(actions: Action[]): z.ZodType {
 
 export class ActionBuilder {
   private readonly context: AgentContext;
-  private readonly extractorLLM: BaseChatModel;
 
-  constructor(context: AgentContext, extractorLLM: BaseChatModel) {
+  constructor(context: AgentContext) {
     this.context = context;
-    this.extractorLLM = extractorLLM;
   }
 
   buildDefaultActions() {
     const actions = [];
 
     const done = new Action(async (input: z.infer<typeof doneActionSchema.schema>) => {
+      this.context.finalAnswer = input.text;
       this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, doneActionSchema.name);
       this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, input.text);
       return new ActionResult({
@@ -588,38 +589,6 @@ export class ActionBuilder {
     }, closeTabActionSchema);
     actions.push(closeTab);
 
-    // Content Actions
-    // TODO: this is not used currently, need to improve on input size
-    // const extractContent = new Action(async (input: z.infer<typeof extractContentActionSchema.schema>) => {
-    //   const goal = input.goal;
-    //   const intent = input.intent || `Extracting content from page`;
-    //   this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
-    //   const page = await this.context.browserContext.getCurrentPage();
-    //   const content = await page.getReadabilityContent();
-    //   const promptTemplate = PromptTemplate.fromTemplate(
-    //     'Your task is to extract the content of the page. You will be given a page and a goal and you should extract all relevant information around this goal from the page. If the goal is vague, summarize the page. Respond in json format. Extraction goal: {goal}, Page: {page}',
-    //   );
-    //   const prompt = await promptTemplate.invoke({ goal, page: content.content });
-
-    //   try {
-    //     const output = await this.extractorLLM.invoke(prompt);
-    //     const msg = `📄  Extracted from page\n: ${output.content}\n`;
-    //     return new ActionResult({
-    //       extractedContent: msg,
-    //       includeInMemory: true,
-    //     });
-    //   } catch (error) {
-    //     logger.error(`Error extracting content: ${error instanceof Error ? error.message : String(error)}`);
-    //     const msg =
-    //       'Failed to extract content from page, you need to extract content from the current state of the page and store it in the memory. Then scroll down if you still need more information.';
-    //     return new ActionResult({
-    //       extractedContent: msg,
-    //       includeInMemory: true,
-    //     });
-    //   }
-    // }, extractContentActionSchema);
-    // actions.push(extractContent);
-
     // cache content for future use
     const cacheContent = new Action(async (input: z.infer<typeof cacheContentActionSchema.schema>) => {
       const intent = input.intent || t('act_cache_start', [input.content]);
@@ -961,9 +930,15 @@ export class ActionBuilder {
     actions.push(selectDropdownOption);
 
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
-      return actions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));
+      return actions
+        .filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()))
+        .map(action => {
+          action.beforeCall = this.context.authorizeAction;
+          return action;
+        });
     }
 
+    for (const action of actions) action.beforeCall = this.context.authorizeAction;
     return actions;
   }
 }

@@ -1,7 +1,7 @@
 /**
  * Type definition for a JSON Schema object
  */
-export interface JsonSchemaObject {
+interface JsonSchemaObject {
   $ref?: string;
   $defs?: Record<string, JsonSchemaObject>;
   type?: string;
@@ -301,7 +301,7 @@ function processPropertyForGemini(property: JsonSchemaObject, addPropertyOrderin
   return result;
 }
 
-export type JSONSchemaType = JsonSchemaObject | JSONSchemaType[];
+type JSONSchemaType = JsonSchemaObject | JSONSchemaType[];
 // Custom stringify function
 export function stringifyCustom(value: JSONSchemaType, indent = '', baseIndent = '  '): string {
   const currentIndent = indent + baseIndent;

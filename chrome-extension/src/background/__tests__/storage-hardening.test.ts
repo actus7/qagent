@@ -49,6 +49,32 @@ describe('general settings hardening', () => {
   });
 });
 
+describe('chat messages across extension contexts', () => {
+  it('preserves an answer saved by the service worker before the panel appends a follow-up', async () => {
+    vi.resetModules();
+    installChromeStorageMock();
+    const { createChatHistoryStorage } = await import('@extension/storage/lib/chat/history');
+    const { Actors } = await import('@extension/storage/lib/chat/types');
+    const store = createChatHistoryStorage();
+    const session = await store.createSession('Conversation');
+    await store.addMessage(session.id, { actor: Actors.USER, content: 'First question', timestamp: 1 });
+    const key = `chat_messages_${session.id}`;
+    const existing = (await chrome.storage.local.get(key))[key];
+    await chrome.storage.local.set({
+      [key]: [
+        ...existing,
+        { id: 'background-answer', actor: Actors.ASSISTANT, content: 'Background answer', timestamp: 2 },
+      ],
+    });
+    await store.addMessage(session.id, { actor: Actors.USER, content: 'Follow-up', timestamp: 3 });
+    expect((await store.getSession(session.id))?.messages.map(message => message.content)).toEqual([
+      'First question',
+      'Background answer',
+      'Follow-up',
+    ]);
+  });
+});
+
 describe('chat history memory-leak hardening', () => {
   beforeEach(() => {
     vi.resetModules();

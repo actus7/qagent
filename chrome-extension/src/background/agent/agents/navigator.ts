@@ -70,14 +70,13 @@ export class NavigatorActionRegistry {
   }
 }
 
-export interface NavigatorResult {
+interface NavigatorResult {
   done: boolean;
 }
 
 export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
   private actionRegistry: NavigatorActionRegistry;
   private jsonSchema: Record<string, unknown>;
-  private _stateHistory: BrowserStateHistory | null = null;
 
   constructor(
     actionRegistry: NavigatorActionRegistry,
@@ -309,7 +308,7 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
       }
 
       const errorString = `Navigation failed: ${errorMessage}`;
-      logger.error(errorString);
+      logger.error(errorString, error);
       this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_FAIL, errorString);
       agentOutput.error = errorMessage;
       return agentOutput;
@@ -341,8 +340,6 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
             `Trimmed ${overflow} agent history entr${overflow === 1 ? 'y' : 'ies'} to keep ${MAX_AGENT_STEP_HISTORY_ENTRIES} entries`,
           );
         }
-
-        // logger.info('All history', JSON.stringify(this.context.history, null, 2));
       }
     }
   }
@@ -363,7 +360,6 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
         if (r.includeInMemory) {
           if (r.extractedContent) {
             const msg = new HumanMessage(`Action result: ${r.extractedContent}`);
-            // logger.info('Adding action result to memory', msg.content);
             messageManager.addMessageWithTokens(msg);
           }
           if (r.error) {
@@ -511,7 +507,7 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
         // TODO: wait for 1 second for now, need to optimize this to avoid unnecessary waiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (error) {
-        if (error instanceof URLNotAllowedError) {
+        if (error instanceof URLNotAllowedError || error instanceof RequestCancelledError || this.context.stopped) {
           throw error;
         }
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -557,8 +553,6 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
     } catch (error) {
       throw new Error(`Could not parse modelOutput: ${error}`);
     }
-
-    // logger.info('Parsed output', JSON.stringify(parsedOutput, null, 2));
 
     const goal = parsedOutput?.current_state?.next_goal || '';
     const actionsToReplay = parsedOutput?.action;

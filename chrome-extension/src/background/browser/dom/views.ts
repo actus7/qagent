@@ -1,6 +1,9 @@
 import type { CoordinateSet, HashedDomElement, ViewportInfo } from './history/view';
 import { HistoryTreeProcessor } from './history/service';
 import { capTextLength } from '../util';
+import { createLogger } from '@src/background/log';
+
+const logger = createLogger('dom/views');
 
 export const DEFAULT_INCLUDE_ATTRIBUTES = [
   'title',
@@ -153,7 +156,7 @@ export class DOMElementNode extends DOMBaseNode {
           this._hashPromise = undefined;
 
           // Log the error for debugging
-          console.error('Error computing DOM element hash:', error);
+          logger.error('Error computing DOM element hash:', error);
 
           // Create a more descriptive error
           const enhancedError = new Error(
@@ -558,30 +561,6 @@ export class DOMElementNode extends DOMBaseNode {
 export interface DOMState {
   elementTree: DOMElementNode;
   selectorMap: Map<number, DOMElementNode>;
-}
-
-export function domElementNodeToDict(elementTree: DOMBaseNode): unknown {
-  function nodeToDict(node: DOMBaseNode): unknown {
-    if (node instanceof DOMTextNode) {
-      return {
-        type: 'text',
-        text: node.text,
-      };
-    }
-    if (node instanceof DOMElementNode) {
-      return {
-        type: 'element',
-        tagName: node.tagName,
-        attributes: node.attributes,
-        highlightIndex: node.highlightIndex,
-        children: node.children.map(child => nodeToDict(child)),
-      };
-    }
-
-    return {};
-  }
-
-  return nodeToDict(elementTree);
 }
 
 export async function calcBranchPathHashSet(state: DOMState): Promise<Set<string>> {

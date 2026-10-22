@@ -64,10 +64,9 @@ export default class BrowserContext implements BrowserContextLike {
   }
 
   public async cleanup(): Promise<void> {
-    const currentPage = await this.getCurrentPage();
-    currentPage?.removeHighlight();
     // detach all pages
     for (const page of this._attachedPages.values()) {
+      await page.removeHighlight().catch(() => {});
       await page.detachPuppeteer();
     }
     this._attachedPages.clear();

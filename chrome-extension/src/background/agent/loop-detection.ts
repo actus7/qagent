@@ -19,7 +19,7 @@ export interface LoopDetectionState {
   signatures: string[];
 }
 
-export interface LoopDetectionResult {
+interface LoopDetectionResult {
   nextState: LoopDetectionState;
   loopDetected: boolean;
 }

@@ -1249,6 +1249,7 @@ window.buildDomTree = (
     if (
       !node ||
       node.id === HIGHLIGHT_CONTAINER_ID ||
+      node.id === 'qagent-overlay-host' ||
       (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE)
     ) {
       return null;

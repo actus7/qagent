@@ -1,28 +1,24 @@
 import { createLogger } from '@src/background/log';
-import { isUrlAllowed } from '../util';
+import { isUrlAllowed, sleep } from '../util';
 import type { DOMElementNode } from '../dom/views';
 import type { BrowserContextConfig, PageState } from '../views';
 import { URLNotAllowedError } from '../views';
 import type { BrowserPageLike } from '../types';
 import type { AgentBrowserCompanionClient } from './client';
 import { buildPageStateFromSnapshot } from './snapshot';
-import type { CompanionAction, RefMap } from './protocol';
+import type { CompanionAction } from './protocol';
 
 const REF_SELECTOR_REGEX = /^@e(\d+)$/i;
 const LEGACY_INDEX_SELECTOR_REGEX = /^\[(\d+)\]$/;
 
 const logger = createLogger('AgentBrowserPage');
 
-export interface AgentBrowserPageOptions {
+interface AgentBrowserPageOptions {
   tabIdProvider: () => number;
   sessionIdProvider: () => string;
   taskIdProvider: () => string;
   getConfig: () => BrowserContextConfig;
   client: AgentBrowserCompanionClient;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export default class AgentBrowserPage implements BrowserPageLike {
@@ -33,7 +29,6 @@ export default class AgentBrowserPage implements BrowserPageLike {
   private readonly client: AgentBrowserCompanionClient;
   private state: PageState;
   private cachedState: PageState | null = null;
-  private lastRefs: RefMap = {};
 
   constructor(options: AgentBrowserPageOptions) {
     this.tabIdProvider = options.tabIdProvider;
@@ -107,7 +102,6 @@ export default class AgentBrowserPage implements BrowserPageLike {
 
     this.state = nextState;
     this.cachedState = nextState;
-    this.lastRefs = snapshotResult.refs ?? {};
     return nextState;
   }
 
@@ -168,9 +162,8 @@ export default class AgentBrowserPage implements BrowserPageLike {
     text: string,
     options: { clearBeforeTyping?: boolean } = {},
   ): Promise<void> {
-    const action: CompanionAction = options.clearBeforeTyping === false
-      ? { action: 'type', selector, text }
-      : { action: 'fill', selector, text };
+    const action: CompanionAction =
+      options.clearBeforeTyping === false ? { action: 'type', selector, text } : { action: 'fill', selector, text };
     const result = await this.call(action);
     this.updateMeta(result);
   }

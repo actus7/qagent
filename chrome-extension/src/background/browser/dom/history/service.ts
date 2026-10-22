@@ -1,5 +1,6 @@
 import { DOMElementNode } from '../views';
 import { DOMHistoryElement, HashedDomElement } from './view';
+import { createSHA256Hash } from '../hash';
 
 /**
  * Convert a DOM element to a history element
@@ -56,25 +57,6 @@ export async function findHistoryElementInTree(
 }
 
 /**
- * Compare a history element and a DOM element
- */
-export async function compareHistoryElementAndDomElement(
-  domHistoryElement: DOMHistoryElement,
-  domElement: DOMElementNode,
-): Promise<boolean> {
-  const [hashedDomHistoryElement, hashedDomElement] = await Promise.all([
-    hashDomHistoryElement(domHistoryElement),
-    hashDomElement(domElement),
-  ]);
-
-  return (
-    hashedDomHistoryElement.branchPathHash === hashedDomElement.branchPathHash &&
-    hashedDomHistoryElement.attributesHash === hashedDomElement.attributesHash &&
-    hashedDomHistoryElement.xpathHash === hashedDomElement.xpathHash
-  );
-}
-
-/**
  * Hash a DOM history element
  */
 async function hashDomHistoryElement(domHistoryElement: DOMHistoryElement): Promise<HashedDomElement> {
@@ -120,7 +102,7 @@ export function _getParentBranchPath(domElement: DOMElementNode): string[] {
  */
 async function _parentBranchPathHash(parentBranchPath: string[]): Promise<string> {
   if (parentBranchPath.length === 0) return '';
-  return _createSHA256Hash(parentBranchPath.join('/'));
+  return createSHA256Hash(parentBranchPath.join('/'));
 }
 
 /**
@@ -130,14 +112,14 @@ async function _attributesHash(attributes: Record<string, string>): Promise<stri
   const attributesString = Object.entries(attributes)
     .map(([key, value]) => `${key}=${value}`)
     .join('');
-  return _createSHA256Hash(attributesString);
+  return createSHA256Hash(attributesString);
 }
 
 /**
  * Create a hash from the element xpath
  */
 async function _xpathHash(xpath: string): Promise<string> {
-  return _createSHA256Hash(xpath);
+  return createSHA256Hash(xpath);
 }
 
 /**
@@ -145,18 +127,7 @@ async function _xpathHash(xpath: string): Promise<string> {
  */
 async function _textHash(domElement: DOMElementNode): Promise<string> {
   const textString = domElement.getAllTextTillNextClickableElement();
-  return _createSHA256Hash(textString);
-}
-
-/**
- * Create a SHA-256 hash from a string using Web Crypto API
- */
-async function _createSHA256Hash(input: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return createSHA256Hash(textString);
 }
 
 /**
@@ -165,7 +136,6 @@ async function _createSHA256Hash(input: string): Promise<string> {
 export const HistoryTreeProcessor = {
   convertDomElementToHistoryElement,
   findHistoryElementInTree,
-  compareHistoryElementAndDomElement,
   hashDomElement,
   _getParentBranchPath,
   _parentBranchPathHash,

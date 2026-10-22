@@ -14,6 +14,9 @@ import { ChatCerebras } from '@langchain/cerebras';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ChatOllama } from '@langchain/ollama';
 import { ChatDeepSeek } from '@langchain/deepseek';
+import { createLogger } from '@src/background/log';
+
+const logger = createLogger('agent/helper');
 
 const maxTokens = 1024 * 4;
 
@@ -95,7 +98,7 @@ class ChatLlama extends ChatOpenAI {
 
       return response;
     } catch (error: unknown) {
-      console.error(`[ChatLlama] Error during API call:`, error);
+      logger.error(`[ChatLlama] Error during API call:`, error);
       throw error;
     }
   }
@@ -196,7 +199,7 @@ function extractInstanceNameFromUrl(url: string): string | null {
       return hostnameParts[0];
     }
   } catch (e) {
-    console.error('Error parsing Azure endpoint URL:', e);
+    logger.error('Error parsing Azure endpoint URL:', e);
   }
   return null;
 }
@@ -230,7 +233,7 @@ function createAzureChatModel(providerConfig: ProviderConfig, modelConfig: Model
 
   // Validate that the selected model exists in the configured deployments
   if (!providerConfig.azureDeploymentNames.includes(deploymentName)) {
-    console.warn(
+    logger.warning(
       `[createChatModel] Selected deployment "${deploymentName}" not found in available deployments. ` +
         `Available: ${JSON.stringify(providerConfig.azureDeploymentNames)}. Using the model anyway.`,
     );
@@ -272,7 +275,6 @@ function createAzureChatModel(providerConfig: ProviderConfig, modelConfig: Model
         }),
     // DO NOT pass baseUrl or configuration here
   };
-  // console.log('[createChatModel] Azure args passed to AzureChatOpenAI:', args);
   return new AzureChatOpenAI(args);
 }
 

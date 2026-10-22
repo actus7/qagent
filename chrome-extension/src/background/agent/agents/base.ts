@@ -88,7 +88,9 @@ function isRateLimitError(error: unknown): boolean {
 function resolveRateLimitRetryDelayMs(error: unknown, attempt: number): number {
   const fallback = RATE_LIMIT_RETRY_BASE_MS * (attempt + 1);
   const message = error instanceof Error ? `${error.message} ${error.stack ?? ''}` : String(error);
-  const retryAfterMatch = message.match(/retry[-\s]?after[:=\s]*([0-9]+(?:\.[0-9]+)?)\s*(ms|s|sec|secs|second|seconds|m|min|mins|minute|minutes)?/i);
+  const retryAfterMatch = message.match(
+    /retry[-\s]?after[:=\s]*([0-9]+(?:\.[0-9]+)?)\s*(ms|s|sec|secs|second|seconds|m|min|mins|minute|minutes)?/i,
+  );
   if (retryAfterMatch) {
     const rawValue = Number.parseFloat(retryAfterMatch[1]);
     const unit = (retryAfterMatch[2] ?? 's').toLowerCase();
@@ -108,7 +110,7 @@ function resolveRateLimitRetryDelayMs(error: unknown, attempt: number): number {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type CallOptions = Record<string, any>;
+type CallOptions = Record<string, any>;
 
 // Update options to use Zod schema
 export interface BaseAgentOptions {
@@ -164,7 +166,8 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
       typeof options.requestsPerMinute === 'number' && Number.isFinite(options.requestsPerMinute)
         ? Math.max(1, Math.round(options.requestsPerMinute))
         : undefined;
-    this.requestsPerMinute = explicitRequestsPerMinute ?? getDefaultModelRequestsPerMinute(normalizedProvider, this.modelName);
+    this.requestsPerMinute =
+      explicitRequestsPerMinute ?? getDefaultModelRequestsPerMinute(normalizedProvider, this.modelName);
     this.rateLimitKey = options.rateLimitKey || `${normalizedProvider}:${this.modelName}`;
     // extra options
     this.id = extraOptions?.id || 'agent';

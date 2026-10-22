@@ -181,7 +181,7 @@ function normalizeProviderType(providerId: string): ProviderTypeEnum {
   return ProviderTypeEnum.CustomOpenAI;
 }
 
-export const llmProviderRequestsPerMinute: Record<ProviderTypeEnum, Record<string, number>> = Object.fromEntries(
+const llmProviderRequestsPerMinute: Record<ProviderTypeEnum, Record<string, number>> = Object.fromEntries(
   (Object.entries(llmProviderModelNames) as Array<[ProviderTypeEnum, string[]]>).map(([provider, models]) => [
     provider,
     Object.fromEntries(models.map(model => [model, DEFAULT_RPM_BY_PROVIDER[provider]])),

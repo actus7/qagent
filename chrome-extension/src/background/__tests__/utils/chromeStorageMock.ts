@@ -25,7 +25,7 @@ type ChromeStorageMock = {
   };
 };
 
-export type ChromeStorageMockController = {
+type ChromeStorageMockController = {
   storageData: Record<StorageAreaName, StorageData>;
   listenerCounts: Record<StorageAreaName, () => number>;
 };

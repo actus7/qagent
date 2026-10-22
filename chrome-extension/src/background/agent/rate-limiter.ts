@@ -52,7 +52,7 @@ function sleepWithAbort(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-export interface AcquireRateLimitSlotArgs {
+interface AcquireRateLimitSlotArgs {
   key: string;
   requestsPerMinute: number;
   signal?: AbortSignal;
@@ -99,8 +99,4 @@ export async function acquireRateLimitSlot(args: AcquireRateLimitSlotArgs): Prom
   );
 
   await task;
-}
-
-export function __resetRateLimiterForTests(): void {
-  buckets.clear();
 }

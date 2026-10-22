@@ -31,9 +31,9 @@ import { createLoopDetectionState, evaluateLoopDetection, type LoopDetectionStat
 const logger = createLogger('Executor');
 const MAX_TASK_CHAIN_LENGTH = 50;
 
-export interface ExecutorExtraArgs {
+interface ExecutorExtraArgs {
+  authorizeAction?: (action: string, input: unknown, signal: AbortSignal) => Promise<void>;
   plannerLLM?: BaseChatModel;
-  extractorLLM?: BaseChatModel;
   navigatorProvider?: string;
   plannerProvider?: string;
   navigatorRequestsPerMinute?: number;
@@ -68,7 +68,6 @@ export class Executor {
     );
 
     const plannerLLM = extraArgs?.plannerLLM ?? navigatorLLM;
-    const extractorLLM = extraArgs?.extractorLLM ?? navigatorLLM;
     const eventManager = new EventManager();
     const context = new AgentContext(
       taskId,
@@ -79,11 +78,25 @@ export class Executor {
     );
 
     this.generalSettings = extraArgs?.generalSettings;
+    if (extraArgs?.authorizeAction) {
+      context.authorizeAction = async (action, input) => {
+        if (context.stopped || context.controller.signal.aborted)
+          throw new RequestCancelledError('Tarefa interrompida.');
+        try {
+          await extraArgs.authorizeAction!(action, input, context.controller.signal);
+        } catch (error) {
+          if (error instanceof RequestCancelledError) await context.stop();
+          throw error;
+        }
+        if (context.stopped || context.controller.signal.aborted)
+          throw new RequestCancelledError('Tarefa interrompida.');
+      };
+    }
     this.tasks.push(task);
     this.navigatorPrompt = new NavigatorPrompt(context.options.maxActionsPerStep);
     this.plannerPrompt = new PlannerPrompt();
 
-    const actionBuilder = new ActionBuilder(context, extractorLLM);
+    const actionBuilder = new ActionBuilder(context);
     const navigatorActionRegistry = new NavigatorActionRegistry(actionBuilder.buildDefaultActions());
 
     // Initialize agents with their respective prompts
@@ -221,20 +234,20 @@ export class Executor {
       if (isCompleted) {
         // Emit final answer if available, otherwise use task ID
         const finalMessage = this.context.finalAnswer || this.context.taskId;
-        this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_OK, finalMessage);
+        await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_OK, finalMessage);
 
         // Track task completion
         void analytics.trackTaskComplete(this.context.taskId);
       } else if (step >= allowedMaxSteps) {
         logger.error('❌ Task failed: Max steps reached');
-        this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_errors_maxStepsReached'));
+        await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_errors_maxStepsReached'));
 
         // Track task failure with specific error category
         const maxStepsError = new MaxStepsReachedError(t('exec_errors_maxStepsReached'));
         const errorCategory = analytics.categorizeError(maxStepsError);
         void analytics.trackTaskFailed(this.context.taskId, errorCategory);
       } else if (this.context.stopped) {
-        this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_CANCEL, t('exec_task_cancel'));
+        await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_CANCEL, t('exec_task_cancel'));
 
         // Track task cancellation
         void analytics.trackTaskCancelled(this.context.taskId);
@@ -245,19 +258,19 @@ export class Executor {
     } catch (error) {
       if (error instanceof RequestCancelledError) {
         if (this.context.stopped) {
-          this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_CANCEL, t('exec_task_cancel'));
+          await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_CANCEL, t('exec_task_cancel'));
 
           // Track task cancellation
           void analytics.trackTaskCancelled(this.context.taskId);
         } else {
           // Cancellation can also happen from transport/network interruptions; surface as a failure.
-          this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [error.message]));
+          await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [error.message]));
           const errorCategory = analytics.categorizeError(error);
           void analytics.trackTaskFailed(this.context.taskId, errorCategory);
         }
       } else {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [errorMessage]));
+        await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [errorMessage]));
 
         // Track task failure with detailed error categorization
         const errorCategory = analytics.categorizeError(error instanceof Error ? error : errorMessage);
@@ -512,14 +525,14 @@ export class Executor {
       }
 
       if (this.context.stopped) {
-        this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_CANCEL, t('exec_replay_cancel'));
+        await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_CANCEL, t('exec_replay_cancel'));
       } else {
-        this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_OK, t('exec_replay_ok'));
+        await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_OK, t('exec_replay_ok'));
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       replayLogger.error(`Replay failed: ${errorMessage}`);
-      this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_replay_fail', [errorMessage]));
+      await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_replay_fail', [errorMessage]));
     }
 
     return results;

@@ -69,6 +69,12 @@ const manifest = withOperaSidebar(
     },
     action: {
       default_icon: 'icon-32.png',
+      default_title: 'Abrir QAgent',
+    },
+    commands: {
+      _execute_action: {
+        suggested_key: { default: 'Ctrl+Shift+Period', mac: 'Command+Shift+Period' },
+      },
     },
     icons: {
       128: 'icon-128.png',

@@ -10,7 +10,7 @@ function isNotNull<T>(item: T | null | undefined): item is T {
   return item != null;
 }
 
-export interface ReadabilityResult {
+interface ReadabilityResult {
   title: string;
   content: string;
   textContent: string;
@@ -23,7 +23,7 @@ export interface ReadabilityResult {
   publishedTime: string;
 }
 
-export interface FrameInfo {
+interface FrameInfo {
   frameId: number;
   computedHeight: number;
   computedWidth: number;
@@ -38,28 +38,6 @@ declare global {
     turn2Markdown: (selector?: string) => string;
     parserReadability: () => ReadabilityResult | null;
   }
-}
-
-/**
- * Get the markdown content for the current page.
- * @param tabId - The ID of the tab to get the markdown content for.
- * @param selector - The selector to get the markdown content for. If not provided, the body of the entire page will be converted to markdown.
- * @returns The markdown content for the selected element on the current page.
- */
-export async function getMarkdownContent(tabId: number, selector?: string): Promise<string> {
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tabId },
-    func: sel => {
-      return window.turn2Markdown(sel);
-    },
-    args: [selector || ''], // Pass the selector as an argument
-  });
-
-  const result = results[0]?.result;
-  if (!result) {
-    throw new Error('Failed to get markdown content');
-  }
-  return result as string;
 }
 
 /**
@@ -284,7 +262,7 @@ async function constructFrameTree(
     const iframeNode = _locateMatchingIframeNode(parentIframesFailedLoading, subFrame);
     if (iframeNode == null) {
       const subFrameRootElement = subFramePage.map[subFramePage.rootId];
-      console.warn('Cannot locate the iframe node for:', subFrame, 'with root element:', subFrameRootElement);
+      logger.warning('Cannot locate the iframe node for:', subFrame, 'with root element:', subFrameRootElement);
     } else {
       // Stiching together subframe DOM results with the main frame result
       // while keeping the subset of iframe node trees, that succeded to load their contents.
@@ -460,7 +438,7 @@ function _constructDomTree(evalPage: BuildDomTreeResult): [DOMElementNode, Map<n
  * @param nodeData - The raw DOM node data to parse.
  * @returns A tuple containing the parsed node and an array of child IDs.
  */
-export function _parse_node(nodeData: RawDomTreeNode): [DOMBaseNode | null, string[]] {
+function _parse_node(nodeData: RawDomTreeNode): [DOMBaseNode | null, string[]] {
   if (!nodeData) {
     return [null, []];
   }
@@ -535,26 +513,6 @@ export async function removeHighlights(tabId: number): Promise<void> {
  * @param tabId - The ID of the tab to get the scroll information for.
  * @returns A tuple containing the number of pixels above and below the current scroll position.
  */
-// export async function getScrollInfo(tabId: number): Promise<[number, number]> {
-//   const results = await chrome.scripting.executeScript({
-//     target: { tabId: tabId },
-//     func: () => {
-//       const scroll_y = window.scrollY;
-//       const viewport_height = window.innerHeight;
-//       const total_height = document.documentElement.scrollHeight;
-//       return {
-//         pixels_above: scroll_y,
-//         pixels_below: total_height - (scroll_y + viewport_height),
-//       };
-//     },
-//   });
-
-//   const result = results[0]?.result;
-//   if (!result) {
-//     throw new Error('Failed to get scroll information');
-//   }
-//   return [result.pixels_above, result.pixels_below];
-// }
 
 export async function getScrollInfo(tabId: number): Promise<[number, number, number]> {
   const results = await chrome.scripting.executeScript({
@@ -578,57 +536,30 @@ export async function getScrollInfo(tabId: number): Promise<[number, number, num
   return [result.scrollY, result.visualViewportHeight, result.scrollHeight];
 }
 
-// Function to check if script is already injected
-async function scriptInjectedFrames(tabId: number): Promise<Map<number, boolean>> {
+// Injects buildDomTree.js into every frame that doesn't have it yet.
+// Failures here are expected (policy-blocked hosts, frames detached mid-navigation), so they are
+// logged at debug level; the caller's own executeScript surfaces a real error if the page is unusable.
+export async function injectBuildDomTreeScripts(tabId: number) {
+  let frames: chrome.scripting.InjectionResult<boolean>[];
   try {
-    const results = await chrome.scripting.executeScript({
+    frames = await chrome.scripting.executeScript({
       target: { tabId, allFrames: true },
       func: () => Object.prototype.hasOwnProperty.call(window, 'buildDomTree'),
     });
-    return new Map(results.map(result => [result.frameId, result.result || false]));
   } catch (err) {
-    console.error('Failed to check script injection status:', err);
-    return new Map();
+    logger.debug('Page is not scriptable, skipping buildDomTree injection:', err);
+    return;
   }
-}
 
-// Function to inject the buildDomTree script
-export async function injectBuildDomTreeScripts(tabId: number) {
-  try {
-    // Check if already injected
-    const injectedFrames = await scriptInjectedFrames(tabId);
-
-    // If we couldn't check any frames or all are already injected, try to inject in main frame only
-    if (injectedFrames.size === 0) {
-      // Couldn't check frames, so just try to inject in the main frame
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId },
-          files: ['buildDomTree.js'],
-        });
-      } catch (injectionErr) {
-        // Silently ignore - script might already be injected or frame might be inaccessible
-      }
-      return;
-    }
-
-    // Check if all frames already have the script
-    if (Array.from(injectedFrames.values()).every(injected => injected)) {
-      return;
-    }
-
-    // Inject only in frames that don't have the script
-    const frameIdsToInject = Array.from(injectedFrames.keys()).filter(id => !injectedFrames.get(id));
-    if (frameIdsToInject.length > 0) {
-      await chrome.scripting.executeScript({
-        target: {
-          tabId,
-          frameIds: frameIdsToInject,
-        },
-        files: ['buildDomTree.js'],
-      });
-    }
-  } catch (err) {
-    console.error('Failed to inject scripts:', err);
-  }
+  const missing = frames.filter(frame => !frame.result).map(frame => frame.frameId);
+  // One call per frame: a single detached frame would otherwise abort the whole batch.
+  const results = await Promise.allSettled(
+    missing.map(frameId =>
+      chrome.scripting.executeScript({ target: { tabId, frameIds: [frameId] }, files: ['buildDomTree.js'] }),
+    ),
+  );
+  results.forEach((result, i) => {
+    if (result.status === 'rejected')
+      logger.debug(`buildDomTree injection skipped for frame ${missing[i]}:`, result.reason);
+  });
 }

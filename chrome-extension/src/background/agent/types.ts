@@ -49,6 +49,7 @@ export class AgentContext {
   stateMessageAdded: boolean;
   history: AgentStepHistory;
   finalAnswer: string | null;
+  authorizeAction?: (action: string, input: unknown) => Promise<void>;
 
   constructor(
     taskId: string,
@@ -99,7 +100,7 @@ export class AgentContext {
   }
 }
 
-export class AgentStepInfo {
+class AgentStepInfo {
   stepNumber: number;
   maxSteps: number;
 
@@ -126,10 +127,6 @@ export class ActionResult {
     this.includeInMemory = params.includeInMemory ?? false;
   }
 }
-
-export type WrappedActionResult = ActionResult & {
-  toolCallId: string;
-};
 
 export class StepMetadata {
   stepStartTime: number;

@@ -17,7 +17,7 @@ interface RuntimeActions {
   reset: () => void;
 }
 
-export type RuntimeStore = RuntimeState & RuntimeActions;
+type RuntimeStore = RuntimeState & RuntimeActions;
 
 const initialState: RuntimeState = {
   currentExecutor: null,

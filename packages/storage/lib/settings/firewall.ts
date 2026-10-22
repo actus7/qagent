@@ -21,7 +21,7 @@ function normalizeUrl(url: string): string {
     .replace(/^https?:\/\//, '');
 }
 
-export type FirewallStorage = BaseStorage<FirewallConfig> & {
+type FirewallStorage = BaseStorage<FirewallConfig> & {
   updateFirewall: (settings: Partial<FirewallConfig>) => Promise<void>;
   getFirewall: () => Promise<FirewallConfig>;
   resetToDefaults: () => Promise<void>;
@@ -32,7 +32,7 @@ export type FirewallStorage = BaseStorage<FirewallConfig> & {
 };
 
 // Default settings
-export const DEFAULT_FIREWALL_SETTINGS: FirewallConfig = {
+const DEFAULT_FIREWALL_SETTINGS: FirewallConfig = {
   allowList: [],
   denyList: [],
   enabled: true,
