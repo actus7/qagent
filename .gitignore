@@ -3,6 +3,8 @@
 
 # testing
 **/coverage
+.playwright-cli/
+.logs/
 
 # build
 **/dist
@@ -29,3 +31,10 @@ chrome-extension/public/manifest.json
 .vscode
 .cursor
 *.py
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# local AI tooling (not project code)
+.agent/
+.agents/
