@@ -1,3 +1,5 @@
+import { isManagedUrlAllowed } from '../state/managedPolicyState';
+
 /**
  * Normalizes a firewall list entry so it compares with normalized hostnames:
  * lowercase, no scheme, no leading `*.` / `www.`, no trailing dots.
@@ -35,6 +37,11 @@ export function isUrlAllowed(url: string, allowList: string[], denyList: string[
   // Scheme allowlist: only web pages and about:blank can be reached
   const isAboutBlank = trimmedUrl === 'about:blank';
   if (!isAboutBlank && !/^https?:\/\//i.test(trimmedUrl)) {
+    return false;
+  }
+
+  // Enterprise policy (managed blocked/allowed patterns) applies even when the firewall is disabled.
+  if (!isManagedUrlAllowed(trimmedUrl)) {
     return false;
   }
 

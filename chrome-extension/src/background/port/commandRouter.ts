@@ -3,6 +3,7 @@ import { t } from '@extension/i18n';
 import type { SidePanelCommandMessage, SidePanelResponseMessage } from '@extension/shared';
 import { DEFAULT_AGENT_OPTIONS } from '../agent/types';
 import { createLogger } from '../log';
+import { assertManagedProvidersAllowed, loadManagedPolicy, prepareManagedTask } from '../services/managedPolicy';
 import { SpeechToTextService } from '../services/speechToText';
 import { captureVisibleTab } from '../services/tabCapture';
 import { browserContext } from '../state/browserSession';
@@ -24,12 +25,12 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
       break;
 
     case 'new_task': {
-      await runAssistantTask(message);
+      await runAssistantTask(await prepareManagedTask(message));
       break;
     }
 
     case 'follow_up_task': {
-      await runAssistantTask(message);
+      await runAssistantTask(await prepareManagedTask(message));
       break;
     }
 
@@ -136,6 +137,7 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
     }
 
     case 'replay': {
+      await assertManagedProvidersAllowed(await loadManagedPolicy());
       await runAssistantTask(message, message.historySessionId);
       break;
     }

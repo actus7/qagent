@@ -8,6 +8,8 @@ import { registerSidePanelPortListener, setupSidePanelBehavior } from './port/si
 import { registerPanelForwarders } from './port/panelForwarding';
 import { registerSettingsSync } from './services/settingsSync';
 import { registerContextMenu } from './services/context-menu';
+import { loadManagedPolicy, registerManagedPolicyListener } from './services/managedPolicy';
+import { registerMcpBridge } from './services/mcpBridge/client';
 
 // Service-worker composition root. Chrome requires listeners to be registered synchronously at
 // top level, so every register* call below runs during evaluation, never inside an async callback.
@@ -25,3 +27,6 @@ registerSettingsSync();
 registerRuntimeMessageListener();
 registerSidePanelPortListener();
 registerContextMenu();
+registerManagedPolicyListener();
+void loadManagedPolicy();
+registerMcpBridge();

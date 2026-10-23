@@ -21,7 +21,8 @@
     "lint:fix": "pnpm lint --fix",
     "prettier": "prettier . --write --ignore-path ../../.prettierignore",
     "type-check": "tsc --noEmit",
-    "companion": "node ./dist/lib/agent-browser/bin-companion.js"
+    "companion": "node ./dist/lib/agent-browser/bin-companion.js",
+    "mcp": "node ./dist/lib/mcp-bridge/bin-mcp.js"
   },
   "devDependencies": {
     "@extension/shared": "workspace:*",

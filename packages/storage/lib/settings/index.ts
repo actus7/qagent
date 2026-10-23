@@ -6,3 +6,4 @@ export * from './firewall';
 export * from './sitePermissions';
 export * from './speechToText';
 export * from './analyticsSettings';
+export * from './mcpBridge';

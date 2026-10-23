@@ -1,4 +1,6 @@
+import { isManagedActionAllowed } from '@extension/shared';
 import type { AgentContext } from '@src/background/agent/types';
+import { getManagedPolicy } from '@src/background/state/managedPolicyState';
 import { createDoneAction } from './completion';
 import {
   createBackAction,
@@ -128,9 +130,12 @@ export class ActionBuilder {
       createDragAction(context),
       createResizeViewportAction(context),
     ];
+    // Managed policy removes actions here, so the model never sees them (order is preserved).
+    const policy = getManagedPolicy();
+    const permittedActions = actions.filter(action => isManagedActionAllowed(action.name(), policy));
 
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
-      return actions
+      return permittedActions
         .filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()))
         .map(action => {
           action.beforeCall = this.context.authorizeAction;
@@ -138,7 +143,7 @@ export class ActionBuilder {
         });
     }
 
-    for (const action of actions) action.beforeCall = this.context.authorizeAction;
-    return actions;
+    for (const action of permittedActions) action.beforeCall = this.context.authorizeAction;
+    return permittedActions;
   }
 }

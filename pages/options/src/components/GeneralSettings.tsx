@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { type GeneralSettingsConfig, generalSettingsStore, DEFAULT_GENERAL_SETTINGS } from '@extension/storage';
 import { t } from '@extension/i18n';
+import { McpBridgeSettings } from './McpBridgeSettings';
 
 type ClampedIntegerKey = 'maxSteps' | 'maxActionsPerStep' | 'maxFailures' | 'planningInterval' | 'minWaitPageLoad';
 
@@ -249,6 +250,7 @@ export const GeneralSettings = () => {
           </div>
         </div>
       </div>
+      <McpBridgeSettings />
     </section>
   );
 };

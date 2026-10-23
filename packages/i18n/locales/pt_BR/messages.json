@@ -1482,5 +1482,56 @@
   },
   "chat_input_dropHint": {
     "message": "Solte os arquivos para anexá-los"
+  },
+  "chat_managed_notice": {
+    "message": "Gerenciado pela sua organização"
+  },
+  "options_mcp_header": {
+    "message": "Controle por clientes MCP"
+  },
+  "options_mcp_desc": {
+    "message": "Permite que Claude Code, Codex CLI ou outro cliente MCP local execute tarefas no QAgent. Desligado por padrão."
+  },
+  "options_mcp_enable": {
+    "message": "Permitir controle por clientes MCP locais"
+  },
+  "options_mcp_enable_desc": {
+    "message": "Quando ativo, o QAgent conecta-se ao servidor MCP local. Ações que pedem permissão continuam aparecendo no painel lateral."
+  },
+  "options_mcp_address": {
+    "message": "Endereço"
+  },
+  "options_mcp_address_desc": {
+    "message": "Somente loopback. Porta do servidor MCP local."
+  },
+  "options_mcp_port": {
+    "message": "Porta"
+  },
+  "options_mcp_token": {
+    "message": "Token"
+  },
+  "options_mcp_token_desc": {
+    "message": "Segredo compartilhado com o servidor MCP (QAGENT_MCP_TOKEN). Fica somente neste navegador."
+  },
+  "bg_mcp_urlBlocked": {
+    "message": "URL bloqueada pela política do QAgent ou pelo firewall."
+  },
+  "bg_mcp_noActiveTab": {
+    "message": "Nenhuma aba ativa disponível para a tarefa."
+  },
+  "bg_mcp_panelRequired": {
+    "message": "O modo de permissão 'ask' exige o painel lateral do QAgent aberto no navegador."
+  },
+  "bg_mcp_internalError": {
+    "message": "Erro interno do QAgent ao processar a solicitação."
+  },
+  "bg_managed_providerBlocked": {
+    "message": "Provedor $PROVIDER$ não é permitido pela política da sua organização.",
+    "placeholders": {
+      "provider": {
+        "content": "$1",
+        "example": "openai"
+      }
+    }
   }
 }

@@ -8,6 +8,7 @@ interface SavedPrompt {
   content: string;
 }
 import ChatInput from './ChatInput';
+import ManagedPolicyNotice from './ManagedPolicyNotice';
 import ModelControls from './ModelControls';
 import PageContext from './PageContext';
 
@@ -80,6 +81,7 @@ export default function ComposeArea({
           {workspace.error}
         </p>
       ) : null}
+      <ManagedPolicyNotice />
       <ChatInput
         onSendMessage={onSendMessage}
         voice={chatInputVoice}
