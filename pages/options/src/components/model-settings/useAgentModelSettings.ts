@@ -151,18 +151,16 @@ export function useAgentModelSettings() {
       }
 
       const isReasoningModel = isOpenAIReasoningModel(modelValue);
-      const defaultEffort = getDefaultReasoningEffort(agentName);
-      setReasoningEffort(prev => ({
-        ...prev,
-        [agentName]: isReasoningModel ? prev[agentName] || defaultEffort : undefined,
-      }));
+      // Same value for state and storage, so the UI never shows an effort that wasn't saved
+      const effort = isReasoningModel ? reasoningEffort[agentName] || getDefaultReasoningEffort(agentName) : undefined;
+      setReasoningEffort(prev => ({ ...prev, [agentName]: effort }));
 
       await agentModelStore.setAgentModel(agentName, {
         provider,
         modelName: model,
         parameters: toStoredParameters(modelValue, newParameters),
         requestsPerMinute: newParameters.requestsPerMinute,
-        reasoningEffort: isReasoningModel ? reasoningEffort[agentName] || defaultEffort : undefined,
+        reasoningEffort: effort,
       });
     } catch (error) {
       console.error('Error saving agent model:', error);
