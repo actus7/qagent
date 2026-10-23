@@ -3,7 +3,8 @@
   "compilerOptions": {
     "paths": {
       "@src/*": ["./src/*"]
-    }
+    },
+    "allowImportingTsExtensions": true
   },
   "include": ["src", "utils", "vite.config.mts", "../node_modules/@types"]
 }

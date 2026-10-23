@@ -6,8 +6,8 @@ import { colorLog, ManifestParser } from '@extension/dev-utils';
 import type { Manifest } from '@extension/dev-utils';
 import type { PluginOption } from 'vite';
 
-const rootDir = resolve(__dirname, '..', '..');
-const refreshFile = resolve(__dirname, '..', 'refresh.js');
+const rootDir = resolve(import.meta.dirname, '..', '..');
+const refreshFile = resolve(import.meta.dirname, '..', 'refresh.js');
 const manifestFile = resolve(rootDir, 'manifest.js');
 
 const getManifestWithCacheBurst = (): Promise<{ default: chrome.runtime.ManifestV3 }> => {

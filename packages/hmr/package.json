@@ -29,7 +29,6 @@
     "@extension/tsconfig": "workspace:*",
     "@rollup/plugin-sucrase": "^5.1.0",
     "@types/ws": "^8.18.2",
-    "fast-glob": "^3.3.3",
     "rollup": "^4.65.0",
     "ws": "^8.22.0"
   }

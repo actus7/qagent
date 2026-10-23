@@ -1,6 +1,6 @@
 import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'node:fs';
-import { posix, resolve } from 'node:path';
-import glob from 'fast-glob';
+import { glob } from 'node:fs/promises';
+import { join, posix, relative, resolve, sep } from 'node:path';
 import { AsyncZipDeflate, Zip } from 'fflate';
 
 // Converts bytes to megabytes
@@ -62,16 +62,13 @@ export const zipBundle = async (
   const zipFilePath = resolve(buildDirectory, archiveName);
   const output = createWriteStream(zipFilePath);
 
-  const fileList = await glob(
-    [
-      '**/*', // Pick all nested files
-      ...(!withMaps ? ['!**/(*.js.map|*.css.map)'] : []), // Exclude source maps conditionally
-    ],
-    {
-      cwd: distDirectory,
-      onlyFiles: true,
-    },
-  );
+  // Zip entry names must be posix paths relative to dist; source maps are excluded unless requested.
+  const fileList: string[] = [];
+  for await (const entry of glob('**/*', { cwd: distDirectory, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const file = relative(distDirectory, join(entry.parentPath, entry.name)).split(sep).join('/');
+    if (withMaps || !/\.(js|css)\.map$/.test(file)) fileList.push(file);
+  }
 
   return new Promise<void>((pResolve, pReject) => {
     let aborted = false;

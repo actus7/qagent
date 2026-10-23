@@ -1,11 +1,10 @@
 import { resolve } from 'node:path';
-import { defineConfig, type PluginOption, loadEnv } from 'vite';
-import libAssetsPlugin from '@laynezh/vite-plugin-lib-assets';
-import makeManifestPlugin from './utils/plugins/make-manifest-plugin';
+import { defineConfig, loadEnv } from 'vite';
+import makeManifestPlugin from './utils/plugins/make-manifest-plugin.ts';
 import { watchPublicPlugin, watchRebuildPlugin } from '@extension/hmr';
 import { isDev, isProduction, watchOption } from '@extension/vite-config';
 
-const rootDir = resolve(__dirname);
+const rootDir = resolve(import.meta.dirname);
 const srcDir = resolve(rootDir, 'src');
 
 const outDir = resolve(rootDir, '..', 'dist');
@@ -37,9 +36,6 @@ export default defineConfig(({ mode }) => {
       sourcemapIgnoreList: false,
     },
     plugins: [
-      libAssetsPlugin({
-        outputPath: outDir,
-      }) as PluginOption,
       watchPublicPlugin(),
       makeManifestPlugin({ outDir }),
       isDev && watchRebuildPlugin({ reload: true, id: 'chrome-extension-hmr' }),
@@ -48,7 +44,7 @@ export default defineConfig(({ mode }) => {
     build: {
       lib: {
         formats: ['iife'],
-        entry: resolve(__dirname, 'src/background/index.ts'),
+        entry: resolve(import.meta.dirname, 'src/background/index.ts'),
         name: 'BackgroundScript',
         fileName: 'background',
       },
