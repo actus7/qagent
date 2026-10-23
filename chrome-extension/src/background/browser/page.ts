@@ -8,7 +8,6 @@ import {
 import type { Browser } from 'puppeteer-core/lib/esm/puppeteer/api/Browser.js';
 import type { Page as PuppeteerPage } from 'puppeteer-core/lib/esm/puppeteer/api/Page.js';
 import type { ElementHandle } from 'puppeteer-core/lib/esm/puppeteer/api/ElementHandle.js';
-import type { Frame } from 'puppeteer-core/lib/esm/puppeteer/api/Frame.js';
 import {
   getClickableElements as _getClickableElements,
   removeHighlights as _removeHighlights,
@@ -25,6 +24,15 @@ import { typeIntoElementNode, typeIntoSelectorElement } from './page-input';
 import { applyAntiDetectionScripts } from './page-anti-detection';
 import { findNearestScrollableElement, scrollIntoViewIfNeeded, waitForElementStability } from './page-scroll';
 import { waitForStableNetwork } from './page-network';
+import {
+  clickWithFallback,
+  type DropdownOption,
+  locateElementInPage,
+  queryElementBySelectorOnPage,
+  readSelectOptions,
+  scrollToTextOnPage,
+  selectOptionByText,
+} from './page-elements';
 
 export { build_initial_state, CachedStateClickableElementsHashes };
 
@@ -631,76 +639,10 @@ export default class Page {
     if (!this._puppeteerPage) {
       throw new Error('Puppeteer is not connected');
     }
-
-    try {
-      // Convert text to lowercase for consistent searching
-      const lowerCaseText = text.toLowerCase();
-
-      // Try different locator strategies to find all elements containing the text
-      const selectors = [
-        // Using text selector (equivalent to get_by_text) - for exact text match
-        `::-p-text(${text})`,
-        // Using XPath selector (contains text) - case insensitive
-        `::-p-xpath(//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${lowerCaseText}')])`,
-      ];
-
-      for (const selector of selectors) {
-        try {
-          // Use $$ to get all matching elements
-          const elements = await this._puppeteerPage.$$(selector);
-
-          if (elements.length > 0) {
-            // Find visible elements and select the nth occurrence
-            const visibleElements = [];
-
-            for (const element of elements) {
-              const isVisible = await element.evaluate(el => {
-                const style = window.getComputedStyle(el);
-                const rect = el.getBoundingClientRect();
-                return (
-                  style.display !== 'none' &&
-                  style.visibility !== 'hidden' &&
-                  style.opacity !== '0' &&
-                  rect.width > 0 &&
-                  rect.height > 0
-                );
-              });
-
-              if (isVisible) {
-                visibleElements.push(element);
-              }
-            }
-
-            // Check if we have enough visible elements for the requested nth occurrence
-            if (visibleElements.length >= nth) {
-              const targetElement = visibleElements[nth - 1]; // Convert to 0-indexed
-              await this._scrollIntoViewIfNeeded(targetElement);
-              await new Promise(resolve => setTimeout(resolve, 500)); // Wait for scroll to complete
-
-              // Dispose of all element handles to prevent memory leaks
-              for (const element of elements) {
-                await element.dispose();
-              }
-
-              return true;
-            }
-          }
-
-          // Dispose of all element handles to prevent memory leaks
-          for (const element of elements) {
-            await element.dispose();
-          }
-        } catch (e) {
-          logger.debug(`Locator attempt failed: ${e}`);
-        }
-      }
-      return false;
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : String(error));
-    }
+    return scrollToTextOnPage(this._puppeteerPage, text, nth);
   }
 
-  async getDropdownOptions(index: number): Promise<Array<{ index: number; text: string; value: string }>> {
+  async getDropdownOptions(index: number): Promise<DropdownOption[]> {
     const selectorMap = this.getSelectorMap();
     const element = selectorMap?.get(index);
 
@@ -709,30 +651,11 @@ export default class Page {
     }
 
     try {
-      // Get the element handle using the element's selector
       const elementHandle = await this.locateElement(element);
       if (!elementHandle) {
         throw new Error('Dropdown element not found');
       }
-
-      // Evaluate the select element to get all options
-      const options = await elementHandle.evaluate(select => {
-        if (!(select instanceof HTMLSelectElement)) {
-          throw new Error('Element is not a select element');
-        }
-
-        return Array.from(select.options).map(option => ({
-          index: option.index,
-          text: option.text, // Not trimming to maintain exact match for selection
-          value: option.value,
-        }));
-      });
-
-      if (!options.length) {
-        throw new Error('No options found in dropdown');
-      }
-
-      return options;
+      return await readSelectOptions(elementHandle);
     } catch (error) {
       throw new Error(`Failed to get dropdown options: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -758,55 +681,11 @@ export default class Page {
     }
 
     try {
-      // Get the element handle using the element's selector
       const elementHandle = await this.locateElement(element);
       if (!elementHandle) {
         throw new Error(`Dropdown element with index ${index} not found`);
       }
-
-      // Verify dropdown and select option in one call
-      const result = await elementHandle.evaluate(
-        (select, optionText, elementIndex) => {
-          if (!(select instanceof HTMLSelectElement)) {
-            return {
-              found: false,
-              message: `Element with index ${elementIndex} is not a SELECT`,
-            };
-          }
-
-          const options = Array.from(select.options);
-          const option = options.find(opt => opt.text.trim() === optionText);
-
-          if (!option) {
-            const availableOptions = options.map(o => o.text.trim()).join('", "');
-            return {
-              found: false,
-              message: `Option "${optionText}" not found in dropdown element with index ${elementIndex}. Available options: "${availableOptions}"`,
-            };
-          }
-
-          // Set the value and dispatch events
-          const previousValue = select.value;
-          select.value = option.value;
-
-          // Only dispatch events if the value actually changed
-          if (previousValue !== option.value) {
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-            select.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-
-          return {
-            found: true,
-            message: `Selected option "${optionText}" with value "${option.value}"`,
-          };
-        },
-        text,
-        index,
-      );
-
-      logger.debug('Selection result:', result);
-      // whether found or not, return the message
-      return result.message;
+      return await selectOptionByText(elementHandle, text, index);
     } catch (error) {
       const errorMessage = `${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMessage);
@@ -816,76 +695,10 @@ export default class Page {
 
   async locateElement(element: DOMElementNode): Promise<ElementHandle | null> {
     if (!this._puppeteerPage) {
-      // throw new Error('Puppeteer page is not connected');
       logger.warning('Puppeteer is not connected');
       return null;
     }
-    let currentFrame: PuppeteerPage | Frame = this._puppeteerPage;
-
-    // Start with the target element and collect all parents
-    const parents: DOMElementNode[] = [];
-    let current = element;
-    while (current.parent) {
-      parents.push(current.parent);
-      current = current.parent;
-    }
-
-    // Process all iframe parents in sequence (in reverse order - top to bottom)
-    const iframes = parents.reverse().filter(item => item.tagName === 'iframe');
-    for (const parent of iframes) {
-      const cssSelector = parent.enhancedCssSelectorForElement(this._config.includeDynamicAttributes);
-      const frameElement: ElementHandle | null = await currentFrame.$(cssSelector);
-      if (!frameElement) {
-        // throw new Error(`Could not find iframe with selector: ${cssSelector}`);
-        logger.warning(`Could not find iframe with selector: ${cssSelector}`);
-        return null;
-      }
-      const frame: Frame | null = await frameElement.contentFrame();
-      if (!frame) {
-        // throw new Error(`Could not access frame content for selector: ${cssSelector}`);
-        logger.warning(`Could not access frame content for selector: ${cssSelector}`);
-        return null;
-      }
-      currentFrame = frame;
-      logger.info('currentFrame changed', currentFrame);
-    }
-
-    const cssSelector = element.enhancedCssSelectorForElement(this._config.includeDynamicAttributes);
-
-    try {
-      // Try CSS selector first
-      let elementHandle: ElementHandle | null = await currentFrame.$(cssSelector);
-
-      // If CSS selector failed, try XPath
-      if (!elementHandle) {
-        const xpath = element.xpath;
-        if (xpath) {
-          try {
-            logger.info('Trying XPath selector:', xpath);
-            const fullXpath = xpath.startsWith('/') ? xpath : `/${xpath}`;
-            const xpathSelector = `::-p-xpath(${fullXpath})`;
-            elementHandle = await currentFrame.$(xpathSelector);
-          } catch (xpathError) {
-            logger.error('Failed to locate element using XPath:', xpathError);
-          }
-        }
-      }
-
-      // If element found, check visibility and scroll into view
-      if (elementHandle) {
-        const isHidden = await elementHandle.isHidden();
-        if (!isHidden) {
-          await this._scrollIntoViewIfNeeded(elementHandle);
-        }
-        return elementHandle;
-      }
-
-      logger.info('elementHandle not located');
-    } catch (error) {
-      logger.error('Failed to locate element:', error);
-    }
-
-    return null;
+    return locateElementInPage(this._puppeteerPage, element, this._config.includeDynamicAttributes);
   }
 
   async inputTextElementNode(useVision: boolean, elementNode: DOMElementNode, text: string): Promise<void> {
@@ -939,33 +752,7 @@ export default class Page {
 
       // Scroll element into view if needed
       await this._scrollIntoViewIfNeeded(element);
-
-      try {
-        // First attempt: Use Puppeteer's click method with timeout
-        await Promise.race([
-          element.click(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Click timeout')), 2000)),
-        ]);
-        await this._checkAndHandleNavigation();
-      } catch (error) {
-        // if URLNotAllowedError, throw it
-        if (error instanceof URLNotAllowedError) {
-          throw error;
-        }
-        // Second attempt: Use evaluate to perform a direct click
-        logger.info('Failed to click element, trying again', error);
-        try {
-          await element.evaluate(el => (el as HTMLElement).click());
-        } catch (secondError) {
-          // if URLNotAllowedError, throw it
-          if (secondError instanceof URLNotAllowedError) {
-            throw secondError;
-          }
-          throw new Error(
-            `Failed to click element: ${secondError instanceof Error ? secondError.message : String(secondError)}`,
-          );
-        }
-      }
+      await clickWithFallback(element, () => this._checkAndHandleNavigation(), 'Failed to click element');
     } catch (error) {
       throw new Error(
         `Failed to click element: ${elementNode}. Error: ${error instanceof Error ? error.message : String(error)}`,
@@ -1010,36 +797,7 @@ export default class Page {
   }
 
   private async queryElementBySelector(selector: string): Promise<ElementHandle | null> {
-    if (!this._puppeteerPage) {
-      return null;
-    }
-
-    const normalizedSelector = selector.trim();
-    if (!normalizedSelector) {
-      return null;
-    }
-
-    // Keep lightweight support for common selector formats.
-    if (normalizedSelector.startsWith('xpath=')) {
-      const xpath = normalizedSelector.slice('xpath='.length).trim();
-      if (!xpath) {
-        return null;
-      }
-      const fullXpath = xpath.startsWith('/') ? xpath : `/${xpath}`;
-      return await this._puppeteerPage.$(`::-p-xpath(${fullXpath})`);
-    }
-
-    if (normalizedSelector.startsWith('text=')) {
-      const text = normalizedSelector.slice('text='.length).trim().replace(/"/g, '\\"');
-      if (!text) {
-        return null;
-      }
-      return await this._puppeteerPage.$(
-        `::-p-xpath(//*[contains(normalize-space(translate(string(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')), "${text.toLowerCase()}")])`,
-      );
-    }
-
-    return await this._puppeteerPage.$(normalizedSelector);
+    return this._puppeteerPage ? queryElementBySelectorOnPage(this._puppeteerPage, selector) : null;
   }
 
   async getElementBySelector(
@@ -1066,31 +824,7 @@ export default class Page {
     }
 
     await this._scrollIntoViewIfNeeded(element);
-
-    try {
-      await Promise.race([
-        element.click(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Click timeout')), 2000)),
-      ]);
-      await this._checkAndHandleNavigation();
-    } catch (error) {
-      if (error instanceof URLNotAllowedError) {
-        throw error;
-      }
-
-      try {
-        await element.evaluate(el => (el as HTMLElement).click());
-        await this._checkAndHandleNavigation();
-      } catch (secondError) {
-        if (secondError instanceof URLNotAllowedError) {
-          throw secondError;
-        }
-
-        throw new Error(
-          `Failed to click selector "${selector}": ${secondError instanceof Error ? secondError.message : String(secondError)}`,
-        );
-      }
-    }
+    await clickWithFallback(element, () => this._checkAndHandleNavigation(), `Failed to click selector "${selector}"`);
   }
 
   async inputTextBySelector(
