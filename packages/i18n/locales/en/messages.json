@@ -1616,6 +1616,27 @@
   "options_mcp_token_desc": {
     "message": "Shared secret with the MCP server (QAGENT_MCP_TOKEN). Stays in this browser only."
   },
+  "options_mcp_token_generate": {
+    "message": "Generate token"
+  },
+  "options_mcp_token_copy": {
+    "message": "Copy"
+  },
+  "options_mcp_token_copied": {
+    "message": "Copied"
+  },
+  "options_mcp_token_hint": {
+    "message": "The token must have at least 32 characters. Generate one and set the same value in QAGENT_MCP_TOKEN."
+  },
+  "options_mcp_enable_needs_token": {
+    "message": "Set a token of at least 32 characters before enabling."
+  },
+  "options_mcp_allow_auto": {
+    "message": "Allow MCP clients to use 'Act automatically'"
+  },
+  "options_mcp_allow_auto_desc": {
+    "message": "When off, tasks from MCP clients that ask for automatic mode run with approval in the side panel."
+  },
   "bg_mcp_urlBlocked": {
     "message": "URL blocked by the QAgent policy or the firewall."
   },

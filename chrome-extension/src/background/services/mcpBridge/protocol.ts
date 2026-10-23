@@ -43,6 +43,11 @@ const requestFrameSchema = z
 
 export type RunTaskParams = z.infer<typeof runTaskParamsSchema>;
 
+/** 'auto' from an MCP client only takes effect when the user allowed it in the MCP settings; otherwise 'ask'. */
+export function resolveBridgePermission(requested: 'ask' | 'auto', allowAutoPermission: boolean): 'ask' | 'auto' {
+  return requested === 'auto' && allowAutoPermission ? 'auto' : 'ask';
+}
+
 export type ParsedBridgeRequest =
   | { id: string; method: 'run_task'; params: RunTaskParams }
   | { id: string; method: 'list_tabs' | 'get_status' | 'cancel_task'; params: Record<string, never> };

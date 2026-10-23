@@ -1616,6 +1616,27 @@
   "options_mcp_token_desc": {
     "message": "與 MCP 伺服器共用的密鑰（QAGENT_MCP_TOKEN）。僅保存在此瀏覽器。"
   },
+  "options_mcp_token_generate": {
+    "message": "產生權杖"
+  },
+  "options_mcp_token_copy": {
+    "message": "複製"
+  },
+  "options_mcp_token_copied": {
+    "message": "已複製"
+  },
+  "options_mcp_token_hint": {
+    "message": "權杖至少需要 32 個字元。請產生一個，並在 QAGENT_MCP_TOKEN 設定相同的值。"
+  },
+  "options_mcp_enable_needs_token": {
+    "message": "啟用前請設定至少 32 個字元的權杖。"
+  },
+  "options_mcp_allow_auto": {
+    "message": "允許 MCP 用戶端使用「自動執行」"
+  },
+  "options_mcp_allow_auto_desc": {
+    "message": "關閉時，要求自動模式的 MCP 用戶端任務會在側邊面板中經確認後執行。"
+  },
   "bg_mcp_urlBlocked": {
     "message": "URL 被 QAgent 政策或防火牆封鎖。"
   },

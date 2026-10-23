@@ -108,9 +108,17 @@ Ferramentas expostas:
 - `qagent_get_status`: mostra se há conexão, tarefa em andamento e painel aberto.
 - `qagent_cancel_task`: cancela a tarefa em andamento.
 
-Segurança: o servidor só escuta em loopback, recusa origens de páginas web e aceita apenas a extensão (`QAGENT_MCP_EXTENSION_ID`) com o token compartilhado (`QAGENT_MCP_TOKEN`). Cada tarefa passa pelo mesmo pipeline do painel, com as mesmas regras de política e firewall. No modo `ask`, as aprovações aparecem no painel lateral, que precisa estar aberto.
+Segurança: o servidor só escuta em loopback, recusa conexões sem `Origin` e sem `chrome-extension://` (e, com `QAGENT_MCP_EXTENSION_ID`, aceita só essa extensão). A autenticação é mútua, por HMAC-SHA256 sobre um token compartilhado: o servidor prova que conhece o token antes de a extensão enviar a sua prova, e o token bruto nunca trafega pelo socket. Sem token de pelo menos 32 caracteres, o servidor não inicia e a extensão não conecta. Um processo local que ocupe a porta sem o token não consegue receber tarefas. Cada tarefa passa pelo mesmo pipeline do painel, com as mesmas regras de política e firewall. Por padrão, clientes MCP que pedem o modo `auto` são tratados como `ask`; para liberar, ative **Permitir que clientes MCP usem 'Agir automaticamente'** nas opções. No modo `ask`, as aprovações aparecem no painel lateral, que precisa estar aberto.
 
-Variáveis de ambiente do servidor: `QAGENT_MCP_PORT` (padrão `9224`), `QAGENT_MCP_TOKEN`, `QAGENT_MCP_EXTENSION_ID`, `QAGENT_MCP_TASK_TIMEOUT_MS` (padrão 10 minutos).
+Gerar o token (32 bytes em hex, 64 caracteres):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Use o mesmo valor em **Opções da extensão > Controle por clientes MCP > Token** (ou no botão "Gerar token" ali) e no ambiente do cliente MCP (`QAGENT_MCP_TOKEN`). Sem o token, a ativação fica bloqueada.
+
+Variáveis de ambiente do servidor: `QAGENT_MCP_TOKEN` (obrigatório, mínimo 32 caracteres), `QAGENT_MCP_PORT` (padrão `9224`), `QAGENT_MCP_EXTENSION_ID`, `QAGENT_MCP_TASK_TIMEOUT_MS` (padrão 10 minutos).
 
 Registro no Claude Code (use `--silent` para o pnpm não escrever no stdout, que transporta o protocolo):
 

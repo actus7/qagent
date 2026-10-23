@@ -21,7 +21,14 @@ function writeResponse(response: JsonRpcResponse | JsonRpcResponse[]): void {
 }
 
 async function main(): Promise<void> {
-  const bridge = QAgentMcpBridge.fromEnv();
+  let bridge: QAgentMcpBridge;
+  try {
+    bridge = QAgentMcpBridge.fromEnv();
+  } catch (error) {
+    // Without a token the handshake cannot authenticate the extension: refuse to start rather than run open.
+    log(`not started: ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
   try {
     await bridge.start();
     log(`listening for the QAgent extension on ${bridge.getAddress()}`);
