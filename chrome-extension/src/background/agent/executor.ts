@@ -268,11 +268,7 @@ export class Executor {
           void analytics.trackTaskCancelled(this.context.taskId);
         } else {
           // Cancellation can also happen from transport/network interruptions; surface as a failure.
-          await this.context.emitEvent(
-            Actors.SYSTEM,
-            ExecutionState.TASK_FAIL,
-            t('exec_task_fail', [describeModelError(error, t)]),
-          );
+          await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [describeModelError(error, t)]));
           const errorCategory = analytics.categorizeError(error);
           void analytics.trackTaskFailed(this.context.taskId, errorCategory);
         }
@@ -556,11 +552,7 @@ export class Executor {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       replayLogger.error(`Replay failed: ${errorMessage}`);
-      await this.context.emitEvent(
-        Actors.SYSTEM,
-        ExecutionState.TASK_FAIL,
-        t('exec_replay_fail', [describeModelError(error, t)]),
-      );
+      await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_replay_fail', [describeModelError(error, t)]));
     }
 
     return results;
