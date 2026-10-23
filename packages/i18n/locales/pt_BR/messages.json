@@ -1208,5 +1208,41 @@
   },
   "bg_errors_modelUnreachable": {
     "message": "Não foi possível conectar ao provedor do modelo. Verifique sua conexão e a URL base do provedor."
+  },
+  "act_uploadFile_start": {
+    "message": "Enviando $FILE$ para o elemento $INDEX$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "index": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_uploadFile_ok": {
+    "message": "Arquivo $FILE$ anexado ao elemento $INDEX$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "index": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_uploadFile_fail": {
+    "message": "Falha ao anexar $FILE$: $ERROR$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "error": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_uploadFile_unsupported": {
+    "message": "Este mecanismo de navegador não suporta upload de arquivos"
   }
 }

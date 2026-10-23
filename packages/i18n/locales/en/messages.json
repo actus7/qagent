@@ -1208,5 +1208,41 @@
   },
   "bg_errors_modelUnreachable": {
     "message": "Could not reach the model provider. Check your connection and the provider base URL."
+  },
+  "act_uploadFile_start": {
+    "message": "Uploading $FILE$ to element $INDEX$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "index": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_uploadFile_ok": {
+    "message": "Uploaded $FILE$ to element $INDEX$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "index": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_uploadFile_fail": {
+    "message": "Failed to upload $FILE$: $ERROR$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "error": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_uploadFile_unsupported": {
+    "message": "File upload is not supported by this browser engine"
   }
 }

@@ -1208,5 +1208,41 @@
   },
   "bg_errors_modelUnreachable": {
     "message": "無法連線到模型提供者。請檢查網路連線與提供者的基礎 URL。"
+  },
+  "act_uploadFile_start": {
+    "message": "正在將 $FILE$ 上傳到元素 $INDEX$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "index": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_uploadFile_ok": {
+    "message": "已將 $FILE$ 上傳到元素 $INDEX$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "index": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_uploadFile_fail": {
+    "message": "上傳 $FILE$ 失敗：$ERROR$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "error": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_uploadFile_unsupported": {
+    "message": "此瀏覽器引擎不支援檔案上傳"
   }
 }

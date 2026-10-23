@@ -192,6 +192,19 @@ export const inputTextActionSchema = {
   }),
 } satisfies ActionSchema;
 
+export const uploadFileActionSchema = {
+  name: 'upload_file',
+  description:
+    'Attach a file to a file input (<input type=file>) by index. Provide the file name and its full text content; use it for forms that require an upload',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    index: z.number().int().describe('index of the file input element'),
+    file_name: z.string().describe('file name including extension, e.g. report.csv'),
+    content: z.string().describe('full text content of the file'),
+    mime_type: z.string().nullable().optional().describe('MIME type, e.g. text/csv; defaults to text/plain'),
+  }),
+} satisfies ActionSchema;
+
 // Tab Management Actions
 export const switchTabActionSchema = {
   name: 'switch_tab',

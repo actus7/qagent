@@ -70,6 +70,8 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {get_dropdown_options: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the dropdown element', 'required': true}}}",
   "Select dropdown option for interactive element index by the text of the option you want to select:
 {select_dropdown_option: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the dropdown element', 'required': true}, 'text': {'type': 'text of the option', 'required': true}}}",
+  "Attach a file to a file input (<input type=file>) by index. Provide the file name and its full text content; use it for forms that require an upload:
+{upload_file: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the file input element', 'required': true}, 'file_name': {'type': 'file name including extension, e.g. report.csv', 'required': true}, 'content': {'type': 'full text content of the file', 'required': true}, 'mime_type': {'type': 'MIME type, e.g. text/csv; defaults to text/plain', 'optional': true}}}",
 ]
 `;
 
@@ -794,6 +796,46 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               "text",
             ],
             "title": "Type",
+            "type": "object",
+          },
+          "upload_file": {
+            "description": "Attach a file to a file input (<input type=file>) by index. Provide the file name and its full text content; use it for forms that require an upload",
+            "nullable": true,
+            "properties": {
+              "content": {
+                "description": "full text content of the file",
+                "title": "Content",
+                "type": "string",
+              },
+              "file_name": {
+                "description": "file name including extension, e.g. report.csv",
+                "title": "File Name",
+                "type": "string",
+              },
+              "index": {
+                "description": "index of the file input element",
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "mime_type": {
+                "description": "MIME type, e.g. text/csv; defaults to text/plain",
+                "nullable": true,
+                "title": "Mime Type",
+                "type": "string",
+              },
+            },
+            "required": [
+              "index",
+              "file_name",
+              "content",
+            ],
+            "title": "Upload File",
             "type": "object",
           },
           "wait": {

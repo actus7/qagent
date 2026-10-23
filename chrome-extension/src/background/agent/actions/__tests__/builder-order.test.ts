@@ -39,6 +39,7 @@ const DEFAULT_ACTION_NAMES = [
   'send_keys',
   'get_dropdown_options',
   'select_dropdown_option',
+  'upload_file',
 ];
 
 const AGENT_BROWSER_V1_ACTION_NAMES = [

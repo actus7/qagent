@@ -16,6 +16,7 @@ import {
   createFillAction,
   createGetDropdownOptionsAction,
   createInputTextAction,
+  createUploadFileAction,
   createPressAction,
   createSelectDropdownOptionAction,
   createSendKeysAction,
@@ -111,6 +112,7 @@ export class ActionBuilder {
       createSendKeysAction(context),
       createGetDropdownOptionsAction(context),
       createSelectDropdownOptionAction(context),
+      createUploadFileAction(context),
     ];
 
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {

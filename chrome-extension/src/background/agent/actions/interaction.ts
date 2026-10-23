@@ -15,6 +15,7 @@ import {
   selectDropdownOptionActionSchema,
   sendKeysActionSchema,
   typeActionSchema,
+  uploadFileActionSchema,
 } from './schemas';
 
 async function clickBySelector(context: AgentContext, selector: string, intent: string): Promise<ActionResult> {
@@ -300,6 +301,38 @@ export function createSelectDropdownOptionAction(context: AgentContext) {
       }
     },
     selectDropdownOptionActionSchema,
+    true,
+  );
+}
+
+export function createUploadFileAction(context: AgentContext) {
+  return new Action(
+    async (input: z.infer<typeof uploadFileActionSchema.schema>) => {
+      const intent = input.intent || t('act_uploadFile_start', [input.file_name, input.index.toString()]);
+      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
+      const page = await context.browserContext.getCurrentPage();
+      if (!page.uploadFileBySelector) {
+        const msg = t('act_uploadFile_unsupported');
+        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
+        return new ActionResult({ error: msg, includeInMemory: true });
+      }
+      if (!page.getDomElementBySelector(`@e${input.index}`)) return elementNotExistResult(context, input.index);
+      try {
+        await page.uploadFileBySelector(`@e${input.index}`, {
+          name: input.file_name,
+          content: input.content,
+          mimeType: input.mime_type ?? undefined,
+        });
+      } catch (error) {
+        const msg = t('act_uploadFile_fail', [input.file_name, error instanceof Error ? error.message : String(error)]);
+        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
+        return new ActionResult({ error: msg, includeInMemory: true });
+      }
+      const msg = t('act_uploadFile_ok', [input.file_name, input.index.toString()]);
+      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
+      return new ActionResult({ extractedContent: msg, includeInMemory: true });
+    },
+    uploadFileActionSchema,
     true,
   );
 }

@@ -10,6 +10,9 @@ import { chromium } from 'playwright-core';
 const extensionDir = path.resolve(import.meta.dirname, '..', 'dist');
 const TARGET_PAGE = `<!doctype html><title>QA target</title><h1 id="status">idle</h1>
 <button id="go" onclick="document.getElementById('status').textContent='clicked'">Go</button>`;
+// The page echoes the received file so the test can check name and content.
+const UPLOAD_PAGE = `<!doctype html><title>Upload target</title><h1 id="status">idle</h1>
+<input id="file" type="file" onchange="this.files[0].text().then(t => document.getElementById('status').textContent = this.files[0].name + ':' + t)">`;
 
 // Planner: keeps the task open until the navigator has acted once, then declares it done.
 // Navigator: clicks the "Go" button from the DOM it receives, then finishes.
@@ -33,10 +36,26 @@ function fakeCompletion(body, state) {
     const brain = { evaluation_previous_goal: 'ok', memory: '', next_goal: 'finish' };
     // The DOM reaches the model as `[0][ref=e0]<button >Go />`.
     const index = prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<button[^>]*>Go \/>/)?.[1];
+    const fileIndex = prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<input[^\]]*?file/)?.[1];
+    const first = state.navigatorSteps === 1;
     payload =
-      state.navigatorSteps === 1 && index !== undefined
+      first && index !== undefined
         ? { current_state: brain, action: [{ click_element: { intent: 'click go', index: Number(index) } }] }
-        : { current_state: brain, action: [{ done: { text: 'clicked the button', success: true } }] };
+        : first && fileIndex !== undefined
+          ? {
+              current_state: brain,
+              action: [
+                {
+                  upload_file: {
+                    intent: 'attach csv',
+                    index: Number(fileIndex),
+                    file_name: 'report.csv',
+                    content: 'a,b\n1,2',
+                  },
+                },
+              ],
+            }
+          : { current_state: brain, action: [{ done: { text: 'done', success: true } }] };
   }
   // LangChain asks either for a tool call or for a response_format JSON reply; answer in the same shape.
   const viaTool = Boolean(body.tools?.length);
@@ -69,7 +88,7 @@ describe('extension e2e', { timeout: 180_000 }, () => {
     server = http.createServer((req, res) => {
       if (req.method === 'GET') {
         res.writeHead(200, { 'content-type': 'text/html' });
-        return res.end(TARGET_PAGE);
+        return res.end(req.url.startsWith('/upload') ? UPLOAD_PAGE : TARGET_PAGE);
       }
       let raw = '';
       req.on('data', chunk => (raw += chunk));
@@ -219,6 +238,44 @@ describe('extension e2e', { timeout: 180_000 }, () => {
     assert.ok(seen.includes('system:task.resume'), `resume was not reported: ${seen.join(', ')}`);
     assert.ok(seen.includes('system:task.ok'), `task did not complete after resume: ${seen.join(', ')}`);
     assert.equal(await target.locator('#status').textContent(), 'clicked');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('attaches a file to a file input with the upload_file action', async () => {
+    state.navigatorSteps = 0;
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/upload`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/upload` }))[0]?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'upload tab not found');
+
+    const seen = await panel.evaluate(
+      targetTabId =>
+        new Promise(resolve => {
+          const events = [];
+          const port = chrome.runtime.connect({ name: 'side-panel-connection' });
+          setTimeout(() => resolve(events), 120_000);
+          port.onMessage.addListener(message => {
+            if (message.type !== 'execution') return;
+            events.push(`${message.actor}:${message.state}`);
+            if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) resolve(events);
+          });
+          port.postMessage({
+            type: 'new_task',
+            task: 'Attach a CSV report',
+            taskId: 'e2e-upload-task',
+            tabId: targetTabId,
+            options: { mode: 'act', permissionMode: 'auto', tabIds: [targetTabId] },
+          });
+        }),
+      tabId,
+    );
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.equal(await target.locator('#status').textContent(), 'report.csv:a,b\n1,2');
     assert.deepEqual(pageErrors, []);
   });
 });
