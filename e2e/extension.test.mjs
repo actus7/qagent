@@ -771,6 +771,8 @@ describe('extension e2e', { timeout: 300_000 }, () => {
                 prompt: 'Click the Go button',
                 mode: 'act',
                 startUrl: url,
+                // Unattended run: no panel answers approvals, so the schedule opts in to acting on its own.
+                permissionMode: 'auto',
                 enabled: true,
                 frequency: 'daily',
                 time: '09:00',
@@ -787,7 +789,10 @@ describe('extension e2e', { timeout: 300_000 }, () => {
       { id: scheduleId, url: startUrl },
     );
 
-    const reply = await panel.evaluate(id => chrome.runtime.sendMessage({ type: 'qagent:schedule:run-now', id }), scheduleId);
+    const reply = await panel.evaluate(
+      id => chrome.runtime.sendMessage({ type: 'qagent:schedule:run-now', id }),
+      scheduleId,
+    );
     assert.deepEqual(reply, { ok: true }, 'run-now did not reach the background');
 
     // Poll the stored run history until the background records the outcome.

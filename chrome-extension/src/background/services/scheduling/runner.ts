@@ -4,6 +4,7 @@ import type { SidePanelTaskCommand } from '@extension/shared';
 import { ExecutionState } from '../../agent/event/types';
 import { isUrlAllowed } from '../../browser/util';
 import { createLogger } from '../../log';
+import { prepareManagedTask } from '../managedPolicy';
 import { isAssistantTaskRunning, runAssistantTask } from '../../task/taskRunner';
 import { decideScheduledRun } from './decision';
 import { syncScheduleAlarms } from './alarms';
@@ -17,7 +18,7 @@ export interface ScheduleRunDeps {
   saveTask: (task: ScheduledTask) => Promise<void>;
   appendRun: (id: string, run: ScheduleRun) => Promise<void>;
   isBusy: () => boolean;
-  /** Firewall verdict for a start URL (true when the firewall is off or allows the URL). */
+  /** URL verdict for a start URL: managed patterns always apply, the firewall lists when it is enabled. */
   isUrlAllowed: (url: string) => Promise<boolean>;
   /** Creates the chat session that holds the run and stores the prompt as its first user message. */
   createSession: (title: string, prompt: string) => Promise<string>;
@@ -61,7 +62,7 @@ export async function runScheduledTaskWith(id: string, deps: ScheduleRunDeps): P
       task: task.prompt,
       taskId: sessionId,
       tabId,
-      options: { mode: task.mode, permissionMode: 'auto', tabIds },
+      options: { mode: task.mode, permissionMode: task.permissionMode ?? 'ask', tabIds },
     });
     const { outcome, detail } = outcomeForState(state);
     await finishRun(task, { at: deps.now(), outcome, sessionId, detail }, deps);
@@ -110,7 +111,7 @@ export function defaultScheduleRunDeps(): ScheduleRunDeps {
     isBusy: () => isAssistantTaskRunning(),
     isUrlAllowed: async url => {
       const firewall = await firewallStore.getFirewall();
-      return !firewall.enabled || isUrlAllowed(url, firewall.allowList, firewall.denyList);
+      return isUrlAllowed(url, firewall.enabled ? firewall.allowList : [], firewall.enabled ? firewall.denyList : []);
     },
     createSession: async (title, prompt) => {
       const session = await chatHistoryStore.createSession(title);
@@ -125,7 +126,8 @@ export function defaultScheduleRunDeps(): ScheduleRunDeps {
     },
     startTask: async command => {
       let finalState: string | null = null;
-      await runAssistantTask(command, undefined, {
+      // Same managed-policy gate as the side panel and MCP entry points (permission coercion, providers).
+      await runAssistantTask(await prepareManagedTask(command), undefined, {
         onFinished: state => {
           finalState = state;
         },

@@ -252,6 +252,15 @@ export const ScheduleForm = ({ task, taskCount, onDone }: ScheduleFormProps) => 
           />
           {t('options_schedule_field_enabled')}
         </label>
+        <label className="flex items-center gap-3 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={draft.autoApprove}
+            onChange={e => update('autoApprove', e.target.checked)}
+            className="size-4"
+          />
+          {t('options_schedule_field_autoApprove')}
+        </label>
         <p className="text-xs text-muted-foreground">{t('options_schedule_autoNote')}</p>
 
         {formError ? (

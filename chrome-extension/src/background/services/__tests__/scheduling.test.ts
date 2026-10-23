@@ -186,11 +186,22 @@ describe('runScheduledTaskWith', () => {
       expect.objectContaining({
         taskId: 'session-1',
         tabId: 7,
-        options: { mode: 'act', permissionMode: 'auto', tabIds: [7] },
+        // A schedule without an explicit opt-in waits for approvals instead of acting on its own.
+        options: { mode: 'act', permissionMode: 'ask', tabIds: [7] },
       }),
     ]);
     expect(runs).toEqual([expect.objectContaining({ outcome: 'completed', sessionId: 'session-1' })]);
     expect(current()?.nextRunAt).toBe(local(2026, 3, 11, 9));
+  });
+
+  it('acts automatically only when the schedule opted in', async () => {
+    const { deps, started } = fakeDeps({ ...task, permissionMode: 'auto' });
+
+    await runScheduledTaskWith('t1', deps);
+
+    expect(started).toEqual([
+      expect.objectContaining({ options: { mode: 'act', permissionMode: 'auto', tabIds: [7] } }),
+    ]);
   });
 
   it('records a skipped run without starting a task when another task is busy', async () => {

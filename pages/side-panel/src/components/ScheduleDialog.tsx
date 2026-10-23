@@ -185,6 +185,19 @@ export default function ScheduleDialog({
           </div>
         </div>
 
+        <label className="flex items-start gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={draft.autoApprove}
+            onChange={e => update('autoApprove', e.target.checked)}
+            className="mt-0.5 size-4"
+          />
+          <span>
+            {t('options_schedule_field_autoApprove')}
+            <span className="block text-muted-foreground">{t('options_schedule_autoNote')}</span>
+          </span>
+        </label>
+
         <p className="text-xs text-muted-foreground">{t('chat_schedule_moreInOptions')}</p>
         <button
           type="button"
