@@ -1,4 +1,88 @@
 {
+  "options_models_providers_errors_invalidBaseUrl": {
+    "message": "Informe uma URL válida, começando com http:// ou https://."
+  },
+  "options_models_providers_errors_insecureBaseUrl": {
+    "message": "Use uma URL https://. Apenas localhost, 127.0.0.1 ou [::1] aceitam http://."
+  },
+  "options_models_providers_errors_noModels": {
+    "message": "Adicione pelo menos um modelo antes de salvar."
+  },
+  "options_models_providers_errors_saveFailed": {
+    "message": "Não foi possível salvar o provedor. Veja o console para detalhes."
+  },
+  "options_models_providers_errors_deleteFailed": {
+    "message": "Não foi possível excluir o provedor. Tente novamente."
+  },
+  "options_firewall_remove": {
+    "message": "Remover"
+  },
+  "options_general_displayHighlights_visionLocked": {
+    "message": "Sempre ativo enquanto a visão estiver habilitada, pois as capturas precisam dos destaques."
+  },
+  "chat_input_fileUnsupported": {
+    "message": "$NAME$: use TXT, Markdown, JSON, CSV, LOG, XML ou YAML.",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "notes.txt"
+      }
+    }
+  },
+  "chat_input_fileTooLarge": {
+    "message": "$NAME$: tamanho máximo de 1 MB.",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "notes.txt"
+      }
+    }
+  },
+  "errors_noActiveTab": {
+    "message": "Nenhuma aba ativa encontrada"
+  },
+  "nav_theme_a11y": {
+    "message": "Tema: $THEME$",
+    "placeholders": {
+      "theme": {
+        "content": "$1",
+        "example": "dark"
+      }
+    }
+  },
+  "chat_pageContext_removeTab": {
+    "message": "Remover $TITLE$",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Example page"
+      }
+    }
+  },
+  "chat_history_deleteConfirm": {
+    "message": "Excluir a conversa \"$TITLE$\"? Esta ação não pode ser desfeita.",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Example conversation"
+      }
+    }
+  },
+  "chat_browser_statusLoading": {
+    "message": "Carregando status do companion..."
+  },
+  "chat_browser_statusOffline": {
+    "message": "Companion offline"
+  },
+  "chat_browser_statusAuthRequired": {
+    "message": "É necessário autenticar o companion"
+  },
+  "chat_browser_statusPairActive": {
+    "message": "Navegação em par ativa"
+  },
+  "chat_browser_statusConnected": {
+    "message": "Companion conectado"
+  },
   "app_metadata_description": {
     "description": "Descrição da extensão",
     "message": "Converse sobre páginas, planeje e execute tarefas nas suas abas com IA e provedores configuráveis."
