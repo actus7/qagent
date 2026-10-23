@@ -5,6 +5,7 @@ import { DEFAULT_AGENT_OPTIONS } from '../agent/types';
 import { createLogger } from '../log';
 import { loadAssistantModel } from '../services/assistant-model';
 import { compactChatConversation } from '../services/conversation-compaction';
+import { assertManagedProvidersAllowed, loadManagedPolicy, prepareManagedTask } from '../services/managedPolicy';
 import { SpeechToTextService } from '../services/speechToText';
 import { captureVisibleTab } from '../services/tabCapture';
 import { browserContext } from '../state/browserSession';
@@ -26,12 +27,12 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
       break;
 
     case 'new_task': {
-      await runAssistantTask(message);
+      await runAssistantTask(await prepareManagedTask(message));
       break;
     }
 
     case 'follow_up_task': {
-      await runAssistantTask(message);
+      await runAssistantTask(await prepareManagedTask(message));
       break;
     }
 
@@ -144,6 +145,7 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
     }
 
     case 'replay': {
+      await assertManagedProvidersAllowed(await loadManagedPolicy());
       await runAssistantTask(message, message.historySessionId);
       break;
     }

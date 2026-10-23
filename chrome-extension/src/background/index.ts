@@ -10,6 +10,8 @@ import { registerSettingsSync } from './services/settingsSync';
 import { registerContextMenu } from './services/context-menu';
 import { recoverInterruptedTask } from './task/runState';
 import { registerTaskNotificationClicks } from './services/task-notifications';
+import { loadManagedPolicy, registerManagedPolicyListener } from './services/managedPolicy';
+import { registerMcpBridge } from './services/mcpBridge/client';
 
 // Service-worker composition root. Chrome requires listeners to be registered synchronously at
 // top level, so every register* call below runs during evaluation, never inside an async callback.
@@ -28,7 +30,11 @@ registerRuntimeMessageListener();
 registerSidePanelPortListener();
 registerContextMenu();
 
-// Marks a task that the previous worker died during as interrupted, before any new task can start.
 registerTaskNotificationClicks();
 
+// Marks a task that the previous worker died during as interrupted, before any new task can start.
 recoverInterruptedTask().catch(error => logger.error('Failed to recover the interrupted task:', error));
+
+registerManagedPolicyListener();
+void loadManagedPolicy();
+registerMcpBridge();

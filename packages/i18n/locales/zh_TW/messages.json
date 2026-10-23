@@ -1537,5 +1537,56 @@
   },
   "chat_input_dropHint": {
     "message": "放開以附加檔案"
+  },
+  "chat_managed_notice": {
+    "message": "由您的組織管理"
+  },
+  "options_mcp_header": {
+    "message": "MCP 用戶端控制"
+  },
+  "options_mcp_desc": {
+    "message": "允許 Claude Code、Codex CLI 或其他本機 MCP 用戶端在 QAgent 中執行任務。預設關閉。"
+  },
+  "options_mcp_enable": {
+    "message": "允許本機 MCP 用戶端控制"
+  },
+  "options_mcp_enable_desc": {
+    "message": "開啟後，QAgent 會連線到本機 MCP 伺服器。需要權限的操作仍會顯示在側邊面板。"
+  },
+  "options_mcp_address": {
+    "message": "位址"
+  },
+  "options_mcp_address_desc": {
+    "message": "僅限 loopback。本機 MCP 伺服器的連接埠。"
+  },
+  "options_mcp_port": {
+    "message": "連接埠"
+  },
+  "options_mcp_token": {
+    "message": "權杖"
+  },
+  "options_mcp_token_desc": {
+    "message": "與 MCP 伺服器共用的密鑰（QAGENT_MCP_TOKEN）。僅保存在此瀏覽器。"
+  },
+  "bg_mcp_urlBlocked": {
+    "message": "URL 被 QAgent 政策或防火牆封鎖。"
+  },
+  "bg_mcp_noActiveTab": {
+    "message": "沒有可用於任務的使用中分頁。"
+  },
+  "bg_mcp_panelRequired": {
+    "message": "「詢問」權限模式需要先在瀏覽器中開啟 QAgent 側邊面板。"
+  },
+  "bg_mcp_internalError": {
+    "message": "QAgent 處理請求時發生內部錯誤。"
+  },
+  "bg_managed_providerBlocked": {
+    "message": "您的組織政策不允許供應商 $PROVIDER$。",
+    "placeholders": {
+      "provider": {
+        "content": "$1",
+        "example": "openai"
+      }
+    }
   }
 }

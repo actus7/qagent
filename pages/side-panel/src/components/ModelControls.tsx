@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { FiChevronDown } from 'react-icons/fi';
 import type { PermissionMode } from '@extension/shared';
 import type { AssistantWorkspace } from '../hooks/useAssistantWorkspace';
+import { useManagedPolicy } from '../hooks/useManagedPolicy';
 import type { assistantCopy } from '../lib/assistant-copy';
 
 interface ModelControlsProps {
@@ -10,6 +12,15 @@ interface ModelControlsProps {
 }
 
 export default function ModelControls({ copy, workspace, showStopButton }: ModelControlsProps) {
+  const { policy } = useManagedPolicy();
+  const autoForbidden = policy.disableAutoMode;
+  const { permissionMode, setPermissionMode } = workspace;
+
+  // Managed policy forbids auto mode: fall back to asking. The background enforces this too.
+  useEffect(() => {
+    if (autoForbidden && permissionMode === 'auto') setPermissionMode('ask');
+  }, [autoForbidden, permissionMode, setPermissionMode]);
+
   return (
     <div className="assistant-composer-settings">
       <label className="assistant-model-select">
@@ -40,7 +51,9 @@ export default function ModelControls({ copy, workspace, showStopButton }: Model
             disabled={showStopButton}
             onChange={event => workspace.setPermissionMode(event.target.value as PermissionMode)}>
             <option value="ask">{copy.ask}</option>
-            <option value="auto">{copy.auto}</option>
+            <option value="auto" disabled={autoForbidden}>
+              {copy.auto}
+            </option>
             <option value="plan">{copy.permissionPlan}</option>
           </select>
           <FiChevronDown size={12} />

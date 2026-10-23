@@ -4,6 +4,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { Actors, chatHistoryStore, firewallStore } from '@extension/storage';
 import type { AssistantAttachment, AssistantMode, SidePanelResponseMessage } from '@extension/shared';
 import { isUrlAllowed } from '../browser/util';
+import { isManagedUrlAllowed } from '../state/managedPolicyState';
 import { t } from '@extension/i18n';
 import { wrapUntrustedContent } from '../agent/messages/utils';
 import { createLogger } from '../log';
@@ -22,7 +23,8 @@ export async function readSelectedTabs(tabIds: number[]): Promise<string> {
       if (!tab.url || !/^https?:\/\//i.test(tab.url) || new URL(tab.url).hostname === 'chromewebstore.google.com') {
         throw new Error('Uma das abas selecionadas não permite leitura. Remova-a do contexto.');
       }
-      if (firewall.enabled && !isUrlAllowed(tab.url, firewall.allowList, firewall.denyList)) {
+      // Managed URL policy applies even when the firewall is disabled.
+      if ((firewall.enabled && !isUrlAllowed(tab.url, firewall.allowList, firewall.denyList)) || !isManagedUrlAllowed(tab.url)) {
         throw new Error('Uma das abas selecionadas foi bloqueada pelo firewall.');
       }
       const result = await chrome.scripting.executeScript({

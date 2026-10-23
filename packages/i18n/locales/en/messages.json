@@ -1537,5 +1537,56 @@
   },
   "chat_input_dropHint": {
     "message": "Drop files to attach them"
+  },
+  "chat_managed_notice": {
+    "message": "Managed by your organization"
+  },
+  "options_mcp_header": {
+    "message": "MCP client control"
+  },
+  "options_mcp_desc": {
+    "message": "Lets Claude Code, Codex CLI or another local MCP client run tasks in QAgent. Off by default."
+  },
+  "options_mcp_enable": {
+    "message": "Allow control by local MCP clients"
+  },
+  "options_mcp_enable_desc": {
+    "message": "When on, QAgent connects to the local MCP server. Actions that ask for permission still appear in the side panel."
+  },
+  "options_mcp_address": {
+    "message": "Address"
+  },
+  "options_mcp_address_desc": {
+    "message": "Loopback only. Port of the local MCP server."
+  },
+  "options_mcp_port": {
+    "message": "Port"
+  },
+  "options_mcp_token": {
+    "message": "Token"
+  },
+  "options_mcp_token_desc": {
+    "message": "Shared secret with the MCP server (QAGENT_MCP_TOKEN). Stays in this browser only."
+  },
+  "bg_mcp_urlBlocked": {
+    "message": "URL blocked by the QAgent policy or the firewall."
+  },
+  "bg_mcp_noActiveTab": {
+    "message": "No active tab available for the task."
+  },
+  "bg_mcp_panelRequired": {
+    "message": "Permission mode 'ask' requires the QAgent side panel to be open in the browser."
+  },
+  "bg_mcp_internalError": {
+    "message": "Internal QAgent error while handling the request."
+  },
+  "bg_managed_providerBlocked": {
+    "message": "Provider $PROVIDER$ is not allowed by your organization policy.",
+    "placeholders": {
+      "provider": {
+        "content": "$1",
+        "example": "openai"
+      }
+    }
   }
 }
