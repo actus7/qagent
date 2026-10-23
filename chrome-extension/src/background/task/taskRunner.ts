@@ -1,4 +1,5 @@
 import { t } from '@extension/i18n';
+import { describeModelError } from '../agent/agents/errors';
 import { agentModelStore, AgentNameEnum, llmProviderStore } from '@extension/storage';
 import type { ExecutionPortEventMessage, SidePanelTaskCommand } from '@extension/shared';
 import type { Executor } from '../agent/executor';
@@ -95,7 +96,7 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
     else await executor.execute();
   } catch (error) {
     if (controller.signal.aborted) emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
-    else emit(ExecutionState.TASK_FAIL, error instanceof Error ? error.message : String(error));
+    else emit(ExecutionState.TASK_FAIL, describeModelError(error, t));
   } finally {
     actionApprovals.cancel();
     if (executor) await executor.cleanup();

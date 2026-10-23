@@ -366,3 +366,32 @@ export class ResponseParseError extends Error {
     return `${this.name}: ${this.message}${this.cause ? ` (Caused by: ${this.cause})` : ''}`;
   }
 }
+
+const TROUBLESHOOTING_SUFFIX = /\s*Troubleshooting URL:\s*\S+/gi;
+
+/**
+ * Turns provider/LangChain errors into a short message the user can act on. Known cases get a
+ * localized explanation; anything else keeps its text minus LangChain's troubleshooting link.
+ */
+export function describeModelError(error: unknown, translate: (key: ModelErrorKey) => string): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  if (isAuthenticationError(error) || lower.includes('model_authentication')) return translate('bg_errors_modelAuth');
+  if (isForbiddenError(error) || lower.includes(' 403')) return translate('bg_errors_modelForbidden');
+  if (/rate limit|too many requests|\b429\b|quota exceeded/.test(lower)) return translate('bg_errors_modelRateLimit');
+  // A 404 only means "model not found" when the provider says so; a page 404 must keep its own text.
+  if (lower.includes('model_not_found') || (/\b404\b/.test(lower) && lower.includes('model'))) {
+    return translate('bg_errors_modelNotFound');
+  }
+  if (/failed to fetch|fetch failed|econnrefused|enotfound|networkerror|network error/.test(lower)) {
+    return translate('bg_errors_modelUnreachable');
+  }
+  return message.replace(TROUBLESHOOTING_SUFFIX, '').trim();
+}
+
+export type ModelErrorKey =
+  | 'bg_errors_modelAuth'
+  | 'bg_errors_modelForbidden'
+  | 'bg_errors_modelRateLimit'
+  | 'bg_errors_modelNotFound'
+  | 'bg_errors_modelUnreachable';

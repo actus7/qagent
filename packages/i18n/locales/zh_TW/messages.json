@@ -1193,5 +1193,20 @@
   },
   "bg_task_busy": {
     "message": "請等待目前任務完成，或先停止執行。"
+  },
+  "bg_errors_modelAuth": {
+    "message": "模型提供者拒絕了 API 金鑰。請在「設定 → 模型」中檢查金鑰。"
+  },
+  "bg_errors_modelForbidden": {
+    "message": "模型提供者拒絕存取此模型（403）。請檢查您的方案或模型權限。"
+  },
+  "bg_errors_modelRateLimit": {
+    "message": "模型提供者正在限制請求頻率。請稍候，或在設定中降低每分鐘請求數。"
+  },
+  "bg_errors_modelNotFound": {
+    "message": "提供者找不到所選的模型。請在「設定 → 模型」中檢查模型名稱。"
+  },
+  "bg_errors_modelUnreachable": {
+    "message": "無法連線到模型提供者。請檢查網路連線與提供者的基礎 URL。"
   }
 }

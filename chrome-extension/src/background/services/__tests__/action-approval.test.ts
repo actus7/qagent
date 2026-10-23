@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { ActionApprovalManager } from '../action-approval';
+import { t } from '@extension/i18n';
 import type { SidePanelResponseMessage } from '@extension/shared';
 import type { BrowserContextLike } from '../../browser/types';
 
@@ -38,7 +39,7 @@ describe('browser action approval', () => {
     const manager = new ActionApprovalManager(message => messages.push(message));
     const controller = new AbortController();
     const pending = manager.authorize('task', 'fill', {}, 'ask', browser, controller.signal);
-    const rejection = expect(pending).rejects.toThrow('bg_approval_declined');
+    const rejection = expect(pending).rejects.toThrow(t('bg_approval_declined'));
     await vi.waitFor(() => expect(messages.length).toBe(1));
     controller.abort();
     await rejection;
@@ -49,7 +50,7 @@ describe('browser action approval', () => {
     const messages: SidePanelResponseMessage[] = [];
     const manager = new ActionApprovalManager(message => messages.push(message));
     const pending = manager.authorize('task', 'click', {}, 'ask', browser, new AbortController().signal);
-    const rejection = expect(pending).rejects.toThrow('bg_approval_pageChanged');
+    const rejection = expect(pending).rejects.toThrow(t('bg_approval_pageChanged'));
     await vi.waitFor(() => expect(messages.length).toBe(1));
     vi.mocked(chrome.tabs.get as (tabId: number) => Promise<chrome.tabs.Tab>).mockResolvedValue({ ...tab, url: 'https://example.com/other' } as chrome.tabs.Tab);
     const message = messages[0];

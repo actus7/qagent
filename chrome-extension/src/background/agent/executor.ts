@@ -20,6 +20,7 @@ import {
   RequestCancelledError,
   MaxStepsReachedError,
   MaxFailuresReachedError,
+  describeModelError,
 } from './agents/errors';
 import { URLNotAllowedError } from '../browser/views';
 import { chatHistoryStore } from '@extension/storage/lib/chat';
@@ -267,13 +268,17 @@ export class Executor {
           void analytics.trackTaskCancelled(this.context.taskId);
         } else {
           // Cancellation can also happen from transport/network interruptions; surface as a failure.
-          await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [error.message]));
+          await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [describeModelError(error, t)]));
           const errorCategory = analytics.categorizeError(error);
           void analytics.trackTaskFailed(this.context.taskId, errorCategory);
         }
       } else {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [errorMessage]));
+        await this.context.emitEvent(
+          Actors.SYSTEM,
+          ExecutionState.TASK_FAIL,
+          t('exec_task_fail', [describeModelError(error, t)]),
+        );
 
         // Track task failure with detailed error categorization
         const errorCategory = analytics.categorizeError(error instanceof Error ? error : errorMessage);
@@ -547,7 +552,7 @@ export class Executor {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       replayLogger.error(`Replay failed: ${errorMessage}`);
-      await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_replay_fail', [errorMessage]));
+      await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_replay_fail', [describeModelError(error, t)]));
     }
 
     return results;

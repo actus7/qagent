@@ -1193,5 +1193,20 @@
   },
   "bg_task_busy": {
     "message": "Aguarde a tarefa atual terminar ou interrompa a execução."
+  },
+  "bg_errors_modelAuth": {
+    "message": "O provedor do modelo recusou a chave de API. Verifique a chave em Configurações → Modelos."
+  },
+  "bg_errors_modelForbidden": {
+    "message": "O provedor negou acesso a este modelo (403). Verifique seu plano ou as permissões do modelo."
+  },
+  "bg_errors_modelRateLimit": {
+    "message": "O provedor do modelo está limitando as requisições. Aguarde um pouco ou reduza as requisições por minuto nas Configurações."
+  },
+  "bg_errors_modelNotFound": {
+    "message": "O provedor não encontrou o modelo selecionado. Verifique o nome do modelo em Configurações → Modelos."
+  },
+  "bg_errors_modelUnreachable": {
+    "message": "Não foi possível conectar ao provedor do modelo. Verifique sua conexão e a URL base do provedor."
   }
 }

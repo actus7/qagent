@@ -1193,5 +1193,20 @@
   },
   "bg_task_busy": {
     "message": "Wait for the current task to finish or stop the run."
+  },
+  "bg_errors_modelAuth": {
+    "message": "The model provider rejected the API key. Check the key in Settings → Models."
+  },
+  "bg_errors_modelForbidden": {
+    "message": "The model provider denied access to this model (403). Check your plan or the model permissions."
+  },
+  "bg_errors_modelRateLimit": {
+    "message": "The model provider is rate-limiting requests. Wait a moment or lower the requests per minute in Settings."
+  },
+  "bg_errors_modelNotFound": {
+    "message": "The selected model was not found by the provider. Check the model name in Settings → Models."
+  },
+  "bg_errors_modelUnreachable": {
+    "message": "Could not reach the model provider. Check your connection and the provider base URL."
   }
 }
