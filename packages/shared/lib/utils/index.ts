@@ -8,3 +8,4 @@ export * from './session-report';
 export * from './managed-policy';
 export * from './mcp-bridge-protocol';
 export * from './workflow-recording';
+export * from './workflow-selector';

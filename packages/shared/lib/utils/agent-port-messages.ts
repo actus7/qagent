@@ -1,5 +1,6 @@
 import type { AssistantAttachment } from './assistant-attachments';
 import { isValidAssistantAttachments } from './assistant-attachments';
+import { isWorkflowRecordingSnapshot, type WorkflowRecordingSnapshot } from './workflow-recording';
 
 export const SIDE_PANEL_CONNECTION_PORT_NAME = 'side-panel-connection' as const;
 
@@ -116,7 +117,11 @@ export type SidePanelCommandMessage =
   | { type: 'nohighlight' }
   | { type: 'compact_chat'; taskId: string; modelAgent?: 'navigator' | 'planner' }
   | { type: 'speech_to_text'; audio: string }
-  | { type: 'replay'; task: string; taskId: string; tabId: number; historySessionId: string };
+  | { type: 'replay'; task: string; taskId: string; tabId: number; historySessionId: string }
+  | { type: 'workflow_record_start'; tabId: number }
+  | { type: 'workflow_record_stop' }
+  | { type: 'workflow_record_discard' }
+  | { type: 'workflow_record_status' };
 
 export interface UserTakeoverPayload {
   reason: string;
@@ -165,7 +170,8 @@ export type SidePanelResponseMessage =
   | { type: 'tab_capture'; dataUrl: string }
   | { type: 'speech_to_text_result'; text: string }
   | { type: 'conversation_compacted'; taskId: string; compacted: boolean }
-  | { type: 'speech_to_text_error'; error: string };
+  | { type: 'speech_to_text_error'; error: string }
+  | { type: 'workflow_recording'; snapshot: WorkflowRecordingSnapshot };
 
 type BackgroundRuntimeMessage =
   | { type: 'qagent:cancel' }
@@ -211,7 +217,12 @@ export function isSidePanelCommandMessage(message: unknown): message is SidePane
     case 'pause_task':
     case 'state':
     case 'nohighlight':
+    case 'workflow_record_stop':
+    case 'workflow_record_discard':
+    case 'workflow_record_status':
       return true;
+    case 'workflow_record_start':
+      return Number.isSafeInteger(message.tabId) && Number(message.tabId) >= 0;
     case 'compact_chat':
       return (
         typeof message.taskId === 'string' &&
@@ -303,6 +314,8 @@ export function isSidePanelResponseMessage(message: unknown): message is SidePan
       return typeof message.taskId === 'string' && typeof message.compacted === 'boolean';
     case 'speech_to_text_error':
       return typeof message.error === 'string';
+    case 'workflow_recording':
+      return isWorkflowRecordingSnapshot(message.snapshot);
     case 'debug_log':
       return isRecord(message.entry);
     case 'execution':

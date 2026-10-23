@@ -3,6 +3,7 @@ import { t } from '@extension/i18n';
 import { Actors, type Message } from '@extension/storage';
 import { EventType, type AgentEvent } from '@src/types/event';
 import { rejectTabCapture, resolveTabCapture } from '@src/lib/tab-capture';
+import { publishWorkflowRecording } from '@src/store/workflowRecordingStore';
 import {
   type BrowserFramePayload,
   type BrowserStatusPayload,
@@ -124,6 +125,8 @@ export const useSidePanelConnection = ({
           );
         } else if (message.type === 'browser_frame') {
           setBrowserFrame(message.frame);
+        } else if (message.type === 'workflow_recording') {
+          publishWorkflowRecording(message.snapshot);
         } else if (message.type === 'browser_status') {
           setBrowserStatus(message.status);
         } else if (message.type === 'tab_capture') {

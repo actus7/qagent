@@ -14,6 +14,8 @@ const labels: ProcedureLabels = {
   click: element => `Clique em "${element}"`,
   type: (field, value) => `Digite "${value}" em "${field}"`,
   select: (field, value) => `Escolha "${value}" em "${field}"`,
+  press: (field, key) => `Pressione ${key} em "${field}"`,
+  submit: form => `Envie o formulário "${form}"`,
   unnamed: 'elemento',
 };
 
@@ -101,6 +103,15 @@ describe('buildProcedureText', () => {
 
     expect(buildProcedureText(steps, labels)).toBe('1. Clique em "elemento"');
   });
+
+  it('describes Enter presses and submissions as their own lines', () => {
+    const steps: RecordedStep[] = [
+      { kind: 'press', url: 'https://app.test/', field: { role: 'textbox', name: 'Busca', selector: '#q' }, key: 'Enter', at: 1 },
+      { kind: 'submit', url: 'https://app.test/', element: { role: 'form', name: 'Login', selector: 'form' }, at: 2 },
+    ];
+
+    expect(buildProcedureText(steps, labels)).toBe('1. Pressione Enter em "Busca"\n2. Envie o formulário "Login"');
+  });
 });
 
 describe('isRecordedStep', () => {
@@ -114,6 +125,13 @@ describe('isRecordedStep', () => {
         element: { role: 'button', name: 'Ok', selector: 'button' },
       }),
     ).toBe(true);
+  });
+
+  it('accepts Enter presses and form submissions, and rejects other keys', () => {
+    const element = { role: 'textbox', name: 'Busca', selector: '#q' };
+    expect(isRecordedStep({ kind: 'press', url: 'https://a.test/', at: 1, field: element, key: 'Enter' })).toBe(true);
+    expect(isRecordedStep({ kind: 'press', url: 'https://a.test/', at: 1, field: element, key: 'Escape' })).toBe(false);
+    expect(isRecordedStep({ kind: 'submit', url: 'https://a.test/', at: 1, element })).toBe(true);
   });
 
   it('rejects unknown kinds, non-web URLs and oversized values', () => {

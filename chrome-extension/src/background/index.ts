@@ -13,6 +13,7 @@ import { registerTaskNotificationClicks } from './services/task-notifications';
 import { loadManagedPolicy, registerManagedPolicyListener } from './services/managedPolicy';
 import { registerMcpBridge } from './services/mcpBridge/client';
 import { registerScheduleListeners } from './services/scheduling/register';
+import { registerWorkflowRecording } from './services/workflowRecording';
 
 // Service-worker composition root. Chrome requires listeners to be registered synchronously at
 // top level, so every register* call below runs during evaluation, never inside an async callback.
@@ -31,6 +32,7 @@ registerRuntimeMessageListener();
 registerSidePanelPortListener();
 registerContextMenu();
 registerScheduleListeners();
+registerWorkflowRecording();
 
 registerTaskNotificationClicks();
 

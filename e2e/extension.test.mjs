@@ -725,4 +725,36 @@ describe('extension e2e', { timeout: 180_000 }, () => {
     assert.ok(events.includes('system:task.ok'), `task did not complete after resume: ${events.join(', ')}`);
     assert.deepEqual(pageErrors, []);
   });
+
+  it('records a workflow from a real click and saves it as a shortcut', async () => {
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/record`);
+
+    const panel = await openExtensionPage('side-panel/index.html');
+    await panel.locator('#app-container > *').first().waitFor();
+
+    // The panel records the tab that is active in its window, so bring the target forward before starting.
+    await target.bringToFront();
+    // The panel runs in pt_BR in this suite (see the takeover test), so the labels below are pt_BR.
+    // A DOM click: a Playwright click would focus the panel tab, and the start uses the window's active tab.
+    await panel.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Gravar fluxo').click());
+    await panel.getByText('Gravando fluxo', { exact: true }).waitFor();
+
+    // Playwright clicks are trusted events; the content script records the click as a step.
+    await target.click('#go');
+    await panel.getByRole('list', { name: 'Passos gravados' }).getByText('Clicar em "Go"').waitFor();
+
+    await panel.getByRole('button', { name: 'Parar', exact: true }).click();
+    const procedure = panel.getByRole('textbox', { name: 'Procedimento (edite se quiser)' });
+    await procedure.waitFor();
+    assert.match(await procedure.inputValue(), /1\. Clicar em "Go"/);
+
+    await panel.getByRole('textbox', { name: 'Nome do atalho' }).fill('E2E go flow');
+    await panel.getByRole('button', { name: 'Salvar como atalho' }).click();
+    await panel.getByText('Salvo. Digite /nome', { exact: false }).waitFor();
+
+    const stored = await panel.evaluate(() => chrome.storage.local.get(null));
+    assert.ok(JSON.stringify(stored).includes('E2E go flow'), 'saved shortcut was not written to storage');
+    assert.deepEqual(pageErrors, []);
+  });
 });

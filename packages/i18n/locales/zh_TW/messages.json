@@ -163,6 +163,102 @@
   "chat_input_form": {
     "message": "對話輸入表單"
   },
+  "chat_record_start": {
+    "message": "錄製流程"
+  },
+  "chat_record_stop": {
+    "message": "停止"
+  },
+  "chat_record_discard": {
+    "message": "捨棄"
+  },
+  "chat_record_recording": {
+    "message": "正在錄製流程"
+  },
+  "chat_record_empty": {
+    "message": "在所選分頁中點擊、輸入或送出表單，步驟會顯示在這裡。"
+  },
+  "chat_record_stepsLabel": {
+    "message": "已錄製的步驟"
+  },
+  "chat_record_truncated": {
+    "message": "已達 200 個步驟上限，後續步驟已忽略。"
+  },
+  "chat_record_dialogTitle": {
+    "message": "將流程儲存為捷徑"
+  },
+  "chat_record_nameLabel": {
+    "message": "捷徑名稱"
+  },
+  "chat_record_nameDefault": {
+    "message": "已錄製的流程"
+  },
+  "chat_record_procedureLabel": {
+    "message": "操作程序（可自行編輯）"
+  },
+  "chat_record_save": {
+    "message": "儲存為捷徑"
+  },
+  "chat_record_close": {
+    "message": "關閉"
+  },
+  "chat_record_noTab": {
+    "message": "沒有可錄製的使用中分頁。"
+  },
+  "chat_record_saveFailed": {
+    "message": "無法儲存捷徑。"
+  },
+  "chat_record_saved": {
+    "message": "已儲存。在訊息欄輸入 /名稱 即可執行。"
+  },
+  "chat_record_indicator_text": {
+    "message": "正在錄製流程"
+  },
+  "chat_record_indicator_stop": {
+    "message": "停止"
+  },
+  "chat_record_step_navigate": {
+    "message": "開啟 $URL$",
+    "placeholders": {
+      "url": { "content": "$1", "example": "https://example.com/login" }
+    }
+  },
+  "chat_record_step_click": {
+    "message": "點擊「$NAME$」",
+    "placeholders": {
+      "name": { "content": "$1", "example": "登入" }
+    }
+  },
+  "chat_record_step_type": {
+    "message": "在「$FIELD$」填入「$VALUE$」",
+    "placeholders": {
+      "field": { "content": "$1", "example": "電子郵件" },
+      "value": { "content": "$2", "example": "ana@example.com" }
+    }
+  },
+  "chat_record_step_select": {
+    "message": "在「$FIELD$」選擇「$VALUE$」",
+    "placeholders": {
+      "field": { "content": "$1", "example": "國家" },
+      "value": { "content": "$2", "example": "巴西" }
+    }
+  },
+  "chat_record_step_press": {
+    "message": "在「$FIELD$」按下 $KEY$",
+    "placeholders": {
+      "field": { "content": "$1", "example": "搜尋" },
+      "key": { "content": "$2", "example": "Enter" }
+    }
+  },
+  "chat_record_step_submit": {
+    "message": "送出表單「$NAME$」",
+    "placeholders": {
+      "name": { "content": "$1", "example": "登入" }
+    }
+  },
+  "chat_record_step_unnamed": {
+    "message": "未命名元素"
+  },
   "chat_input_editor": {
     "message": "訊息輸入"
   },
@@ -609,6 +705,12 @@
   },
   "bg_cmd_nohighlight_ok": {
     "message": "醒目標示已移除。"
+  },
+  "bg_record_alreadyRecording": {
+    "message": "已有進行中的錄製，請先停止再開始新的錄製。"
+  },
+  "bg_record_unsupportedTab": {
+    "message": "只能錄製 http(s) 頁面。"
   },
   "bg_cmd_stt_noAudioData": {
     "message": "未提供音訊資料"
