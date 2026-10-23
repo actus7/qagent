@@ -1139,6 +1139,7 @@ export default class Page {
     options: { button: 'left' | 'right' | 'middle'; clickCount: number; modifiers: KeyInput[] },
   ): Promise<void> {
     const page = this._requirePuppeteerPage();
+    await showAgentPointer(this._tabId, point.x, point.y);
     try {
       for (const key of options.modifiers) await page.keyboard.down(key);
       await page.mouse.click(point.x, point.y, { button: options.button, count: options.clickCount });
@@ -1153,11 +1154,13 @@ export default class Page {
 
   async hoverAt(point: Point): Promise<void> {
     const page = this._requirePuppeteerPage();
+    await showAgentPointer(this._tabId, point.x, point.y);
     await page.mouse.move(point.x, point.y);
   }
 
   async dragBetween(from: Point, to: Point, steps: number): Promise<void> {
     const page = this._requirePuppeteerPage();
+    await showAgentPointer(this._tabId, from.x, from.y);
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     try {
