@@ -406,6 +406,7 @@ const SidePanel = () => {
             messages={messages}
             planAnswer={planAnswer}
             onExecutePlan={handleExecutePlan}
+            onContinue={() => void handleSendMessage(t('chat_continueCommand'))}
             welcome={
               <WelcomeScreen
                 copy={copy}

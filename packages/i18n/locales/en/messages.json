@@ -1194,6 +1194,21 @@
   "bg_task_interrupted": {
     "message": "Task interrupted."
   },
+  "chat_continueTask": {
+    "message": "Continue task"
+  },
+  "chat_continueCommand": {
+    "message": "continue"
+  },
+  "chat_recordStart": {
+    "message": "Record workflow"
+  },
+  "chat_recordStop": {
+    "message": "Stop recording"
+  },
+  "chat_scheduleTask": {
+    "message": "Schedule task"
+  },
   "bg_task_interruptedByRestart": {
     "message": "The task was interrupted because the browser restarted the extension. Send 'continue' to resume it."
   },

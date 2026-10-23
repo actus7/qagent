@@ -1194,6 +1194,21 @@
   "bg_task_interrupted": {
     "message": "任務已中斷。"
   },
+  "chat_continueTask": {
+    "message": "繼續任務"
+  },
+  "chat_continueCommand": {
+    "message": "繼續"
+  },
+  "chat_recordStart": {
+    "message": "錄製流程"
+  },
+  "chat_recordStop": {
+    "message": "停止錄製"
+  },
+  "chat_scheduleTask": {
+    "message": "排程任務"
+  },
   "bg_task_interruptedByRestart": {
     "message": "任務因瀏覽器重新啟動擴充功能而中斷。傳送「繼續」即可恢復。"
   },

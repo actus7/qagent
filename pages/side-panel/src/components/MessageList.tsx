@@ -1,5 +1,5 @@
 import { memo, useState, lazy, Suspense } from 'react';
-import { FiCheck, FiCopy, FiChevronRight, FiAlertCircle } from 'react-icons/fi';
+import { FiCheck, FiCopy, FiChevronRight, FiAlertCircle, FiZap } from 'react-icons/fi';
 import { Actors, type Message } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { useLanguage } from '@extension/shared';
@@ -7,7 +7,7 @@ import { assistantCopy } from '../lib/assistant-copy';
 
 const Markdown = lazy(() => import('./ResponseMarkdown'));
 
-export default memo(function MessageList({ messages }: { messages: Message[] }) {
+export default memo(function MessageList({ messages, onContinue }: { messages: Message[]; onContinue?: () => void }) {
   const groups: Message[][] = [];
   for (const message of messages) {
     const previous = groups.at(-1);
@@ -22,7 +22,11 @@ export default memo(function MessageList({ messages }: { messages: Message[] }) 
         group[0].kind === 'activity' ? (
           <ActivityGroup key={`activity-${index}`} messages={group} />
         ) : (
-          <MessageBlock key={group[0].streamId ?? `${group[0].timestamp}-${index}`} message={group[0]} />
+          <MessageBlock
+            key={group[0].streamId ?? `${group[0].timestamp}-${index}`}
+            message={group[0]}
+            onContinue={group[0] === messages.at(-1) ? onContinue : undefined}
+          />
         ),
       )}
     </div>
@@ -53,7 +57,14 @@ function ActivityGroup({ messages }: { messages: Message[] }) {
   );
 }
 
-const MessageBlock = memo(function MessageBlock({ message }: { message: Message }) {
+const MessageBlock = memo(function MessageBlock({
+  message,
+  onContinue,
+}: {
+  message: Message;
+  /** Set only on the latest message, where a restart notice can be resumed. */
+  onContinue?: () => void;
+}) {
   const { currentLocale } = useLanguage();
   const copy = assistantCopy(currentLocale);
   const [copied, setCopied] = useState(false);
@@ -97,6 +108,12 @@ const MessageBlock = memo(function MessageBlock({ message }: { message: Message 
             <Markdown content={message.content} />
           </Suspense>
         )}
+        {message.kind === 'interrupted' && onContinue ? (
+          <button type="button" className="assistant-execute-plan" onClick={onContinue}>
+            <FiZap size={14} />
+            {t('chat_continueTask')}
+          </button>
+        ) : null}
       </div>
       {!isUser && !isNotice ? (
         <div className="assistant-answer-actions">

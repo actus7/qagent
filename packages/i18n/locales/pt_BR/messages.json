@@ -1194,6 +1194,21 @@
   "bg_task_interrupted": {
     "message": "Tarefa interrompida."
   },
+  "chat_continueTask": {
+    "message": "Continuar tarefa"
+  },
+  "chat_continueCommand": {
+    "message": "continuar"
+  },
+  "chat_recordStart": {
+    "message": "Gravar fluxo"
+  },
+  "chat_recordStop": {
+    "message": "Parar gravação"
+  },
+  "chat_scheduleTask": {
+    "message": "Agendar tarefa"
+  },
   "bg_task_interruptedByRestart": {
     "message": "A tarefa foi interrompida porque o navegador reiniciou a extensão. Envie 'continuar' para retomar."
   },

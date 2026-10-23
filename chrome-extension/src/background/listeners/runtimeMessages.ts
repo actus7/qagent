@@ -5,6 +5,7 @@ import { browserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 import { cancelActiveTask } from '../task/taskRunner';
 import { testProviderConnection } from '../services/provider-test';
+import { runScheduledTask } from '../services/scheduling/runner';
 
 const logger = createLogger('background');
 
@@ -37,6 +38,14 @@ export function registerRuntimeMessageListener(): void {
         .then(result => sendResponse(result))
         .catch(() => sendResponse({ ok: false, error: t('options_test_failed') }));
       return true;
+    }
+
+    // Extension pages ask for an immediate run of a scheduled task; the run continues after the reply.
+    if (message?.type === 'qagent:schedule:run-now') {
+      if (sender.tab) return false;
+      void runScheduledTask(message.id);
+      sendResponse({ ok: true });
+      return false;
     }
 
     // Content script asks the background for the current overlay state.

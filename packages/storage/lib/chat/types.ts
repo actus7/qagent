@@ -13,7 +13,7 @@ export interface Message {
   timestamp: number; // Unix timestamp in milliseconds
   streamId?: string;
   // 'compaction' holds the summary that replaces older messages in what the model receives
-  kind?: 'answer' | 'activity' | 'compaction';
+  kind?: 'answer' | 'activity' | 'compaction' | 'interrupted';
 }
 
 export interface ChatMessage extends Message {

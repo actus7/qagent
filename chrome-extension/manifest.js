@@ -71,6 +71,7 @@ const manifest = withOperaSidebar(
       'unlimitedStorage',
       'webNavigation',
       'notifications',
+      'alarms',
     ],
     // Enterprise policy keys (chrome.storage.managed); see public/managed-schema.json.
     storage: {
