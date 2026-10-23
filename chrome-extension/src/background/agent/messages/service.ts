@@ -1,5 +1,6 @@
 import { type BaseMessage, AIMessage, HumanMessage, type SystemMessage, ToolMessage } from '@langchain/core/messages';
 import { MessageHistory, MessageMetadata } from '@src/background/agent/messages/views';
+import type { ImageContentPart } from '../../services/assistant-attachments';
 import { createLogger } from '@src/background/log';
 import {
   filterExternalContent,
@@ -52,7 +53,12 @@ export default class MessageManager {
     this.toolId = 1;
   }
 
-  public initTaskMessages(systemMessage: SystemMessage, task: string, messageContext?: string): void {
+  public initTaskMessages(
+    systemMessage: SystemMessage,
+    task: string,
+    messageContext?: string,
+    images: ImageContentPart[] = [],
+  ): void {
     // Add system message
     this.addMessageWithTokens(systemMessage, 'init');
 
@@ -65,7 +71,7 @@ export default class MessageManager {
     }
 
     // Add task instructions
-    const taskMessage = MessageManager.taskInstructions(task);
+    const taskMessage = MessageManager.taskInstructions(task, images);
     this.addMessageWithTokens(taskMessage, 'init');
 
     // Add sensitive data info if sensitive data is provided
@@ -143,7 +149,7 @@ export default class MessageManager {
    * @param task - The raw description of the task
    * @returns A HumanMessage object containing the task instructions
    */
-  private static taskInstructions(task: string): HumanMessage {
+  private static taskInstructions(task: string, images: ImageContentPart[] = []): HumanMessage {
     const { userText, attachmentsInner } = splitUserTextAndAttachments(task);
 
     // Filter and wrap user text
@@ -152,12 +158,15 @@ export default class MessageManager {
     const wrappedUser = wrapUserRequest(content, false);
 
     // Filter and wrap attachments as untrusted content
-    if (attachmentsInner && attachmentsInner.length > 0) {
-      const wrappedFiles = wrapAttachments(attachmentsInner);
-      return new HumanMessage({ content: `${wrappedUser}\n\n${wrappedFiles}` });
+    const text =
+      attachmentsInner && attachmentsInner.length > 0
+        ? `${wrappedUser}\n\n${wrapAttachments(attachmentsInner)}`
+        : wrappedUser;
+    // Images are attached to the first task message so the navigator sees them with the task
+    if (images.length > 0) {
+      return new HumanMessage({ content: [{ type: 'text', text }, ...images] });
     }
-
-    return new HumanMessage({ content: wrappedUser });
+    return new HumanMessage({ content: text });
   }
 
   /**

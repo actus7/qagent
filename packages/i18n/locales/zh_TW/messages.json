@@ -1389,5 +1389,98 @@
   },
   "act_engineUnsupported": {
     "message": "目前的瀏覽器引擎不支援此操作"
+  },
+  "bg_cmd_capture_unsupported": {
+    "message": "只能擷取 http(s) 頁面。"
+  },
+  "bg_cmd_capture_notActive": {
+    "message": "只能擷取視窗中可見的頁籤，請先切換到該頁籤。"
+  },
+  "bg_cmd_capture_blocked": {
+    "message": "防火牆已封鎖擷取此頁面。"
+  },
+  "bg_cmd_capture_failed": {
+    "message": "無法擷取螢幕截圖。"
+  },
+  "act_uploadFile_noAttachment": {
+    "message": "此任務中沒有名為「$1」的附件。"
+  },
+  "act_uploadFile_noContent": {
+    "message": "upload_file 需要 $1 的 content 或 attachment。"
+  },
+  "chat_input_imageToken": {
+    "message": "[圖片：$1]"
+  },
+  "chat_input_imageTooLarge": {
+    "message": "$1：即使縮小後圖片仍然太大。"
+  },
+  "chat_input_imageUnsupported": {
+    "message": "$1：只能附加 PNG、JPEG、WebP 和 GIF 圖片。"
+  },
+  "chat_input_binaryFileTooLarge": {
+    "message": "$1：大小上限為 10 MB。"
+  },
+  "chat_input_readFailed": {
+    "message": "$1：無法讀取檔案。"
+  },
+  "chat_input_tooManyImages": {
+    "message": "最多可附加 5 張圖片。"
+  },
+  "chat_input_tooManyFiles": {
+    "message": "最多可附加 5 個檔案。"
+  },
+  "chat_input_removeImage": {
+    "message": "移除圖片 $1"
+  },
+  "chat_input_captureScreenshot": {
+    "message": "擷取螢幕截圖"
+  },
+  "chat_input_captureFailed": {
+    "message": "無法擷取螢幕截圖：$1"
+  },
+  "chat_input_cropTitle": {
+    "message": "選取區域"
+  },
+  "chat_input_cropHint": {
+    "message": "在截圖上拖曳以選取區域。未選取時會使用整張截圖。"
+  },
+  "chat_input_cropUse": {
+    "message": "使用選取範圍"
+  },
+  "chat_input_cropFull": {
+    "message": "整張截圖"
+  },
+  "chat_input_cropCancel": {
+    "message": "取消"
+  },
+  "chat_input_mentionsLabel": {
+    "message": "開啟的頁籤"
+  },
+  "chat_input_mentionEmpty": {
+    "message": "找不到符合的頁籤"
+  },
+  "chat_input_commandsLabel": {
+    "message": "指令與已儲存的提示"
+  },
+  "chat_input_commandEmpty": {
+    "message": "找不到符合的指令"
+  },
+  "chat_input_cmd_new": {
+    "message": "開始新對話"
+  },
+  "chat_input_cmd_replay": {
+    "message": "重播過去的工作階段：/replay <id>"
+  },
+  "chat_input_cmd_state": {
+    "message": "列出頁面的互動元素（除錯）"
+  },
+  "chat_input_cmd_nohighlight": {
+    "message": "移除元素高亮"
+  },
+  "chat_input_savedPrompt": {
+    "message": "已儲存的提示"
+  },
+  "chat_input_dropHint": {
+    "message": "放開以附加檔案"
   }
 }

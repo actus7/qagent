@@ -2,6 +2,7 @@ import { useCallback, useRef, type MutableRefObject } from 'react';
 import { t } from '@extension/i18n';
 import { Actors, type Message } from '@extension/storage';
 import { EventType, type AgentEvent } from '@src/types/event';
+import { rejectTabCapture, resolveTabCapture } from '@src/lib/tab-capture';
 import {
   type BrowserFramePayload,
   type BrowserStatusPayload,
@@ -125,7 +126,10 @@ export const useSidePanelConnection = ({
           setBrowserFrame(message.frame);
         } else if (message.type === 'browser_status') {
           setBrowserStatus(message.status);
+        } else if (message.type === 'tab_capture') {
+          resolveTabCapture(message.dataUrl);
         } else if (message.type === 'error') {
+          rejectTabCapture(message.error);
           appendMessage({
             actor: Actors.SYSTEM,
             content: message.error || t('errors_unknown'),

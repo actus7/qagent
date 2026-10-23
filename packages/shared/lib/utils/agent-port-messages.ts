@@ -1,3 +1,6 @@
+import type { AssistantAttachment } from './assistant-attachments';
+import { isValidAssistantAttachments } from './assistant-attachments';
+
 export const SIDE_PANEL_CONNECTION_PORT_NAME = 'side-panel-connection' as const;
 
 export type AssistantMode = 'chat' | 'plan' | 'act';
@@ -25,6 +28,8 @@ export interface SidePanelTaskCommand {
   taskId: string;
   tabId: number;
   options?: AssistantTaskOptions;
+  /** Images (sent to the model) and binary files (uploaded by upload_file) attached in the composer. */
+  attachments?: AssistantAttachment[];
 }
 
 export interface BrowserFramePayload {
@@ -89,6 +94,7 @@ export type SidePanelCommandMessage =
   | { type: 'pause_task' }
   | { type: 'approval_result'; taskId: string; requestId: string; approved: boolean }
   | { type: 'screenshot'; tabId: number }
+  | { type: 'capture_visible_tab'; tabId: number }
   | { type: 'state' }
   | { type: 'nohighlight' }
   | { type: 'speech_to_text'; audio: string }
@@ -130,6 +136,7 @@ export type SidePanelResponseMessage =
   | { type: 'heartbeat_ack' }
   | { type: 'error'; error: string }
   | { type: 'success'; msg?: string; screenshot?: string | null }
+  | { type: 'tab_capture'; dataUrl: string }
   | { type: 'speech_to_text_result'; text: string }
   | { type: 'speech_to_text_error'; error: string };
 
@@ -137,6 +144,14 @@ type BackgroundRuntimeMessage = { type: 'qagent:cancel' } | { type: 'qagent:over
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function hasAttachments(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function isOptionalAttachments(value: unknown): boolean {
+  return value === undefined || isValidAssistantAttachments(value);
 }
 
 function isTaskOptions(value: unknown): boolean {
@@ -170,12 +185,13 @@ export function isSidePanelCommandMessage(message: unknown): message is SidePane
     case 'follow_up_task':
       return (
         typeof message.task === 'string' &&
-        message.task.trim().length > 0 &&
+        (message.task.trim().length > 0 || hasAttachments(message.attachments)) &&
         typeof message.taskId === 'string' &&
         message.taskId.length > 0 &&
         Number.isSafeInteger(message.tabId) &&
         Number(message.tabId) >= 0 &&
-        isTaskOptions(message.options)
+        isTaskOptions(message.options) &&
+        isOptionalAttachments(message.attachments)
       );
     case 'approval_result':
       return (
@@ -187,6 +203,8 @@ export function isSidePanelCommandMessage(message: unknown): message is SidePane
       return isRecord(message.input) && typeof message.input.type === 'string';
     case 'screenshot':
       return typeof message.tabId === 'number';
+    case 'capture_visible_tab':
+      return Number.isSafeInteger(message.tabId) && Number(message.tabId) >= 0;
     case 'speech_to_text':
       return typeof message.audio === 'string';
     case 'replay':
@@ -194,7 +212,8 @@ export function isSidePanelCommandMessage(message: unknown): message is SidePane
         typeof message.task === 'string' &&
         typeof message.taskId === 'string' &&
         typeof message.tabId === 'number' &&
-        typeof message.historySessionId === 'string'
+        typeof message.historySessionId === 'string' &&
+        isOptionalAttachments(message.attachments)
       );
     default:
       return false;
@@ -238,6 +257,8 @@ export function isSidePanelResponseMessage(message: unknown): message is SidePan
         (message.msg === undefined || typeof message.msg === 'string') &&
         (message.screenshot === undefined || message.screenshot === null || typeof message.screenshot === 'string')
       );
+    case 'tab_capture':
+      return typeof message.dataUrl === 'string' && message.dataUrl.startsWith('data:image/png;base64,');
     case 'speech_to_text_result':
       return typeof message.text === 'string';
     case 'speech_to_text_error':

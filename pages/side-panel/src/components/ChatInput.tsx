@@ -1,14 +1,42 @@
-import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { FiArrowUp, FiPaperclip, FiSquare } from 'react-icons/fi';
+import { useState, useRef, useEffect, useCallback, useId, useMemo, type ReactNode } from 'react';
+import { FiArrowUp, FiCamera, FiPaperclip, FiSquare } from 'react-icons/fi';
 import { FaMicrophone } from 'react-icons/fa';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import { t } from '@extension/i18n';
+import {
+  ASSISTANT_MAX_FILES,
+  ASSISTANT_MAX_IMAGES,
+  isAssistantImageMimeType,
+  slugifyCommand,
+  type AssistantAttachment,
+  type PixelRect,
+  type SlashCommandItem,
+} from '@extension/shared';
 import { Button } from '@src/components/ui/button';
 import { Textarea } from '@src/components/ui/textarea';
 import { Badge } from '@src/components/ui/badge';
+import ComposerPopup from './ComposerPopup';
+import ScreenshotCropper from './ScreenshotCropper';
+import { useComposerSuggestions, type MentionSource } from '@src/hooks/useComposerSuggestions';
+import {
+  AttachmentReadFailure,
+  cropImageDataUrl,
+  prepareBinaryAttachment,
+  prepareImageAttachment,
+} from '@src/lib/attachment-files';
+
+interface SavedPrompt {
+  id: number;
+  title: string;
+  content: string;
+}
 
 interface ChatInputProps {
-  onSendMessage: (text: string, displayText?: string) => boolean | void | Promise<boolean | void>;
+  onSendMessage: (
+    text: string,
+    displayText?: string,
+    attachments?: AssistantAttachment[],
+  ) => boolean | void | Promise<boolean | void>;
   voice?: { type: 'idle'; onToggle: () => void } | { type: 'recording'; onToggle: () => void } | { type: 'processing' };
   disabled: boolean;
   placeholder?: string;
@@ -18,6 +46,15 @@ interface ChatInputProps {
     | { type: 'send' }
     | { type: 'stop'; onStopTask: () => void }
     | { type: 'replay'; historicalSessionId: string; onReplay: (sessionId: string) => void };
+  /** Open tabs offered by the "@" popup. */
+  mentionTabs?: MentionSource[];
+  onMentionTab?: (tabId: number) => void;
+  /** Saved prompts offered by the "/" popup as /<slug>. */
+  savedPrompts?: SavedPrompt[];
+  /** Runs "/new" (typed or picked) as a new chat. */
+  onNewChat?: () => void;
+  /** Captures the visible area of the active tab as a PNG data URL; omit to hide the capture button. */
+  onCaptureScreenshot?: () => Promise<string>;
 }
 
 interface AttachedFile {
@@ -27,17 +64,46 @@ interface AttachedFile {
   type: string;
 }
 
-const ALLOWED_ATTACHMENT_TYPES = new Set([
-  '.txt',
-  '.md',
-  '.markdown',
-  '.json',
-  '.csv',
-  '.log',
-  '.xml',
-  '.yaml',
-  '.yml',
-]);
+// Text files are inlined into the message (existing behaviour); any other file is sent as a binary attachment.
+const TEXT_ATTACHMENT_TYPES = new Set(['.txt', '.md', '.markdown', '.json', '.csv', '.log', '.xml', '.yaml', '.yml']);
+const MAX_TEXT_FILE_BYTES = 1024 * 1024;
+const MAX_TEXT_FILES = 5;
+
+const extensionOf = (name: string) => `.${name.split('.').pop()?.toLowerCase() ?? ''}`;
+
+function describeReadError(name: string, error: unknown): string {
+  if (error instanceof AttachmentReadFailure) {
+    if (error.reason === 'imageUnsupported') return t('chat_input_imageUnsupported', [name]);
+    if (error.reason === 'imageTooLarge') return t('chat_input_imageTooLarge', [name]);
+    return t('chat_input_binaryFileTooLarge', [name]);
+  }
+  console.error(`Error reading file ${name}:`, error);
+  return t('chat_input_readFailed', [name]);
+}
+
+/** Built-in commands first, then saved prompts. Saved prompt slugs never collide with built-ins. */
+function buildSlashCommands(savedPrompts: SavedPrompt[]): SlashCommandItem[] {
+  const builtIns: SlashCommandItem[] = [
+    { slug: 'new', title: 'new', description: t('chat_input_cmd_new'), kind: 'builtin' },
+    { slug: 'replay', title: 'replay', description: t('chat_input_cmd_replay'), kind: 'builtin' },
+    { slug: 'state', title: 'state', description: t('chat_input_cmd_state'), kind: 'builtin' },
+    { slug: 'nohighlight', title: 'nohighlight', description: t('chat_input_cmd_nohighlight'), kind: 'builtin' },
+  ];
+  const taken = new Set(builtIns.map(command => command.slug));
+  const prompts = savedPrompts.map(prompt => {
+    let slug = slugifyCommand(prompt.title, `prompt-${prompt.id}`);
+    if (taken.has(slug)) slug = `${slug}-${prompt.id}`;
+    taken.add(slug);
+    return {
+      slug,
+      title: prompt.title,
+      description: t('chat_input_savedPrompt'),
+      kind: 'prompt' as const,
+      content: prompt.content,
+    };
+  });
+  return [...builtIns, ...prompts];
+}
 
 export default function ChatInput({
   onSendMessage,
@@ -47,18 +113,52 @@ export default function ChatInput({
   action,
   placeholder,
   footer,
+  mentionTabs = [],
+  onMentionTab,
+  savedPrompts = [],
+  onNewChat,
+  onCaptureScreenshot,
 }: ChatInputProps) {
   const [text, setText] = useState('');
+  const [caret, setCaret] = useState(0);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [attachments, setAttachments] = useState<AssistantAttachment[]>([]);
   const [fileError, setFileError] = useState('');
-  const isSendButtonDisabled = disabled || (text.trim() === '' && attachedFiles.length === 0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [cropSource, setCropSource] = useState<string | null>(null);
+  const hasAttachments = attachedFiles.length + attachments.length > 0;
+  const isSendButtonDisabled = disabled || (text.trim() === '' && !hasAttachments);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const submittingRef = useRef(false);
+  const listboxId = useId();
+  const commands = useMemo(() => buildSlashCommands(savedPrompts), [savedPrompts]);
+
+  const suggestions = useComposerSuggestions({
+    text,
+    caret,
+    mentionTabs,
+    commands,
+    apply: next => {
+      setText(next.text);
+      setCaret(next.caret);
+      requestAnimationFrame(() => textareaRef.current?.setSelectionRange(next.caret, next.caret));
+    },
+    onMention: tabId => onMentionTab?.(tabId),
+    onCommand: command => {
+      if (command.kind === 'builtin' && command.slug === 'new') onNewChat?.();
+    },
+  });
+  const activeOptionId =
+    suggestions.isOpen && suggestions.items[suggestions.activeIndex]
+      ? `${listboxId}-option-${suggestions.activeIndex}`
+      : undefined;
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
     setText(newText);
+    setCaret(e.target.selectionStart);
 
     const textarea = textareaRef.current;
     if (textarea) {
@@ -87,9 +187,15 @@ export default function ChatInput({
       if (disabled || action.type !== 'send' || submittingRef.current) return;
       const trimmedText = text.trim();
 
-      if (trimmedText || attachedFiles.length > 0) {
+      if (trimmedText === '/new' && !hasAttachments) {
+        setText('');
+        onNewChat?.();
+        return;
+      }
+
+      if (trimmedText || hasAttachments) {
         let messageContent = trimmedText;
-        let displayContent = trimmedText;
+        const displayParts = [trimmedText];
 
         if (attachedFiles.length > 0) {
           const fileContents = attachedFiles
@@ -102,93 +208,180 @@ export default function ChatInput({
             ? `${trimmedText}\n\n<nano_attached_files>${fileContents}</nano_attached_files>`
             : `<nano_attached_files>${fileContents}</nano_attached_files>`;
 
-          const fileList = attachedFiles.map(file => `📎 ${file.name}`).join('\n');
-          displayContent = trimmedText ? `${trimmedText}\n\n${fileList}` : fileList;
+          displayParts.push(attachedFiles.map(file => `📎 ${file.name}`).join('\n'));
         }
+        // Images and binary files are not inlined: the background receives them as attachments.
+        // The chat history keeps only a placeholder per attachment.
+        displayParts.push(
+          attachments
+            .map(item => (item.kind === 'image' ? t('chat_input_imageToken', [item.name]) : `📎 ${item.name}`))
+            .join('\n'),
+        );
+        const displayContent = displayParts.filter(Boolean).join('\n\n');
 
         submittingRef.current = true;
         try {
-          const accepted = await onSendMessage(messageContent, displayContent);
+          const accepted = await onSendMessage(messageContent, displayContent, attachments);
           if (accepted !== false) {
             setText('');
             setAttachedFiles([]);
+            setAttachments([]);
           }
         } finally {
           submittingRef.current = false;
         }
       }
     },
-    [text, attachedFiles, onSendMessage, disabled, action.type],
+    [text, attachedFiles, attachments, hasAttachments, onSendMessage, onNewChat, disabled, action.type],
   );
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (suggestions.handleKeyDown(e)) return;
       if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
         e.preventDefault();
         handleSubmit(e);
       }
     },
-    [handleSubmit],
+    [handleSubmit, suggestions],
   );
 
   const handleFileSelect = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  /** Routes picked, pasted or dropped files by type and enforces the per-type limits. */
+  const addFiles = useCallback(
+    async (files: File[]) => {
+      if (disabled || files.length === 0) return;
+      setFileError('');
+      let imageSlots = ASSISTANT_MAX_IMAGES - attachments.filter(item => item.kind === 'image').length;
+      let fileSlots = ASSISTANT_MAX_FILES - attachments.filter(item => item.kind === 'file').length;
+      let textSlots = MAX_TEXT_FILES - attachedFiles.length;
+      const errors: string[] = [];
+      const added: AssistantAttachment[] = [];
+      const addedText: AttachedFile[] = [];
 
-    setFileError('');
-    const candidates = Array.from(files)
-      .slice(0, 5)
-      .filter(file => {
-        const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`;
-
-        if (!ALLOWED_ATTACHMENT_TYPES.has(extension)) {
-          setFileError(t('chat_input_fileUnsupported', [file.name]));
-          return false;
-        }
-
-        if (file.size > 1024 * 1024) {
-          setFileError(t('chat_input_fileTooLarge', [file.name]));
-          return false;
-        }
-
-        return true;
-      });
-
-    const newFiles = (
-      await Promise.all(
-        candidates.map(async file => {
-          try {
-            const content = await file.text();
-            return {
+      for (const file of files) {
+        try {
+          if (isAssistantImageMimeType(file.type)) {
+            if (imageSlots <= 0) {
+              errors.push(t('chat_input_tooManyImages'));
+              continue;
+            }
+            imageSlots -= 1;
+            added.push(await prepareImageAttachment(file, file.name));
+          } else if (TEXT_ATTACHMENT_TYPES.has(extensionOf(file.name))) {
+            if (textSlots <= 0) {
+              errors.push(t('chat_input_tooManyFiles'));
+              continue;
+            }
+            if (file.size > MAX_TEXT_FILE_BYTES) {
+              errors.push(t('chat_input_fileTooLarge', [file.name]));
+              continue;
+            }
+            textSlots -= 1;
+            addedText.push({
               id: crypto.randomUUID(),
               name: file.name,
-              content,
+              content: await file.text(),
               type: file.type || 'text/plain',
-            } as AttachedFile;
-          } catch (error) {
-            console.error(`Error reading file ${file.name}:`, error);
-            return null;
+            });
+          } else {
+            if (fileSlots <= 0) {
+              errors.push(t('chat_input_tooManyFiles'));
+              continue;
+            }
+            fileSlots -= 1;
+            added.push(await prepareBinaryAttachment(file));
           }
-        }),
-      )
-    ).filter((file): file is AttachedFile => file !== null);
+        } catch (error) {
+          errors.push(describeReadError(file.name, error));
+        }
+      }
 
-    if (newFiles.length > 0) {
-      setAttachedFiles(prev => [...prev, ...newFiles].slice(0, 5));
-    }
+      if (added.length > 0) setAttachments(prev => [...prev, ...added]);
+      if (addedText.length > 0) setAttachedFiles(prev => [...prev, ...addedText]);
+      if (errors.length > 0) setFileError(errors.join(' '));
+    },
+    [attachments, attachedFiles, disabled],
+  );
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files ?? []);
+      await addFiles(files);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    },
+    [addFiles],
+  );
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(e.clipboardData.files);
+    if (files.length === 0) return;
+    e.preventDefault();
+    void addFiles(files);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
+    if (disabled || !Array.from(e.dataTransfer.types).includes('Files')) return;
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLFormElement>) => {
+    if (!Array.from(e.dataTransfer.types).includes('Files')) return;
+    e.preventDefault();
+    setIsDragging(false);
+    void addFiles(Array.from(e.dataTransfer.files));
+  };
+
+  const handleCapture = async () => {
+    if (!onCaptureScreenshot || disabled || isCapturing) return;
+    setIsCapturing(true);
+    setFileError('');
+    try {
+      setCropSource(await onCaptureScreenshot());
+    } catch (error) {
+      setFileError(t('chat_input_captureFailed', [error instanceof Error ? error.message : String(error)]));
+    } finally {
+      setIsCapturing(false);
     }
+  };
+
+  /** rect is null for a full screenshot; the crop is downscaled like any other image. */
+  const handleCropConfirm = async (rect: PixelRect | null) => {
+    const source = cropSource;
+    setCropSource(null);
+    if (!source) return;
+    try {
+      const dataUrl = rect ? await cropImageDataUrl(source, rect) : source;
+      const blob = await (await fetch(dataUrl)).blob();
+      const attachment = await prepareImageAttachment(blob, `screenshot-${Date.now()}.png`);
+      if (attachments.filter(item => item.kind === 'image').length >= ASSISTANT_MAX_IMAGES) {
+        setFileError(t('chat_input_tooManyImages'));
+        return;
+      }
+      setAttachments(prev => [...prev, attachment]);
+    } catch (error) {
+      setFileError(describeReadError('screenshot', error));
+    }
+  };
+
+  const handleRemoveAttachment = useCallback((id: string) => {
+    setAttachments(prev => prev.filter(file => file.id !== id));
   }, []);
 
   const handleRemoveFile = useCallback((id: string) => {
     setAttachedFiles(prev => prev.filter(file => file.id !== id));
   }, []);
+
+  const mentionFavicons = useMemo(
+    () => new Map(mentionTabs.map(tab => [String(tab.id), tab.favIconUrl])),
+    [mentionTabs],
+  );
 
   const isVoiceRecording = voice?.type === 'recording';
   const isVoiceProcessing = voice?.type === 'processing';
@@ -199,11 +392,47 @@ export default function ChatInput({
       : t('chat_stt_input_start');
 
   return (
-    <form onSubmit={handleSubmit} className="assistant-composer" aria-label={t('chat_input_form')}>
+    <form
+      onSubmit={handleSubmit}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+      className={`assistant-composer ${isDragging ? 'ring-2 ring-primary ring-inset' : ''}`}
+      aria-label={t('chat_input_form')}>
       <div className="flex flex-col">
-        {/* File attachments display */}
-        {attachedFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2 border-b border-border bg-muted p-2">
+        {/* Attachments display: image thumbnails, binary files and text files */}
+        {hasAttachments && (
+          <div className="flex flex-wrap items-start gap-2 border-b border-border bg-muted p-2">
+            {attachments.map(item =>
+              item.kind === 'image' ? (
+                <div key={item.id} className="relative">
+                  <img
+                    src={item.dataUrl}
+                    alt={item.name}
+                    className="size-14 rounded-md border border-border bg-card object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAttachment(item.id)}
+                    className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border border-border bg-card text-xs shadow-sm transition-colors hover:bg-muted"
+                    aria-label={t('chat_input_removeImage', [item.name])}>
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                </div>
+              ) : (
+                <Badge key={item.id} variant="secondary" className="flex items-center gap-1 pr-1">
+                  <span className="text-xs">📎</span>
+                  <span className="max-w-[150px] truncate">{item.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAttachment(item.id)}
+                    className="ml-1 rounded-sm transition-colors hover:bg-muted-foreground/20"
+                    aria-label={t('chat_input_removeFile', [item.name])}>
+                    <span className="text-xs">✕</span>
+                  </button>
+                </Badge>
+              ),
+            )}
             {attachedFiles.map(file => (
               <Badge key={file.id} variant="secondary" className="flex items-center gap-1 pr-1">
                 <span className="text-xs">📎</span>
@@ -212,7 +441,7 @@ export default function ChatInput({
                   type="button"
                   onClick={() => handleRemoveFile(file.id)}
                   className="ml-1 rounded-sm transition-colors hover:bg-muted-foreground/20"
-                  aria-label={t('chat_input_removeFile', file.name)}>
+                  aria-label={t('chat_input_removeFile', [file.name])}>
                   <span className="text-xs">✕</span>
                 </button>
               </Badge>
@@ -220,22 +449,49 @@ export default function ChatInput({
           </div>
         )}
 
-        <Textarea
-          ref={textareaRef}
-          value={text}
-          onChange={handleTextChange}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          aria-disabled={disabled}
-          rows={3}
-          className="assistant-editor w-full resize-none border-none bg-card shadow-none focus-visible:ring-0"
-          placeholder={
-            attachedFiles.length > 0
-              ? t('chat_input_placeholder_withAttachments')
-              : (placeholder ?? t('chat_input_placeholder'))
-          }
-          aria-label={t('chat_input_editor')}
-        />
+        <div className="relative">
+          {suggestions.isOpen ? (
+            <ComposerPopup
+              listboxId={listboxId}
+              label={suggestions.kind === 'mention' ? t('chat_input_mentionsLabel') : t('chat_input_commandsLabel')}
+              emptyText={suggestions.kind === 'mention' ? t('chat_input_mentionEmpty') : t('chat_input_commandEmpty')}
+              items={suggestions.items}
+              activeIndex={suggestions.activeIndex}
+              renderIcon={item => {
+                const favicon = suggestions.kind === 'mention' ? mentionFavicons.get(item.id) : undefined;
+                return favicon ? (
+                  <img src={favicon} alt="" referrerPolicy="no-referrer" className="size-4 shrink-0" />
+                ) : null;
+              }}
+              onSelect={index => suggestions.select(index)}
+              onHover={index => suggestions.setActiveIndex(index)}
+            />
+          ) : null}
+          <Textarea
+            ref={textareaRef}
+            role="combobox"
+            aria-expanded={suggestions.isOpen}
+            aria-haspopup="listbox"
+            aria-autocomplete="list"
+            aria-controls={suggestions.isOpen ? listboxId : undefined}
+            aria-activedescendant={activeOptionId}
+            value={text}
+            onChange={handleTextChange}
+            onSelect={e => setCaret(e.currentTarget.selectionStart)}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            disabled={disabled}
+            aria-disabled={disabled}
+            rows={3}
+            className="assistant-editor w-full resize-none border-none bg-card shadow-none focus-visible:ring-0"
+            placeholder={
+              hasAttachments
+                ? t('chat_input_placeholder_withAttachments')
+                : (placeholder ?? t('chat_input_placeholder'))
+            }
+            aria-label={t('chat_input_editor')}
+          />
+        </div>
 
         <div className="flex items-center justify-between bg-card px-2 py-1.5">
           <div className="flex gap-2 text-muted-foreground">
@@ -252,16 +508,29 @@ export default function ChatInput({
               <FiPaperclip size={17} />
             </Button>
 
-            {/* Hidden file input */}
+            {/* Hidden file input: text files are inlined, images are resized, other files are uploaded on request */}
             <input
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".txt,.md,.markdown,.json,.csv,.log,.xml,.yaml,.yml"
               onChange={handleFileChange}
               className="hidden"
               aria-hidden="true"
             />
+
+            {onCaptureScreenshot && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleCapture}
+                disabled={disabled || isCapturing}
+                aria-label={t('chat_input_captureScreenshot')}
+                title={t('chat_input_captureScreenshot')}
+                className="size-8">
+                {isCapturing ? <AiOutlineLoading3Quarters className="size-4 animate-spin" /> : <FiCamera size={17} />}
+              </Button>
+            )}
 
             {voice && (
               <Button
@@ -308,12 +577,16 @@ export default function ChatInput({
           )}
         </div>
       </div>
+      {isDragging ? <p className="px-3 pb-1 text-xs text-primary">{t('chat_input_dropHint')}</p> : null}
       {fileError ? (
         <p role="alert" className="px-3 pb-2 text-xs text-destructive">
           {fileError}
         </p>
       ) : null}
       {footer}
+      {cropSource ? (
+        <ScreenshotCropper src={cropSource} onConfirm={handleCropConfirm} onCancel={() => setCropSource(null)} />
+      ) : null}
     </form>
   );
 }

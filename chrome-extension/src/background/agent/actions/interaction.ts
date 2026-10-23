@@ -317,18 +317,31 @@ export function createUploadFileAction(context: AgentContext) {
         return new ActionResult({ error: msg, includeInMemory: true });
       }
       if (!page.getDomElementBySelector(`@e${input.index}`)) return elementNotExistResult(context, input.index);
-      try {
-        await page.uploadFileBySelector(`@e${input.index}`, {
-          name: input.file_name,
-          content: input.content,
-          mimeType: input.mime_type ?? undefined,
-        });
-      } catch (error) {
-        const msg = t('act_uploadFile_fail', [input.file_name, error instanceof Error ? error.message : String(error)]);
+      // Binary attachments come from the user's task files; text content is the fallback
+      const attached = input.attachment ? context.taskFiles.get(input.attachment) : undefined;
+      const fileName = input.attachment || input.file_name;
+      if (input.attachment && !attached) {
+        const msg = t('act_uploadFile_noAttachment', input.attachment);
         context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
         return new ActionResult({ error: msg, includeInMemory: true });
       }
-      const msg = t('act_uploadFile_ok', [input.file_name, input.index.toString()]);
+      if (!attached && input.content == null) {
+        const msg = t('act_uploadFile_noContent', fileName);
+        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
+        return new ActionResult({ error: msg, includeInMemory: true });
+      }
+      try {
+        await page.uploadFileBySelector(`@e${input.index}`, {
+          name: fileName,
+          ...(attached ? { base64: attached.base64 } : { content: input.content ?? '' }),
+          mimeType: attached?.mimeType ?? input.mime_type ?? undefined,
+        });
+      } catch (error) {
+        const msg = t('act_uploadFile_fail', [fileName, error instanceof Error ? error.message : String(error)]);
+        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
+        return new ActionResult({ error: msg, includeInMemory: true });
+      }
+      const msg = t('act_uploadFile_ok', [fileName, input.index.toString()]);
       context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
       return new ActionResult({ extractedContent: msg, includeInMemory: true });
     },

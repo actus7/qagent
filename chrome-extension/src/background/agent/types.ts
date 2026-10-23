@@ -50,6 +50,8 @@ export class AgentContext {
   history: AgentStepHistory;
   finalAnswer: string | null;
   authorizeAction?: (action: string, input: unknown) => Promise<void>;
+  /** Binary files the user attached to this task, keyed by file name; read by upload_file. */
+  taskFiles: Map<string, { mimeType: string; base64: string }>;
 
   constructor(
     taskId: string,
@@ -74,6 +76,7 @@ export class AgentContext {
     this.stateMessageAdded = false;
     this.history = new AgentStepHistory();
     this.finalAnswer = null;
+    this.taskFiles = new Map();
   }
 
   async emitEvent(actor: Actors, state: ExecutionState, eventDetails: string) {

@@ -1,5 +1,12 @@
+import type { AssistantAttachment } from '@extension/shared';
 import type { assistantCopy } from '../lib/assistant-copy';
 import type { AssistantWorkspace } from '../hooks/useAssistantWorkspace';
+
+interface SavedPrompt {
+  id: number;
+  title: string;
+  content: string;
+}
 import ChatInput from './ChatInput';
 import ModelControls from './ModelControls';
 import PageContext from './PageContext';
@@ -12,12 +19,15 @@ interface ComposeAreaProps {
   showStopButton: boolean;
   isRecording: boolean;
   isProcessingSpeech: boolean;
-  onSendMessage: (text: string, displayText?: string) => Promise<boolean>;
+  onSendMessage: (text: string, displayText?: string, attachments?: AssistantAttachment[]) => Promise<boolean>;
   onStopTask: () => void;
   onMicToggle: () => void;
   onRegisterInputSetter: (setter: (text: string) => void) => void;
   /** Set when the open past session can be replayed; the replay runs through the /replay command. */
   replaySessionId: string | null;
+  savedPrompts: SavedPrompt[];
+  onNewChat: () => void;
+  onCaptureScreenshot: () => Promise<string>;
 }
 
 export default function ComposeArea({
@@ -33,6 +43,9 @@ export default function ComposeArea({
   onMicToggle,
   onRegisterInputSetter,
   replaySessionId,
+  savedPrompts,
+  onNewChat,
+  onCaptureScreenshot,
 }: ComposeAreaProps) {
   const chatInputAction = showStopButton
     ? { type: 'stop' as const, onStopTask }
@@ -75,6 +88,11 @@ export default function ComposeArea({
         footer={<ModelControls copy={copy} workspace={workspace} showStopButton={showStopButton} />}
         action={chatInputAction}
         setContent={onRegisterInputSetter}
+        mentionTabs={workspace.tabs}
+        onMentionTab={workspace.addTab}
+        savedPrompts={savedPrompts}
+        onNewChat={onNewChat}
+        onCaptureScreenshot={onCaptureScreenshot}
       />
       <p className="assistant-composer-caption">
         {workspace.mode === 'act' ? copy.actOnly : workspace.mode === 'plan' ? copy.planHint : copy.readOnly}
