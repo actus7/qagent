@@ -15,6 +15,27 @@ export const doneActionSchema = {
   }),
 } satisfies ActionSchema;
 
+export const USER_TAKEOVER_REASONS = [
+  'authentication',
+  'captcha',
+  'two_factor',
+  'payment',
+  'user_requested',
+  'other',
+] as const;
+
+// Pauses the task so the user can do a step the agent must not do itself (credentials, CAPTCHA, 2FA, payment).
+export const requestUserTakeoverActionSchema = {
+  name: 'request_user_takeover',
+  description:
+    'Pause the task and hand the browser to the user for a step you must not do yourself: login credentials, CAPTCHA, two-factor codes or payment details. The task resumes when the user returns control. Never type passwords or payment data.',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    reason: z.enum(USER_TAKEOVER_REASONS).describe('why the user must act'),
+    message: z.string().describe('short instruction for the user, in the language of the task'),
+  }),
+} satisfies ActionSchema;
+
 const selectorField = z
   .string()
   .describe('selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.');

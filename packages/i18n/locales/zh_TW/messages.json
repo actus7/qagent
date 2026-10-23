@@ -313,6 +313,27 @@
   "options_tabs_firewall": {
     "message": "防火牆"
   },
+  "options_tabs_sitePermissions": {
+    "message": "允許的網站"
+  },
+  "options_sitePermissions_header": {
+    "message": "允許的網站"
+  },
+  "options_sitePermissions_description": {
+    "message": "代理在這些網站上執行動作時不再逐一詢問。敏感動作仍需確認。"
+  },
+  "options_sitePermissions_empty": {
+    "message": "尚未允許任何網站。在核准請求中選擇「一律允許此網站」即可新增。"
+  },
+  "options_sitePermissions_btnRemove": {
+    "message": "移除"
+  },
+  "options_sitePermissions_btnRemoveAll": {
+    "message": "全部移除"
+  },
+  "options_sitePermissions_confirmRemoveAll": {
+    "message": "要移除所有允許的網站嗎？"
+  },
   "options_tabs_help": {
     "message": "說明"
   },
@@ -1226,6 +1247,33 @@
   },
   "bg_errors_modelUnreachable": {
     "message": "無法連線到模型提供者。請檢查網路連線與提供者的基礎 URL。"
+  },
+  "act_requestUserTakeover_start": {
+    "message": "等待你處理：$REASON$",
+    "placeholders": {
+      "reason": {
+        "content": "$1",
+        "example": "需要登入憑證"
+      }
+    }
+  },
+  "act_requestUserTakeover_reason_authentication": {
+    "message": "需要登入憑證"
+  },
+  "act_requestUserTakeover_reason_captcha": {
+    "message": "需要解決驗證碼"
+  },
+  "act_requestUserTakeover_reason_two_factor": {
+    "message": "需要雙因素驗證碼"
+  },
+  "act_requestUserTakeover_reason_payment": {
+    "message": "需要付款資料"
+  },
+  "act_requestUserTakeover_reason_user_requested": {
+    "message": "你要求接管"
+  },
+  "act_requestUserTakeover_reason_other": {
+    "message": "需要手動操作"
   },
   "act_uploadFile_start": {
     "message": "正在將 $FILE$ 上傳到元素 $INDEX$",

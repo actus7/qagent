@@ -56,6 +56,8 @@ export interface EventData {
   maxSteps: number;
   /** details is the content of the event */
   details: string;
+  /** Set on the pause event raised by request_user_takeover, so the panel can show the request. */
+  takeover?: { reason: string; reasonLabel: string; message: string };
 }
 
 export class AgentEvent {

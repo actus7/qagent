@@ -47,6 +47,7 @@ const DEFAULT_ACTION_NAMES = [
   'hover',
   'drag',
   'resize_viewport',
+  'request_user_takeover',
 ];
 
 const AGENT_BROWSER_V1_ACTION_NAMES = [

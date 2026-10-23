@@ -23,6 +23,11 @@ export default function ActionApproval({
         <p className="assistant-approval-domains">
           {copy.planDomains}: {(request.domains ?? []).join(', ') || '-'}
         </p>
+        {request.planSteps ? (
+          <p className="assistant-approval-domains">
+            {copy.planNextSteps}: {request.planSteps}
+          </p>
+        ) : null}
         <div className="assistant-approval-actions">
           <Button variant="outline" size="sm" onClick={() => onResolve('deny')}>
             {copy.planDeny}

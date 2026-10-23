@@ -11,6 +11,7 @@ interface TaskStatusBarProps {
   hasPendingApproval: boolean;
   lastEvent: AgentEvent | null;
   onTogglePause: () => void;
+  onTakeOver: () => void;
 }
 
 export default function TaskStatusBar({
@@ -21,12 +22,14 @@ export default function TaskStatusBar({
   hasPendingApproval,
   lastEvent,
   onTogglePause,
+  onTakeOver,
 }: TaskStatusBarProps) {
   const stepLabel =
     lastEvent && lastEvent.data.maxSteps > 0
       ? `${Math.min(lastEvent.data.step + 1, lastEvent.data.maxSteps)}/${lastEvent.data.maxSteps}`
       : null;
   const canPause = mode === 'act' && !isStopping && !hasPendingApproval;
+  const canTakeOver = canPause && !isPaused;
 
   return (
     <div className="assistant-task-status" role="status">
@@ -36,6 +39,14 @@ export default function TaskStatusBar({
         <span>{lastEvent?.data.details || (mode === 'act' ? copy.actHint : copy.readOnly)}</span>
       </div>
       {stepLabel ? <small>{stepLabel}</small> : null}
+      {canTakeOver ? (
+        <button
+          type="button"
+          className="shrink-0 rounded-md border border-amber-500/60 px-2 py-1 text-xs hover:bg-amber-500/10"
+          onClick={onTakeOver}>
+          {copy.takeOver}
+        </button>
+      ) : null}
       {canPause ? (
         <button
           type="button"

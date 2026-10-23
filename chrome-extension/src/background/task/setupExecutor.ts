@@ -96,8 +96,16 @@ export async function setupExecutor(
 
   actionApprovals.startTask(taskId, task);
   const executor = new Executor(task, taskId, browserContext, navigatorLLM, {
-    authorizeAction: (action, input, signal) =>
-      actionApprovals.authorize(taskId, action, input, options.permissionMode ?? 'ask', browserContext, signal),
+    authorizeAction: (action, input, signal, planNextSteps) =>
+      actionApprovals.authorize(
+        taskId,
+        action,
+        input,
+        options.permissionMode ?? 'ask',
+        browserContext,
+        signal,
+        planNextSteps,
+      ),
     plannerLLM: plannerLLM ?? navigatorLLM,
     navigatorProvider: navigatorModel.provider,
     plannerProvider: plannerModel?.provider ?? navigatorModel.provider,

@@ -47,6 +47,7 @@ import {
   createResizeViewportAction,
 } from './inspection';
 import { createClickAtAction, createDragAction, createHoverAction } from './pointer';
+import { createRequestUserTakeoverAction } from './takeover';
 
 export { Action, InvalidInputError, buildDynamicActionSchema } from './action';
 
@@ -127,6 +128,7 @@ export class ActionBuilder {
       createHoverAction(context),
       createDragAction(context),
       createResizeViewportAction(context),
+      createRequestUserTakeoverAction(context),
     ];
 
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {

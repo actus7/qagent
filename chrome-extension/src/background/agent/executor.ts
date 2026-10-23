@@ -36,7 +36,12 @@ const MAX_TASK_CHAIN_LENGTH = 50;
 const PAUSE_POLL_INTERVAL_MS = 200;
 
 interface ExecutorExtraArgs {
-  authorizeAction?: (action: string, input: unknown, signal: AbortSignal) => Promise<void>;
+  authorizeAction?: (
+    action: string,
+    input: unknown,
+    signal: AbortSignal,
+    planNextSteps: string | null,
+  ) => Promise<void>;
   plannerLLM?: BaseChatModel;
   navigatorProvider?: string;
   plannerProvider?: string;
@@ -89,7 +94,7 @@ export class Executor {
         if (context.stopped || context.controller.signal.aborted)
           throw new RequestCancelledError('Tarefa interrompida.');
         try {
-          await extraArgs.authorizeAction!(action, input, context.controller.signal);
+          await extraArgs.authorizeAction!(action, input, context.controller.signal, context.latestPlanNextSteps);
         } catch (error) {
           if (error instanceof RequestCancelledError) await context.stop();
           throw error;

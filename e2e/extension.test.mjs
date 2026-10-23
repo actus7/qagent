@@ -21,8 +21,14 @@ const TELEMETRY_PAGE = `<!doctype html><title>Telemetry target</title><h1 id="st
 const POINTER_PAGE = `<!doctype html><title>Pointer target</title><h1 id="status">idle</h1>
 <div id="pad" style="position:absolute;left:100px;top:100px;width:200px;height:100px;background:#ccc"
   onclick="document.getElementById('status').textContent='clicked:'+Math.round(event.clientX)+','+Math.round(event.clientY)">pad</div>`;
+// A purchase button: the sensitive-action classifier must ask about it even in auto mode.
+const CHECKOUT_PAGE = `<!doctype html><title>Checkout target</title><h1 id="status">idle</h1>
+<button id="buy" onclick="document.getElementById('status').textContent='bought'">Comprar agora</button>`;
 // Index of the "Go" button in the snapshot the navigator receives.
 const goButtonIndex = prompt => Number(prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<button[^>]*>Go \/>/)?.[1]);
+// Index of a button with the given label in the snapshot the navigator receives.
+const buttonIndex = (prompt, label) =>
+  Number(prompt.match(new RegExp(`\\[(\\d+)\\](?:\\[ref=e\\d+\\])?<button[^>]*>${label} />`))?.[1]);
 
 // Planner: keeps the task open until the navigator has acted once, then declares it done.
 // Navigator: clicks the "Go" button from the DOM it receives, then finishes.
@@ -139,6 +145,7 @@ describe('extension e2e', { timeout: 180_000 }, () => {
         res.writeHead(200, { 'content-type': 'text/html' });
         if (req.url.startsWith('/telemetry')) return res.end(TELEMETRY_PAGE);
         if (req.url.startsWith('/pointer')) return res.end(POINTER_PAGE);
+        if (req.url.startsWith('/checkout')) return res.end(CHECKOUT_PAGE);
         return res.end(req.url.startsWith('/upload') ? UPLOAD_PAGE : TARGET_PAGE);
       }
       let raw = '';
@@ -527,6 +534,164 @@ describe('extension e2e', { timeout: 180_000 }, () => {
 
     assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
     assert.equal(await target.locator('#status').textContent(), `notes.pdf:${pdfText}`);
+    assert.deepEqual(pageErrors, []);
+  });
+
+  // Runs one task and answers every approval_required with `decision`; resolves with the states and asked actions.
+  function runTaskWithApprovals(panel, targetTabId, { task, taskId, mode, permissionMode, decision }) {
+    return panel.evaluate(
+      ({ targetTabId, task, taskId, mode, permissionMode, decision }) =>
+        new Promise(resolve => {
+          const events = [];
+          const approvals = [];
+          const port = chrome.runtime.connect({ name: 'side-panel-connection' });
+          setTimeout(() => resolve({ events, approvals }), 120_000);
+          port.onMessage.addListener(message => {
+            if (message.type === 'approval_required') {
+              approvals.push(message.request.action);
+              port.postMessage({
+                type: 'approval_result',
+                taskId: message.request.taskId,
+                requestId: message.request.id,
+                approved: decision !== 'deny',
+                decision,
+              });
+              return;
+            }
+            if (message.type !== 'execution') return;
+            events.push(`${message.actor}:${message.state}`);
+            if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) resolve({ events, approvals });
+          });
+          port.postMessage({
+            type: 'new_task',
+            task,
+            taskId,
+            tabId: targetTabId,
+            options: { mode, permissionMode, tabIds: [targetTabId] },
+          });
+        }),
+      { targetTabId, task, taskId, mode, permissionMode, decision },
+    );
+  }
+
+  it('asks once in ask mode, then "always allow this site" skips the prompt for later clicks', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      prompt => ({ click_element: { intent: 'first click', index: goButtonIndex(prompt) } }),
+      prompt => ({ click_element: { intent: 'second click', index: goButtonIndex(prompt) } }),
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/ask`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(async url => (await chrome.tabs.query({ url: `${url}/ask` }))[0]?.id, baseUrl);
+    assert.ok(tabId, 'ask tab not found');
+
+    const { events, approvals } = await runTaskWithApprovals(panel, tabId, {
+      task: 'Click the Go button twice',
+      taskId: 'e2e-always-site-task',
+      mode: 'act',
+      permissionMode: 'ask',
+      decision: 'always_site',
+    });
+    state.script = null;
+
+    assert.ok(events.includes('system:task.ok'), `task did not finish ok: ${events.join(', ')}`);
+    assert.deepEqual(approvals, ['click_element'], 'the second click must not ask again');
+    assert.equal(await target.locator('#status').textContent(), 'clicked');
+
+    // Forget the site again so later tests start from the default ask behaviour.
+    await panel.evaluate(() => chrome.storage.local.set({ 'site-permissions': { allowedOrigins: [] } }));
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('asks before a purchase button even in auto mode', async () => {
+    state.navigatorSteps = 0;
+    state.script = [
+      prompt => ({ click_element: { intent: 'buy now', index: buttonIndex(prompt, 'Comprar agora') } }),
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/checkout`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/checkout` }))[0]?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'checkout tab not found');
+
+    const { events, approvals } = await runTaskWithApprovals(panel, tabId, {
+      task: 'Buy it now',
+      taskId: 'e2e-purchase-task',
+      mode: 'act',
+      permissionMode: 'auto',
+      decision: 'once',
+    });
+    state.script = null;
+
+    assert.ok(events.includes('system:task.ok'), `task did not finish ok: ${events.join(', ')}`);
+    assert.equal(approvals.length, 1, 'the purchase click did not ask for approval');
+    assert.equal(await target.locator('#status').textContent(), 'bought');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('pauses on request_user_takeover and completes after the user resumes', async () => {
+    state.navigatorSteps = 0;
+    state.script = [
+      {
+        request_user_takeover: {
+          intent: 'login needed',
+          reason: 'authentication',
+          message: 'Faça login e devolva o controle.',
+        },
+      },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/takeover`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/takeover` }))[0]?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'takeover tab not found');
+
+    const { events, takeover } = await panel.evaluate(
+      targetTabId =>
+        new Promise(resolve => {
+          const events = [];
+          let takeover = null;
+          const port = chrome.runtime.connect({ name: 'side-panel-connection' });
+          const finish = () => resolve({ events, takeover });
+          setTimeout(finish, 120_000);
+          port.onMessage.addListener(message => {
+            if (message.type !== 'execution') return;
+            events.push(`${message.actor}:${message.state}`);
+            if (message.state === 'task.pause' && message.data.takeover) {
+              takeover = message.data.takeover;
+              // Hand control back after the pause is reported.
+              setTimeout(() => port.postMessage({ type: 'resume_task' }), 500);
+            }
+            if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) finish();
+          });
+          port.postMessage({
+            type: 'new_task',
+            task: 'Log in to the account',
+            taskId: 'e2e-takeover-task',
+            tabId: targetTabId,
+            options: { mode: 'act', permissionMode: 'auto', tabIds: [targetTabId] },
+          });
+        }),
+      tabId,
+    );
+    state.script = null;
+
+    assert.ok(events.includes('navigator:task.pause'), `takeover did not pause: ${events.join(', ')}`);
+    assert.equal(takeover?.reason, 'authentication');
+    assert.equal(takeover?.message, 'Faça login e devolva o controle.');
+    assert.ok(events.includes('system:task.resume'), `resume was not reported: ${events.join(', ')}`);
+    assert.ok(events.includes('system:task.ok'), `task did not complete after resume: ${events.join(', ')}`);
     assert.deepEqual(pageErrors, []);
   });
 });

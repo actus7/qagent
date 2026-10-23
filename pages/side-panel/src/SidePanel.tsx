@@ -13,6 +13,7 @@ import ModeBar from './components/ModeBar';
 import SettingsModal from './components/SettingsModal';
 import SetupRequiredModal from './components/SetupRequiredModal';
 import TaskStatusBar from './components/TaskStatusBar';
+import TakeoverBanner from './components/TakeoverBanner';
 import WelcomeScreen from './components/WelcomeScreen';
 import { useAssistantWorkspace } from './hooks/useAssistantWorkspace';
 import { useChatCommands } from './hooks/useChatCommands';
@@ -87,7 +88,17 @@ const SidePanel = () => {
   const [browserFrame, setBrowserFrame] = useState<BrowserFramePayload | null>(null);
   const [browserStatus, setBrowserStatus] = useState<BrowserStatusPayload | null>(null);
   const runState = useTaskRunState();
-  const { pendingApproval, setPendingApproval, lastEvent, setLastEvent, isPaused, setIsPaused, isStopping } = runState;
+  const {
+    pendingApproval,
+    setPendingApproval,
+    lastEvent,
+    setLastEvent,
+    isPaused,
+    setIsPaused,
+    isStopping,
+    takeover,
+    setTakeover,
+  } = runState;
   const isTaskRunningRef = useRef(false);
   // Stream id of the plan-mode answer produced by the current run, used for "Execute this plan"
   const [planStreamId, setPlanStreamId] = useState<string | null>(null);
@@ -308,6 +319,19 @@ const SidePanel = () => {
     setIsPaused(!isPaused);
   };
 
+  // Manual takeover is a pause the user labels as "I am doing this step"; the background pause does the work.
+  const handleTakeOver = () => {
+    sendMessage({ type: 'pause_task' });
+    setIsPaused(true);
+    setTakeover({ source: 'user', message: '' });
+  };
+
+  const handleReturnToAgent = () => {
+    sendMessage({ type: 'resume_task' });
+    setIsPaused(false);
+    setTakeover(null);
+  };
+
   const handleSuggestion = (mode: AssistantMode, prompt: string) => {
     workspace.setMode(mode);
     setInputText(prompt);
@@ -411,6 +435,9 @@ const SidePanel = () => {
               }}
             />
           ) : null}
+          {showStopButton && takeover ? (
+            <TakeoverBanner copy={copy} takeover={takeover} onReturnToAgent={handleReturnToAgent} />
+          ) : null}
           {showStopButton ? (
             <TaskStatusBar
               copy={copy}
@@ -420,6 +447,7 @@ const SidePanel = () => {
               hasPendingApproval={pendingApproval !== null}
               lastEvent={lastEvent}
               onTogglePause={handleTogglePause}
+              onTakeOver={handleTakeOver}
             />
           ) : null}
           <ComposeArea

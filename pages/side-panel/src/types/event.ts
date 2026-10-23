@@ -51,6 +51,8 @@ export interface EventData {
   maxSteps: number;
   /** details is the content of the event */
   details: string;
+  /** Set on the pause event of a request_user_takeover action. */
+  takeover?: { reason: string; reasonLabel: string; message: string };
 }
 
 export class AgentEvent {

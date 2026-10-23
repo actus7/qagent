@@ -365,7 +365,12 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
    * Add the state message to the memory
    */
   public async addStateMessageToMemory() {
-    if (this.context.stateMessageAdded) {
+    if (this.context.pageStale) {
+      // The page may have changed while the user had control: drop the old state and read the page again.
+      this.context.pageStale = false;
+      await this.removeLastStateMessageFromMemory();
+      await this.context.browserContext.getState(this.context.options.useVision);
+    } else if (this.context.stateMessageAdded) {
       return;
     }
 

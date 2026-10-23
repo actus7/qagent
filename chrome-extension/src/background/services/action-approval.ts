@@ -12,6 +12,8 @@ const logger = createLogger('background');
 
 const READ_ACTIONS = new Set([
   'done',
+  // Pauses the task for the user; it changes nothing on the page itself.
+  'request_user_takeover',
   'wait',
   'get_text',
   'get_title',
@@ -84,6 +86,7 @@ export class ActionApprovalManager {
     mode: PermissionMode,
     browser: BrowserContextLike,
     signal: AbortSignal,
+    planNextSteps: string | null = null,
   ): Promise<void> {
     if (signal.aborted) throw new Error(t('bg_task_interrupted'));
     if (READ_ACTIONS.has(action)) return;
@@ -98,7 +101,7 @@ export class ActionApprovalManager {
     const targetUrl = navigationTargetUrl(action, args);
 
     if (mode === 'plan' && !this.planStates.get(taskId)?.approved) {
-      await this.requestPlanApproval(taskId, action, intent, currentUrl, browser, signal);
+      await this.requestPlanApproval(taskId, action, intent, currentUrl, browser, signal, planNextSteps);
     }
 
     const alwaysAllowed = sensitivity.sensitive ? [] : await this.loadAlwaysAllowedOrigins();
@@ -148,6 +151,7 @@ export class ActionApprovalManager {
     currentUrl: string,
     browser: BrowserContextLike,
     signal: AbortSignal,
+    planNextSteps: string | null,
   ): Promise<void> {
     const taskText = this.taskTexts.get(taskId) ?? '';
     const domains = [
@@ -165,6 +169,7 @@ export class ActionApprovalManager {
       description: intent ?? taskText,
       kind: 'plan',
       domains,
+      planSteps: planNextSteps ?? undefined,
     };
     const decision = await this.waitForDecision(request, signal);
     this.post({ type: 'approval_resolved', requestId: request.id });
