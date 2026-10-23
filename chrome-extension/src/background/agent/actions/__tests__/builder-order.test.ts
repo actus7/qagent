@@ -40,6 +40,13 @@ const DEFAULT_ACTION_NAMES = [
   'get_dropdown_options',
   'select_dropdown_option',
   'upload_file',
+  'read_console_messages',
+  'read_network_requests',
+  'execute_javascript',
+  'click_at',
+  'hover',
+  'drag',
+  'resize_viewport',
 ];
 
 const AGENT_BROWSER_V1_ACTION_NAMES = [

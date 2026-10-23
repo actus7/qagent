@@ -52,7 +52,10 @@ describe('browser action approval', () => {
     const pending = manager.authorize('task', 'click', {}, 'ask', browser, new AbortController().signal);
     const rejection = expect(pending).rejects.toThrow(t('bg_approval_pageChanged'));
     await vi.waitFor(() => expect(messages.length).toBe(1));
-    vi.mocked(chrome.tabs.get as (tabId: number) => Promise<chrome.tabs.Tab>).mockResolvedValue({ ...tab, url: 'https://example.com/other' } as chrome.tabs.Tab);
+    vi.mocked(chrome.tabs.get as (tabId: number) => Promise<chrome.tabs.Tab>).mockResolvedValue({
+      ...tab,
+      url: 'https://example.com/other',
+    } as chrome.tabs.Tab);
     const message = messages[0];
     if (message.type === 'approval_required') manager.resolve('task', message.request.id, true);
     await rejection;
@@ -64,5 +67,29 @@ describe('browser action approval', () => {
     await manager.authorize('task', 'get_text', {}, 'ask', browser, new AbortController().signal);
     await manager.authorize('task', 'click', {}, 'auto', browser, new AbortController().signal);
     expect(post).not.toHaveBeenCalled();
+  });
+});
+
+describe('browser tool approval classification', () => {
+  // No tab is attached, so authorization never reads chrome.tabs.
+  const browser = { currentTabId: null } as unknown as BrowserContextLike;
+
+  it.each(['read_console_messages', 'read_network_requests', 'resize_viewport'])(
+    '%s runs without approval in ask mode',
+    async action => {
+      const post = vi.fn();
+      const manager = new ActionApprovalManager(post);
+      await manager.authorize('task', action, {}, 'ask', browser, new AbortController().signal);
+      expect(post).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['execute_javascript', 'click_at', 'hover', 'drag'])('%s requires approval in ask mode', async action => {
+    const post = vi.fn();
+    const manager = new ActionApprovalManager(post);
+    const pending = manager.authorize('task', action, {}, 'ask', browser, new AbortController().signal);
+    expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'approval_required' }));
+    manager.cancel();
+    await expect(pending).rejects.toThrow();
   });
 });

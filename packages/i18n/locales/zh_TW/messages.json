@@ -1262,5 +1262,132 @@
   },
   "act_uploadFile_unsupported": {
     "message": "此瀏覽器引擎不支援檔案上傳"
+  },
+  "act_readConsoleMessages_start": {
+    "message": "正在讀取主控台訊息"
+  },
+  "act_readConsoleMessages_ok": {
+    "message": "已讀取 $COUNT$ 則主控台訊息",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_readConsoleMessages_none": {
+    "message": "沒有符合篩選條件的主控台訊息"
+  },
+  "act_readNetworkRequests_start": {
+    "message": "正在讀取網路請求"
+  },
+  "act_readNetworkRequests_ok": {
+    "message": "已讀取 $COUNT$ 筆網路請求",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_readNetworkRequests_none": {
+    "message": "沒有符合篩選條件的網路請求"
+  },
+  "act_executeJavascript_start": {
+    "message": "正在執行 JavaScript 檢查"
+  },
+  "act_executeJavascript_ok": {
+    "message": "JavaScript 檢查完成"
+  },
+  "act_executeJavascript_fail": {
+    "message": "JavaScript 檢查發生錯誤"
+  },
+  "act_clickAt_start": {
+    "message": "在 $COORDS$ 點擊",
+    "placeholders": {
+      "coords": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_clickAt_ok": {
+    "message": "已在 $COORDS$ 點擊",
+    "placeholders": {
+      "coords": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_hover_start": {
+    "message": "將滑鼠移至 $TARGET$",
+    "placeholders": {
+      "target": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_hover_ok": {
+    "message": "滑鼠已移至 $TARGET$",
+    "placeholders": {
+      "target": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_drag_start": {
+    "message": "從 $FROM$ 拖曳到 $TO$",
+    "placeholders": {
+      "from": {
+        "content": "$1"
+      },
+      "to": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_drag_ok": {
+    "message": "已從 $FROM$ 拖曳到 $TO$",
+    "placeholders": {
+      "from": {
+        "content": "$1"
+      },
+      "to": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_resizeViewport_start": {
+    "message": "正在將視窗調整為 $SIZE$",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_resizeViewport_ok": {
+    "message": "視窗已設為 $SIZE$",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_resizeViewport_reset": {
+    "message": "視窗已恢復為瀏覽器視窗大小"
+  },
+  "act_resizeViewport_needSize": {
+    "message": "請提供 width 與 height，或將 reset 設為 true"
+  },
+  "act_pointer_fail": {
+    "message": "指標操作失敗：$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_pointer_needTarget": {
+    "message": "請提供元素索引，或同時提供 x 與 y"
+  },
+  "act_engineUnsupported": {
+    "message": "目前的瀏覽器引擎不支援此操作"
   }
 }

@@ -40,6 +40,13 @@ import {
   createSnapshotAction,
 } from './content';
 import { createCloseTabAction, createOpenTabAction, createSwitchTabAction } from './tabs';
+import {
+  createExecuteJavascriptAction,
+  createReadConsoleMessagesAction,
+  createReadNetworkRequestsAction,
+  createResizeViewportAction,
+} from './inspection';
+import { createClickAtAction, createDragAction, createHoverAction } from './pointer';
 
 export { Action, InvalidInputError, buildDynamicActionSchema } from './action';
 
@@ -113,6 +120,13 @@ export class ActionBuilder {
       createGetDropdownOptionsAction(context),
       createSelectDropdownOptionAction(context),
       createUploadFileAction(context),
+      createReadConsoleMessagesAction(context),
+      createReadNetworkRequestsAction(context),
+      createExecuteJavascriptAction(context),
+      createClickAtAction(context),
+      createHoverAction(context),
+      createDragAction(context),
+      createResizeViewportAction(context),
     ];
 
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {

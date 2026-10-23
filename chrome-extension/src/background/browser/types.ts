@@ -1,5 +1,8 @@
 import type { DOMElementNode } from './dom/views';
 import type { BrowserContextConfig, BrowserState, PageState, TabInfo } from './views';
+import type { ConsoleEntry, ConsoleReadOptions, NetworkEntry, NetworkReadOptions } from './page-telemetry';
+import type { Point, Size } from './page-pointer';
+import type { EvaluationOutcome } from './page-script';
 
 export type BrowserEngineName = 'chrome-debugger' | 'agent-browser-v1';
 
@@ -43,6 +46,20 @@ export interface BrowserPageLike {
   scrollToText(text: string, nth?: number): Promise<boolean>;
   getDropdownOptions(index: number): Promise<Array<{ index: number; text: string; value: string }>>;
   selectDropdownOption(index: number, text: string): Promise<string>;
+  // Inspection and pointer capabilities exist only on the chrome-debugger engine.
+  readConsoleMessages?(options: ConsoleReadOptions): ConsoleEntry[];
+  readNetworkRequests?(options: NetworkReadOptions): NetworkEntry[];
+  evaluateScript?(script: string): Promise<EvaluationOutcome>;
+  setViewportSize?(size: Size, mobile: boolean): Promise<void>;
+  resetViewport?(): Promise<void>;
+  toViewportPoint?(point: Point, fromScreenshot: boolean): Promise<Point>;
+  getElementCenter?(index: number): Promise<Point>;
+  clickAt?(
+    point: Point,
+    options: { button: 'left' | 'right' | 'middle'; clickCount: number; modifiers: string[] },
+  ): Promise<void>;
+  hoverAt?(point: Point): Promise<void>;
+  dragBetween?(from: Point, to: Point, steps: number): Promise<void>;
 }
 
 export interface BrowserContextLike {

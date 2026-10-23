@@ -13,3 +13,10 @@ export function elementNotExistResult(context: AgentContext, index: number): Act
   context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
   return new ActionResult({ error: errorMsg, includeInMemory: true });
 }
+
+/** Result for inspection and pointer actions on an engine that does not provide them. */
+export function engineUnsupportedResult(context: AgentContext): ActionResult {
+  const msg = t('act_engineUnsupported');
+  context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
+  return new ActionResult({ error: msg, includeInMemory: true });
+}

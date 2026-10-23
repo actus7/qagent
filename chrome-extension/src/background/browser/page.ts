@@ -29,6 +29,12 @@ import { typeIntoElementNode, typeIntoSelectorElement } from './page-input';
 import { applyAntiDetectionScripts } from './page-anti-detection';
 import { findNearestScrollableElement, scrollIntoViewIfNeeded, waitForElementStability } from './page-scroll';
 import { waitForStableNetwork } from './page-network';
+import { PageTelemetry } from './page-telemetry';
+import type { ConsoleEntry, ConsoleReadOptions, NetworkEntry, NetworkReadOptions } from './page-telemetry';
+import { centerOfBox, isInsideViewport, readJpegSizeFromBase64, screenshotPointToCss } from './page-pointer';
+import type { Point, Size } from './page-pointer';
+import { formatEvaluationResponse, JS_EVALUATION_TIMEOUT_MS, withTimeout } from './page-script';
+import type { EvaluationOutcome } from './page-script';
 import {
   clickWithFallback,
   type DropdownOption,
@@ -57,6 +63,9 @@ export default class Page {
   private _validWebPage = false;
   private _cachedState: PageState | null = null;
   private _cachedStateClickableElementsHashes: CachedStateClickableElementsHashes | null = null;
+  private _telemetry = new PageTelemetry();
+  private _lastScreenshotSize: Size | null = null;
+  private _viewportOverridden = false;
 
   constructor(tabId: number, url: string, title: string, config: Partial<BrowserContextConfig> = {}) {
     this._tabId = tabId;
@@ -124,6 +133,7 @@ export default class Page {
       const [page] = await browser.pages();
       this._puppeteerPage = page;
       page.on('dialog', dialog => this._handleDialog(dialog));
+      this._telemetry.attach(page);
 
       // Add anti-detection scripts
       await this._addAntiDetectionScripts();
@@ -160,6 +170,10 @@ export default class Page {
   }
 
   async detachPuppeteer(): Promise<void> {
+    // Emulated viewport must not outlive the task that set it.
+    await this.resetViewport().catch(error => logger.warning('Failed to reset viewport:', error));
+    this._telemetry.detach();
+    this._lastScreenshotSize = null;
     if (this._browser) {
       try {
         await this._browser.disconnect();
@@ -379,6 +393,8 @@ export default class Page {
         type: 'jpeg',
         quality: 80, // Good balance between quality and file size
       });
+
+      this._lastScreenshotSize = readJpegSizeFromBase64(screenshot as string);
 
       // Clean up the style element
       await this._puppeteerPage.evaluate(() => {
@@ -942,18 +958,15 @@ export default class Page {
     if (!element) {
       throw new Error(`Element not found for selector: ${selector}`);
     }
-    const accepted = await element.evaluate(
-      (el, { name, content, mimeType }) => {
-        if (!(el instanceof HTMLInputElement) || el.type !== 'file') return false;
-        const transfer = new DataTransfer();
-        transfer.items.add(new File([content], name, { type: mimeType || 'text/plain' }));
-        el.files = transfer.files;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
-      },
-      file,
-    );
+    const accepted = await element.evaluate((el, { name, content, mimeType }) => {
+      if (!(el instanceof HTMLInputElement) || el.type !== 'file') return false;
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([content], name, { type: mimeType || 'text/plain' }));
+      el.files = transfer.files;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }, file);
     if (!accepted) {
       throw new Error(`Element ${selector} is not a file input`);
     }
@@ -1049,6 +1062,117 @@ export default class Page {
     if (remaining > 0) {
       await new Promise(resolve => setTimeout(resolve, remaining * 1000)); // Convert seconds to milliseconds
     }
+  }
+
+  readConsoleMessages(options: ConsoleReadOptions): ConsoleEntry[] {
+    return this._telemetry.readConsole(options);
+  }
+
+  readNetworkRequests(options: NetworkReadOptions): NetworkEntry[] {
+    return this._telemetry.readNetwork(options);
+  }
+
+  /** Runs a script in the page's main world. Failures are reported as text, not thrown. */
+  async evaluateScript(script: string, timeoutMs = JS_EVALUATION_TIMEOUT_MS): Promise<EvaluationOutcome> {
+    const page = this._requirePuppeteerPage();
+    const session = await page.createCDPSession();
+    try {
+      const evaluation = session.send('Runtime.evaluate', {
+        expression: script,
+        awaitPromise: true,
+        returnByValue: true,
+      });
+      // A promise that never settles keeps running after the race ends, so stop the isolate too.
+      const response = await withTimeout(evaluation, timeoutMs, () => {
+        session.send('Runtime.terminateExecution').catch(() => {});
+      });
+      return formatEvaluationResponse(response);
+    } catch (error) {
+      return { ok: false, text: error instanceof Error ? error.message : String(error) };
+    } finally {
+      await session.detach().catch(() => {});
+    }
+  }
+
+  async setViewportSize(size: Size, mobile: boolean): Promise<void> {
+    const page = this._requirePuppeteerPage();
+    await page.setViewport({ width: size.width, height: size.height, isMobile: mobile });
+    this._viewportOverridden = true;
+    this._lastScreenshotSize = null;
+  }
+
+  async resetViewport(): Promise<void> {
+    if (!this._viewportOverridden || !this._puppeteerPage) return;
+    await this._puppeteerPage.setViewport(null);
+    this._viewportOverridden = false;
+    this._lastScreenshotSize = null;
+  }
+
+  /**
+   * Converts a point the model read from the screenshot into viewport CSS pixels.
+   * With vision off the model had no screenshot, so the point is already in CSS pixels.
+   */
+  async toViewportPoint(point: Point, fromScreenshot: boolean): Promise<Point> {
+    const page = this._requirePuppeteerPage();
+    const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
+    const css = screenshotPointToCss(point, fromScreenshot ? this._lastScreenshotSize : null, viewport);
+    if (!isInsideViewport(css, viewport)) {
+      throw new Error(`point (${point.x}, ${point.y}) is outside the viewport`);
+    }
+    return css;
+  }
+
+  /** Center of an indexed element in CSS pixels, after scrolling it into view. */
+  async getElementCenter(index: number): Promise<Point> {
+    const element = this.getDomElementByIndex(index);
+    if (!element) throw new Error(`element with index ${index} not found`);
+    const handle = await this.locateElement(element);
+    if (!handle) throw new Error(`element with index ${index} is not on the page`);
+    await this._scrollIntoViewIfNeeded(handle);
+    const box = await handle.boundingBox();
+    if (!box) throw new Error(`element with index ${index} has no visible box`);
+    return centerOfBox(box);
+  }
+
+  async clickAt(
+    point: Point,
+    options: { button: 'left' | 'right' | 'middle'; clickCount: number; modifiers: KeyInput[] },
+  ): Promise<void> {
+    const page = this._requirePuppeteerPage();
+    try {
+      for (const key of options.modifiers) await page.keyboard.down(key);
+      await page.mouse.click(point.x, point.y, { button: options.button, count: options.clickCount });
+    } finally {
+      for (const key of [...options.modifiers].reverse()) {
+        await page.keyboard.up(key).catch(() => {});
+      }
+    }
+    // A click can navigate; enforce the URL policy like the other click paths do.
+    await this._checkAndHandleNavigation();
+  }
+
+  async hoverAt(point: Point): Promise<void> {
+    const page = this._requirePuppeteerPage();
+    await page.mouse.move(point.x, point.y);
+  }
+
+  async dragBetween(from: Point, to: Point, steps: number): Promise<void> {
+    const page = this._requirePuppeteerPage();
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    try {
+      await page.mouse.move(to.x, to.y, { steps });
+    } finally {
+      await page.mouse.up();
+    }
+    await this._checkAndHandleNavigation();
+  }
+
+  private _requirePuppeteerPage(): PuppeteerPage {
+    if (!this._puppeteerPage) {
+      throw new Error('Puppeteer page is not connected');
+    }
+    return this._puppeteerPage;
   }
 
   /**

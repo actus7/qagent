@@ -20,6 +20,10 @@ const READ_ACTIONS = new Set([
   'scroll_to_text',
   'previous_page',
   'next_page',
+  // Inspection only; resize changes emulation, not site data, and is reset when the task ends.
+  'read_console_messages',
+  'read_network_requests',
+  'resize_viewport',
 ]);
 
 export class ActionApprovalManager {
