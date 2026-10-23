@@ -1,4 +1,7 @@
-import type { RefMap } from 'agent-browser/dist/snapshot.js';
+import type { BrowserManager } from 'agent-browser';
+
+// RefMap is not re-exported from the agent-browser package root; derive it from the public BrowserManager API.
+type RefMap = ReturnType<BrowserManager['getRefMap']>;
 
 export type BrowserToolAction =
   | 'open'

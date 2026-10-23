@@ -63,5 +63,5 @@ It binds by default to `ws://127.0.0.1:9223` and supports RPC + stream + input m
 
 ## Notes
 
-- The current `agent-browser` npm package exports `BrowserManager` via `agent-browser/dist/browser.js`.
+- `agent-browser` exports `BrowserManager` from its package root (0.19.x is the last release with this JS API).
 - `start_screencast` requires `onScreencastFrame` in manager options (or explicit callback in manager API).
