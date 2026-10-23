@@ -156,8 +156,6 @@ interface CompanionTouchInputMessage {
 }
 
 export type CompanionInputMessage =
-  | CompanionMouseInputMessage
-  | CompanionKeyboardInputMessage
-  | CompanionTouchInputMessage;
+  CompanionMouseInputMessage | CompanionKeyboardInputMessage | CompanionTouchInputMessage;
 
 export type CompanionInboundMessage = CompanionRpcResponse | CompanionFrameMessage | CompanionStatusMessage;

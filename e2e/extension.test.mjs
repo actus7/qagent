@@ -14,6 +14,16 @@ const TARGET_PAGE = `<!doctype html><title>QA target</title><h1 id="status">idle
 const UPLOAD_PAGE = `<!doctype html><title>Upload target</title><h1 id="status">idle</h1>
 <input id="file" type="file" onchange="this.files[0].text().then(t => document.getElementById('status').textContent = this.files[0].name + ':' + t)">`;
 
+// Clicking Go logs an error and fetches a URL that 404s; the token in the query must never reach the model.
+const TELEMETRY_PAGE = `<!doctype html><title>Telemetry target</title><h1 id="status">idle</h1>
+<button id="go" onclick="console.error('boom'); fetch('/missing-api?token=s3cr3t')">Go</button>`;
+// Clicking the pad at (150, 140) in CSS pixels echoes the click position.
+const POINTER_PAGE = `<!doctype html><title>Pointer target</title><h1 id="status">idle</h1>
+<div id="pad" style="position:absolute;left:100px;top:100px;width:200px;height:100px;background:#ccc"
+  onclick="document.getElementById('status').textContent='clicked:'+Math.round(event.clientX)+','+Math.round(event.clientY)">pad</div>`;
+// Index of the "Go" button in the snapshot the navigator receives.
+const goButtonIndex = prompt => Number(prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<button[^>]*>Go \/>/)?.[1]);
+
 // Planner: keeps the task open until the navigator has acted once, then declares it done.
 // Navigator: clicks the "Go" button from the DOM it receives, then finishes.
 function fakeCompletion(body, state) {
@@ -21,7 +31,7 @@ function fakeCompletion(body, state) {
   const prompt = JSON.stringify(body.messages ?? []);
   let payload;
   if (/planner/i.test(tool)) {
-    const done = state.navigatorSteps >= 2;
+    const done = state.navigatorSteps >= (state.script?.length ?? 2);
     payload = {
       observation: 'page loaded',
       challenges: '',
@@ -38,8 +48,12 @@ function fakeCompletion(body, state) {
     const index = prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<button[^>]*>Go \/>/)?.[1];
     const fileIndex = prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<input[^\]]*?file/)?.[1];
     const first = state.navigatorSteps === 1;
-    payload =
-      first && index !== undefined
+    state.navigatorPrompts.push(prompt);
+    // A scripted run answers each navigator call with the next entry (a function receives the prompt).
+    const scripted = state.script?.[state.navigatorSteps - 1];
+    payload = state.script
+      ? { current_state: brain, action: [typeof scripted === 'function' ? scripted(prompt) : scripted] }
+      : first && index !== undefined
         ? { current_state: brain, action: [{ click_element: { intent: 'click go', index: Number(index) } }] }
         : first && fileIndex !== undefined
           ? {
@@ -77,7 +91,7 @@ function fakeCompletion(body, state) {
 }
 
 describe('extension e2e', { timeout: 180_000 }, () => {
-  const state = { navigatorSteps: 0, delayMs: 0 };
+  const state = { navigatorSteps: 0, delayMs: 0, script: null, navigatorPrompts: [] };
   const pageErrors = [];
   let server;
   let baseUrl;
@@ -87,7 +101,13 @@ describe('extension e2e', { timeout: 180_000 }, () => {
   before(async () => {
     server = http.createServer((req, res) => {
       if (req.method === 'GET') {
+        if (req.url.startsWith('/missing-api')) {
+          res.writeHead(404, { 'content-type': 'text/plain' });
+          return res.end('not found');
+        }
         res.writeHead(200, { 'content-type': 'text/html' });
+        if (req.url.startsWith('/telemetry')) return res.end(TELEMETRY_PAGE);
+        if (req.url.startsWith('/pointer')) return res.end(POINTER_PAGE);
         return res.end(req.url.startsWith('/upload') ? UPLOAD_PAGE : TARGET_PAGE);
       }
       let raw = '';
@@ -276,6 +296,94 @@ describe('extension e2e', { timeout: 180_000 }, () => {
 
     assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
     assert.equal(await target.locator('#status').textContent(), 'report.csv:a,b\n1,2');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  // Runs one task through the side panel port and resolves with the execution states it reported.
+  function runTask(panel, targetTabId, task, taskId) {
+    return panel.evaluate(
+      ({ targetTabId, task, taskId }) =>
+        new Promise(resolve => {
+          const events = [];
+          const port = chrome.runtime.connect({ name: 'side-panel-connection' });
+          setTimeout(() => resolve(events), 120_000);
+          port.onMessage.addListener(message => {
+            if (message.type !== 'execution') return;
+            events.push(`${message.actor}:${message.state}`);
+            if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) resolve(events);
+          });
+          port.postMessage({
+            type: 'new_task',
+            task,
+            taskId,
+            tabId: targetTabId,
+            options: { mode: 'act', permissionMode: 'auto', tabIds: [targetTabId] },
+          });
+        }),
+      { targetTabId, task, taskId },
+    );
+  }
+
+  it('reads console errors and failed requests and hands them to the model', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      prompt => ({ click_element: { intent: 'trigger errors', index: goButtonIndex(prompt) } }),
+      { read_console_messages: { intent: 'read errors', level: 'error' } },
+      { read_network_requests: { intent: 'read failed requests', only_failed: true } },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/telemetry`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/telemetry` }))[0]?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'telemetry tab not found');
+
+    const seen = await runTask(panel, tabId, 'Trigger the errors and check the logs', 'e2e-telemetry-task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    // Result of read_console_messages reaches the call after it; same for read_network_requests.
+    assert.ok(prompts[2]?.includes('boom'), 'console error was not sent to the model');
+    assert.ok(prompts[3]?.includes('-> 404'), 'failed request was not sent to the model');
+    // The URL redactor writes token=REDACTED; the guardrails filter may replace that whole pair with [REDACTED_CREDENTIAL].
+    assert.match(
+      prompts[3],
+      /missing-api\?(token=REDACTED|\[REDACTED_CREDENTIAL\])/,
+      'sensitive query value was not redacted',
+    );
+    assert.ok(
+      prompts.every(prompt => !prompt.includes('s3cr3t')),
+      'secret query value reached the model',
+    );
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('clicks at pixel coordinates with click_at', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      { click_at: { intent: 'click the pad', x: 150, y: 140 } },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/pointer`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/pointer` }))[0]?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'pointer tab not found');
+
+    const seen = await runTask(panel, tabId, 'Click the pad', 'e2e-pointer-task');
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.equal(await target.locator('#status').textContent(), 'clicked:150,140');
     assert.deepEqual(pageErrors, []);
   });
 });

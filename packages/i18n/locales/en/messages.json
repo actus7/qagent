@@ -1244,5 +1244,132 @@
   },
   "act_uploadFile_unsupported": {
     "message": "File upload is not supported by this browser engine"
+  },
+  "act_readConsoleMessages_start": {
+    "message": "Reading console messages"
+  },
+  "act_readConsoleMessages_ok": {
+    "message": "Read $COUNT$ console message(s)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_readConsoleMessages_none": {
+    "message": "No console messages match the filter"
+  },
+  "act_readNetworkRequests_start": {
+    "message": "Reading network requests"
+  },
+  "act_readNetworkRequests_ok": {
+    "message": "Read $COUNT$ network request(s)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_readNetworkRequests_none": {
+    "message": "No network requests match the filter"
+  },
+  "act_executeJavascript_start": {
+    "message": "Running JavaScript inspection check"
+  },
+  "act_executeJavascript_ok": {
+    "message": "JavaScript check finished"
+  },
+  "act_executeJavascript_fail": {
+    "message": "JavaScript check raised an error"
+  },
+  "act_clickAt_start": {
+    "message": "Click at $COORDS$",
+    "placeholders": {
+      "coords": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_clickAt_ok": {
+    "message": "Clicked at $COORDS$",
+    "placeholders": {
+      "coords": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_hover_start": {
+    "message": "Hover over $TARGET$",
+    "placeholders": {
+      "target": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_hover_ok": {
+    "message": "Hovered over $TARGET$",
+    "placeholders": {
+      "target": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_drag_start": {
+    "message": "Drag from $FROM$ to $TO$",
+    "placeholders": {
+      "from": {
+        "content": "$1"
+      },
+      "to": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_drag_ok": {
+    "message": "Dragged from $FROM$ to $TO$",
+    "placeholders": {
+      "from": {
+        "content": "$1"
+      },
+      "to": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_resizeViewport_start": {
+    "message": "Resizing viewport to $SIZE$",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_resizeViewport_ok": {
+    "message": "Viewport set to $SIZE$",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_resizeViewport_reset": {
+    "message": "Viewport restored to the window size"
+  },
+  "act_resizeViewport_needSize": {
+    "message": "Provide width and height, or set reset to true"
+  },
+  "act_pointer_fail": {
+    "message": "Pointer action failed: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_pointer_needTarget": {
+    "message": "Provide an element index, or both x and y"
+  },
+  "act_engineUnsupported": {
+    "message": "This action is not supported by the current browser engine"
   }
 }

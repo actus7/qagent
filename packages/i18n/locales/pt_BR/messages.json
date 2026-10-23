@@ -1244,5 +1244,132 @@
   },
   "act_uploadFile_unsupported": {
     "message": "Este mecanismo de navegador não suporta upload de arquivos"
+  },
+  "act_readConsoleMessages_start": {
+    "message": "Lendo mensagens do console"
+  },
+  "act_readConsoleMessages_ok": {
+    "message": "$COUNT$ mensagem(ns) do console lida(s)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_readConsoleMessages_none": {
+    "message": "Nenhuma mensagem do console corresponde ao filtro"
+  },
+  "act_readNetworkRequests_start": {
+    "message": "Lendo requisições de rede"
+  },
+  "act_readNetworkRequests_ok": {
+    "message": "$COUNT$ requisição(ões) de rede lida(s)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_readNetworkRequests_none": {
+    "message": "Nenhuma requisição de rede corresponde ao filtro"
+  },
+  "act_executeJavascript_start": {
+    "message": "Executando verificação de inspeção em JavaScript"
+  },
+  "act_executeJavascript_ok": {
+    "message": "Verificação em JavaScript concluída"
+  },
+  "act_executeJavascript_fail": {
+    "message": "A verificação em JavaScript gerou um erro"
+  },
+  "act_clickAt_start": {
+    "message": "Clicar em $COORDS$",
+    "placeholders": {
+      "coords": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_clickAt_ok": {
+    "message": "Clicado em $COORDS$",
+    "placeholders": {
+      "coords": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_hover_start": {
+    "message": "Passar o mouse sobre $TARGET$",
+    "placeholders": {
+      "target": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_hover_ok": {
+    "message": "Mouse posicionado sobre $TARGET$",
+    "placeholders": {
+      "target": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_drag_start": {
+    "message": "Arrastar de $FROM$ até $TO$",
+    "placeholders": {
+      "from": {
+        "content": "$1"
+      },
+      "to": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_drag_ok": {
+    "message": "Arrastado de $FROM$ até $TO$",
+    "placeholders": {
+      "from": {
+        "content": "$1"
+      },
+      "to": {
+        "content": "$2"
+      }
+    }
+  },
+  "act_resizeViewport_start": {
+    "message": "Redimensionando a viewport para $SIZE$",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_resizeViewport_ok": {
+    "message": "Viewport definida em $SIZE$",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_resizeViewport_reset": {
+    "message": "Viewport restaurada ao tamanho da janela"
+  },
+  "act_resizeViewport_needSize": {
+    "message": "Informe width e height, ou defina reset como true"
+  },
+  "act_pointer_fail": {
+    "message": "Ação de ponteiro falhou: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "act_pointer_needTarget": {
+    "message": "Informe o índice do elemento, ou x e y"
+  },
+  "act_engineUnsupported": {
+    "message": "Esta ação não é suportada pelo motor de navegador atual"
   }
 }

@@ -8,8 +8,8 @@ Você é um **Super QA (End-to-End)** atuando **dentro do navegador**, com acess
 - imagem renderizada mais recente da página (screenshot).
 
 Limitações obrigatórias:
-- você NÃO tem acesso direto a console/devtools/network logs/request payload/response headers;
-- você NÃO deve afirmar que inspecionou requisições HTTP ou logs internos do browser;
+- You can READ console messages and HTTP requests of the current tab (read_console_messages, read_network_requests), captured since the tab was attached. Bodies and headers are not available.
+- Only state what the actions returned; do not invent logs or requests.
 - baseie sua análise apenas no estado renderizado observado e no resultado das ações executadas.
 
 **IDIOMA E COMUNICAÇÃO:**
@@ -189,5 +189,11 @@ Common action sequences:
 - Plan is a json string wrapped by the <plan> tag
 - If a plan is provided, follow the instructions in the next_steps exactly first
 - If no plan is provided, just continue with the task
+
+13. Inspection and pointer tools:
+- read_console_messages / read_network_requests: check for JavaScript errors and failed requests (4xx/5xx, network failures).
+- execute_javascript: only for QA inspection checks (DOM state, computed values). Never use it to bypass approval or to read credentials, cookies or tokens.
+- click_at / hover / drag: pixel coordinates from the latest screenshot when vision is on, otherwise CSS pixels. Use them only when the target has no index (canvas, maps, sliders).
+- resize_viewport: responsive checks; call it with reset when finished.
 </system_instructions>
 `;

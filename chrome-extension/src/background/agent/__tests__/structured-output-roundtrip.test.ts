@@ -25,7 +25,11 @@ function completion(body: Record<string, unknown>) {
         role: 'assistant',
         content: null,
         tool_calls: [
-          { id: 'call_1', type: 'function', function: { name: tools[0].function.name, arguments: JSON.stringify(answer) } },
+          {
+            id: 'call_1',
+            type: 'function',
+            function: { name: tools[0].function.name, arguments: JSON.stringify(answer) },
+          },
         ],
       }
     : { role: 'assistant', content: JSON.stringify(answer) };
@@ -68,7 +72,9 @@ describe('structured output round trip', { timeout: 30_000 }, () => {
   it('parses a JSON-schema response like the navigator does', async () => {
     const schema = z.object({
       current_state: z.object({ evaluation_previous_goal: z.string(), memory: z.string(), next_goal: z.string() }),
-      action: z.array(z.object({ click: z.object({ intent: z.string(), selector: z.string() }).nullable().optional() })),
+      action: z.array(
+        z.object({ click: z.object({ intent: z.string(), selector: z.string() }).nullable().optional() }),
+      ),
     });
     const jsonSchema = convertZodToJsonSchema(schema, 'NavigatorAgentOutput', true);
 
