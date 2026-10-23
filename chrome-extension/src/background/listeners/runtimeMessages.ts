@@ -9,6 +9,11 @@ const logger = createLogger('background');
 // Listen for simple messages (e.g., from options page or overlay cancel button)
 export function registerRuntimeMessageListener(): void {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Only this extension's own pages and content scripts may drive the background
+    if (sender.id !== chrome.runtime.id) {
+      return false;
+    }
+
     if (!isBackgroundRuntimeMessage(message)) {
       return false;
     }

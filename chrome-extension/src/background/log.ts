@@ -6,11 +6,15 @@ const REDACTED = '[REDACTED]';
 const MAX_REDACTION_DEPTH = 4;
 const SENSITIVE_KEY_PATTERN =
   /(api[_-]?key|token|secret|password|authorization|cookie|session|private[_-]?key|bearer)/i;
-const SENSITIVE_VALUE_PATTERNS = [
-  /sk-[a-z0-9_-]{16,}/i,
-  /bearer\s+[a-z0-9\-._~+/]+=*/i,
-  /AIza[0-9A-Za-z\-_]{20,}/,
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+// Matched inside any string (messages, stacks, URLs), not only when the whole string is a secret
+const SECRET_PATTERNS: RegExp[] = [
+  /sk-ant-[a-z0-9_-]{16,}/gi,
+  /sk-[a-z0-9_-]{16,}/gi,
+  /bearer\s+[a-z0-9\-._~+/]+=*/gi,
+  /AIza[0-9A-Za-z\-_]{20,}/g,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/g,
+  // generic api key / token query params, e.g. ?api_key=... or &apikey=...
+  /([?&](?:api[_-]?key|access[_-]?token|token|secret)=)[^&\s"']+/gi,
 ];
 
 interface Logger {
@@ -35,10 +39,13 @@ let verboseLoggingEnabled = false;
 const logListeners = new Set<LogListener>();
 
 function redactString(value: string): string {
-  if (SENSITIVE_VALUE_PATTERNS.some(pattern => pattern.test(value))) {
-    return REDACTED;
-  }
-  return value;
+  return SECRET_PATTERNS.reduce(
+    (text, pattern) =>
+      text.replace(pattern, (match: string, queryPrefix?: unknown) =>
+        typeof queryPrefix === 'string' ? `${queryPrefix}${REDACTED}` : REDACTED,
+      ),
+    value,
+  );
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -71,7 +78,7 @@ function redactLogValue(value: unknown, depth = 0, seen = new WeakSet<object>())
     return {
       name: value.name,
       message: redactString(value.message),
-      stack: value.stack,
+      stack: value.stack === undefined ? undefined : redactString(value.stack),
     };
   }
 

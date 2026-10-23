@@ -1,4 +1,17 @@
 /**
+ * Normalizes a firewall list entry so it compares with normalized hostnames:
+ * lowercase, no scheme, no leading `*.` / `www.`, no trailing dots.
+ */
+function normalizeListEntry(entry: string): string {
+  return entry
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^(\*\.|www\.)/, '')
+    .replace(/\.+$/, '');
+}
+
+/**
  * Checks if a URL is allowed based on firewall configuration
  * @param url The URL to check
  * @param allowList The allow list
@@ -14,20 +27,14 @@ export function isUrlAllowed(url: string, allowList: string[], denyList: string[
 
   const lowerCaseUrl = trimmedUrl.toLowerCase();
 
-  // ALWAYS block dangerous/forbidden URLs, even if firewall is disabled
-  const DANGEROUS_PREFIXES = [
-    'https://chromewebstore.google.com', // scripts are not allowed to be injected into chrome web store
-    'chrome-extension://',
-    'chrome://',
-    'javascript:',
-    'data:',
-    'file:',
-    'vbscript:',
-    'ws:',
-    'wss:',
-  ];
+  // ALWAYS block chrome web store (scripts cannot be injected there), even if firewall is disabled
+  if (lowerCaseUrl.startsWith('https://chromewebstore.google.com')) {
+    return false;
+  }
 
-  if (DANGEROUS_PREFIXES.some(prefix => lowerCaseUrl.startsWith(prefix))) {
+  // Scheme allowlist: only web pages and about:blank can be reached
+  const isAboutBlank = trimmedUrl === 'about:blank';
+  if (!isAboutBlank && !/^https?:\/\//i.test(trimmedUrl)) {
     return false;
   }
 
@@ -36,10 +43,12 @@ export function isUrlAllowed(url: string, allowList: string[], denyList: string[
     return true;
   }
 
-  // Special case: Allow 'about:blank' explicitly
-  if (trimmedUrl === 'about:blank') {
+  if (isAboutBlank) {
     return true;
   }
+
+  const allowEntries = allowList.map(normalizeListEntry);
+  const denyEntries = denyList.map(normalizeListEntry);
 
   try {
     const parsedUrl = new URL(trimmedUrl);
@@ -48,44 +57,38 @@ export function isUrlAllowed(url: string, allowList: string[], denyList: string[
     const urlWithoutProtocol = lowerCaseUrl.replace(/^https?:\/\//, '');
 
     // 2. First check full URL against deny list
-    for (const deniedEntry of denyList) {
+    for (const deniedEntry of denyEntries) {
       if (urlWithoutProtocol === deniedEntry) {
         return false;
       }
     }
 
     // 3. Check full URL against allow list
-    for (const allowedEntry of allowList) {
+    for (const allowedEntry of allowEntries) {
       if (urlWithoutProtocol === allowedEntry) {
         return true;
       }
     }
 
-    // 4. Extract domain for domain-based checks
-    let domain = parsedUrl.hostname.toLowerCase();
-
-    // Remove port number if present
-    const portIndex = domain.indexOf(':');
-    if (portIndex > -1) {
-      domain = domain.substring(0, portIndex);
-    }
+    // 4. Extract domain for domain-based checks; trailing dots ("evil.com.") name the same host
+    const domain = parsedUrl.hostname.toLowerCase().replace(/\.+$/, '');
 
     // 5. Check domain against deny list
-    for (const deniedEntry of denyList) {
+    for (const deniedEntry of denyEntries) {
       if (domain === deniedEntry || domain.endsWith(`.${deniedEntry}`)) {
         return false;
       }
     }
 
     // 6. Check domain against allow list
-    for (const allowedEntry of allowList) {
+    for (const allowedEntry of allowEntries) {
       if (domain === allowedEntry || domain.endsWith(`.${allowedEntry}`)) {
         return true;
       }
     }
 
     // Default policy
-    return allowList.length === 0;
+    return allowEntries.length === 0;
   } catch {
     // Invalid URL format - deny by default
     return false;
