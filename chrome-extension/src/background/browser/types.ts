@@ -33,7 +33,10 @@ export interface BrowserPageLike {
   takeScreenshot(fullPage?: boolean): Promise<string | null>;
   removeHighlight(): Promise<void>;
   takeDialogNotices?(): string[];
-  uploadFileBySelector?(selector: string, file: { name: string; content: string; mimeType?: string }): Promise<void>;
+  uploadFileBySelector?(
+    selector: string,
+    file: { name: string; content?: string; base64?: string; mimeType?: string },
+  ): Promise<void>;
   getReadabilityContent?(): Promise<{ title?: string; content: string }>;
   scrollToPercent(yPercent: number, elementNode?: DOMElementNode): Promise<void>;
   getElementScrollInfo(elementNode: DOMElementNode): Promise<[number, number, number]>;

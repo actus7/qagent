@@ -8,6 +8,7 @@ import { createChatModel } from '../agent/helper';
 import ScopedBrowserContext from '../browser/scoped-context';
 import { postToPanel } from '../port/panelPort';
 import { getConversationContext, streamBrowserAnswer } from '../services/browser-assistant';
+import { buildFileAttachmentNote } from '../services/assistant-attachments';
 import { browserContext, isAgentBrowserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 import { startAgentBrowserStream, stopAgentBrowserStream, syncAgentBrowserToTabUrl } from './agentBrowserControl';
@@ -57,6 +58,7 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
         task: message.task,
         tabIds,
         mode,
+        attachments: message.attachments,
         model: createChatModel(providers[config.provider], config),
         signal: controller.signal,
         post: postToPanel,
@@ -71,10 +73,11 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
       .slice(-10)
       .map(item => `${item.getType()}: ${item.content}`)
       .join('\n');
+    const currentTask = [message.task, buildFileAttachmentNote(message.attachments)].filter(Boolean).join('\n\n');
     const task = conversation
-      ? `Conversation context (prior requests are context only):\n${conversation}\n\nCurrent user task:\n${message.task}`
-      : message.task;
-    executor = await setupExecutor(message.taskId, task, browserContext, options);
+      ? `Conversation context (prior requests are context only):\n${conversation}\n\nCurrent user task:\n${currentTask}`
+      : currentTask;
+    executor = await setupExecutor(message.taskId, task, browserContext, options, message.attachments);
     if (controller.signal.aborted) {
       emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
       return;

@@ -38,24 +38,40 @@ function fakeCompletion(body, state) {
     const index = prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<button[^>]*>Go \/>/)?.[1];
     const fileIndex = prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<input[^\]]*?file/)?.[1];
     const first = state.navigatorSteps === 1;
+    // The task note lists binary attachments by name; upload the one named in the note
+    const hasBinaryAttachment = prompt.includes('notes.pdf');
     payload =
       first && index !== undefined
         ? { current_state: brain, action: [{ click_element: { intent: 'click go', index: Number(index) } }] }
-        : first && fileIndex !== undefined
+        : first && fileIndex !== undefined && hasBinaryAttachment
           ? {
               current_state: brain,
               action: [
                 {
                   upload_file: {
-                    intent: 'attach csv',
+                    intent: 'attach pdf',
                     index: Number(fileIndex),
-                    file_name: 'report.csv',
-                    content: 'a,b\n1,2',
+                    file_name: 'notes.pdf',
+                    attachment: 'notes.pdf',
                   },
                 },
               ],
             }
-          : { current_state: brain, action: [{ done: { text: 'done', success: true } }] };
+          : first && fileIndex !== undefined
+            ? {
+                current_state: brain,
+                action: [
+                  {
+                    upload_file: {
+                      intent: 'attach csv',
+                      index: Number(fileIndex),
+                      file_name: 'report.csv',
+                      content: 'a,b\n1,2',
+                    },
+                  },
+                ],
+              }
+            : { current_state: brain, action: [{ done: { text: 'done', success: true } }] };
   }
   // LangChain asks either for a tool call or for a response_format JSON reply; answer in the same shape.
   const viaTool = Boolean(body.tools?.length);
@@ -76,8 +92,23 @@ function fakeCompletion(body, state) {
   };
 }
 
+// Chat and plan answers stream (stream: true): reply with one SSE text chunk followed by the stop chunk.
+function replyStream(res, body) {
+  const chunk = (delta, finishReason) => ({
+    id: 'fake',
+    object: 'chat.completion.chunk',
+    created: 0,
+    model: body.model,
+    choices: [{ index: 0, delta, finish_reason: finishReason }],
+  });
+  res.writeHead(200, { 'content-type': 'text/event-stream' });
+  res.write(`data: ${JSON.stringify(chunk({ role: 'assistant', content: 'It is an image.' }, null))}\n\n`);
+  res.write(`data: ${JSON.stringify(chunk({}, 'stop'))}\n\n`);
+  res.end('data: [DONE]\n\n');
+}
+
 describe('extension e2e', { timeout: 180_000 }, () => {
-  const state = { navigatorSteps: 0, delayMs: 0 };
+  const state = { navigatorSteps: 0, delayMs: 0, imageRequests: 0 };
   const pageErrors = [];
   let server;
   let baseUrl;
@@ -93,9 +124,13 @@ describe('extension e2e', { timeout: 180_000 }, () => {
       let raw = '';
       req.on('data', chunk => (raw += chunk));
       req.on('end', () => {
+        const body = JSON.parse(raw);
+        // Image parts reach the model as image_url content; record them for the attachment tests
+        if (raw.includes('"type":"image_url"')) state.imageRequests += 1;
         const reply = () => {
+          if (body.stream) return replyStream(res, body);
           res.writeHead(200, { 'content-type': 'application/json' });
-          res.end(JSON.stringify(fakeCompletion(JSON.parse(raw), state)));
+          res.end(JSON.stringify(fakeCompletion(body, state)));
         };
         // Optional latency so a test can pause while a model call is in flight
         if (state.delayMs) setTimeout(reply, state.delayMs);
@@ -276,6 +311,87 @@ describe('extension e2e', { timeout: 180_000 }, () => {
 
     assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
     assert.equal(await target.locator('#status').textContent(), 'report.csv:a,b\n1,2');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('sends an image attachment to the model in chat mode', async () => {
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/page`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(async url => (await chrome.tabs.query({ url: `${url}/page` }))[0]?.id, baseUrl);
+    assert.ok(tabId, 'target tab not found');
+    // 1x1 transparent PNG
+    const dataUrl =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    const before = state.imageRequests;
+
+    const seen = await panel.evaluate(
+      ({ targetTabId, image }) =>
+        new Promise(resolve => {
+          const events = [];
+          const port = chrome.runtime.connect({ name: 'side-panel-connection' });
+          setTimeout(() => resolve(events), 120_000);
+          port.onMessage.addListener(message => {
+            if (message.type !== 'execution') return;
+            events.push(`${message.actor}:${message.state}`);
+            if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) resolve(events);
+          });
+          port.postMessage({
+            type: 'new_task',
+            task: 'What is in this picture?',
+            taskId: 'e2e-chat-image',
+            tabId: targetTabId,
+            options: { mode: 'chat', tabIds: [targetTabId] },
+            attachments: [{ id: 'img-1', name: 'pixel.png', mimeType: 'image/png', kind: 'image', dataUrl: image }],
+          });
+        }),
+      { targetTabId: tabId, image: dataUrl },
+    );
+
+    assert.ok(seen.includes('system:task.ok'), `chat task did not finish ok: ${seen.join(', ')}`);
+    assert.equal(state.imageRequests, before + 1, 'the model did not receive an image_url content part');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('uploads a binary attachment with upload_file', async () => {
+    state.navigatorSteps = 0;
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/upload`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    // Earlier tests leave /upload tabs open; the newest one is the page this test opened
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/upload` })).at(-1)?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'upload tab not found');
+    const pdfText = '%PDF-1.4 test';
+    const dataUrl = `data:application/pdf;base64,${Buffer.from(pdfText).toString('base64')}`;
+
+    const seen = await panel.evaluate(
+      ({ targetTabId, file }) =>
+        new Promise(resolve => {
+          const events = [];
+          const port = chrome.runtime.connect({ name: 'side-panel-connection' });
+          setTimeout(() => resolve(events), 120_000);
+          port.onMessage.addListener(message => {
+            if (message.type !== 'execution') return;
+            events.push(`${message.actor}:${message.state}`);
+            if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) resolve(events);
+          });
+          port.postMessage({
+            type: 'new_task',
+            task: 'Attach the PDF',
+            taskId: 'e2e-upload-binary-task',
+            tabId: targetTabId,
+            options: { mode: 'act', permissionMode: 'auto', tabIds: [targetTabId] },
+            attachments: [{ id: 'file-1', name: 'notes.pdf', mimeType: 'application/pdf', kind: 'file', dataUrl: file }],
+          });
+        }),
+      { targetTabId: tabId, file: dataUrl },
+    );
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.equal(await target.locator('#status').textContent(), `notes.pdf:${pdfText}`);
     assert.deepEqual(pageErrors, []);
   });
 });

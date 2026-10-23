@@ -7,6 +7,7 @@ export interface WorkspaceTab {
   title: string;
   url: string;
   active: boolean;
+  favIconUrl?: string;
 }
 export interface WorkspaceModel {
   agent: 'navigator' | 'planner';
@@ -77,7 +78,15 @@ export function useAssistantWorkspace(frozen = false) {
           tab.url &&
           /^https?:\/\//i.test(tab.url) &&
           new URL(tab.url).hostname !== 'chromewebstore.google.com'
-            ? [{ id: tab.id, title: tab.title || new URL(tab.url).hostname, url: tab.url, active: !!tab.active }]
+            ? [
+                {
+                  id: tab.id,
+                  title: tab.title || new URL(tab.url).hostname,
+                  url: tab.url,
+                  active: !!tab.active,
+                  favIconUrl: tab.favIconUrl?.startsWith('https://') ? tab.favIconUrl : undefined,
+                },
+              ]
             : [],
         );
         setTabs(available);
@@ -113,6 +122,12 @@ export function useAssistantWorkspace(frozen = false) {
     );
   }, []);
 
+  /** Adds a tab to the scope without toggling it off when it is already selected (used by "@" mentions). */
+  const addTab = useCallback((id: number) => {
+    setFollowActive(false);
+    setSelectedIds(current => (current.includes(id) || current.length >= 12 ? current : [...current, id]));
+  }, []);
+
   return {
     mode,
     setMode,
@@ -124,6 +139,7 @@ export function useAssistantWorkspace(frozen = false) {
     tabs,
     selectedTabs: tabs.filter(tab => selectedIds.includes(tab.id)),
     toggleTab,
+    addTab,
     followActive,
     followActiveTab: () => setFollowActive(true),
     error,

@@ -28,6 +28,8 @@ import type { AgentStepHistory } from './history';
 import type { GeneralSettingsConfig } from '@extension/storage';
 import { analytics } from '../services/analytics';
 import { createLoopDetectionState, evaluateLoopDetection, type LoopDetectionState } from './loop-detection';
+import type { AssistantAttachment } from '@extension/shared';
+import { buildImageContentParts, indexFileAttachments } from '../services/assistant-attachments';
 
 const logger = createLogger('Executor');
 const MAX_TASK_CHAIN_LENGTH = 50;
@@ -44,6 +46,7 @@ interface ExecutorExtraArgs {
   plannerRateLimitKey?: string;
   agentOptions?: Partial<AgentOptions>;
   generalSettings?: GeneralSettingsConfig;
+  attachments?: AssistantAttachment[];
 }
 
 export class Executor {
@@ -80,6 +83,7 @@ export class Executor {
     );
 
     this.generalSettings = extraArgs?.generalSettings;
+    context.taskFiles = indexFileAttachments(extraArgs?.attachments);
     if (extraArgs?.authorizeAction) {
       context.authorizeAction = async (action, input) => {
         if (context.stopped || context.controller.signal.aborted)
@@ -122,7 +126,12 @@ export class Executor {
 
     this.context = context;
     // Initialize message history
-    this.context.messageManager.initTaskMessages(this.navigatorPrompt.getSystemMessage(), task);
+    this.context.messageManager.initTaskMessages(
+      this.navigatorPrompt.getSystemMessage(),
+      task,
+      undefined,
+      buildImageContentParts(extraArgs?.attachments),
+    );
   }
 
   subscribeExecutionEvents(callback: EventCallback): void {
@@ -268,7 +277,11 @@ export class Executor {
           void analytics.trackTaskCancelled(this.context.taskId);
         } else {
           // Cancellation can also happen from transport/network interruptions; surface as a failure.
-          await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_task_fail', [describeModelError(error, t)]));
+          await this.context.emitEvent(
+            Actors.SYSTEM,
+            ExecutionState.TASK_FAIL,
+            t('exec_task_fail', [describeModelError(error, t)]),
+          );
           const errorCategory = analytics.categorizeError(error);
           void analytics.trackTaskFailed(this.context.taskId, errorCategory);
         }
@@ -552,7 +565,11 @@ export class Executor {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       replayLogger.error(`Replay failed: ${errorMessage}`);
-      await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_replay_fail', [describeModelError(error, t)]));
+      await this.context.emitEvent(
+        Actors.SYSTEM,
+        ExecutionState.TASK_FAIL,
+        t('exec_replay_fail', [describeModelError(error, t)]),
+      );
     }
 
     return results;

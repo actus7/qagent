@@ -1244,5 +1244,98 @@
   },
   "act_uploadFile_unsupported": {
     "message": "File upload is not supported by this browser engine"
+  },
+  "bg_cmd_capture_unsupported": {
+    "message": "Only http(s) pages can be captured."
+  },
+  "bg_cmd_capture_notActive": {
+    "message": "Only the visible tab of a window can be captured. Switch to the tab first."
+  },
+  "bg_cmd_capture_blocked": {
+    "message": "The firewall blocks capturing this page."
+  },
+  "bg_cmd_capture_failed": {
+    "message": "The screenshot could not be captured."
+  },
+  "act_uploadFile_noAttachment": {
+    "message": "No file attached to this task is named \"$1\"."
+  },
+  "act_uploadFile_noContent": {
+    "message": "upload_file needs content or an attachment for $1."
+  },
+  "chat_input_imageToken": {
+    "message": "[image: $1]"
+  },
+  "chat_input_imageTooLarge": {
+    "message": "$1: the image is too large, even after resizing."
+  },
+  "chat_input_imageUnsupported": {
+    "message": "$1: only PNG, JPEG, WebP and GIF images can be attached."
+  },
+  "chat_input_binaryFileTooLarge": {
+    "message": "$1: maximum size is 10 MB."
+  },
+  "chat_input_readFailed": {
+    "message": "$1: the file could not be read."
+  },
+  "chat_input_tooManyImages": {
+    "message": "You can attach up to 5 images."
+  },
+  "chat_input_tooManyFiles": {
+    "message": "You can attach up to 5 files."
+  },
+  "chat_input_removeImage": {
+    "message": "Remove image $1"
+  },
+  "chat_input_captureScreenshot": {
+    "message": "Capture screenshot"
+  },
+  "chat_input_captureFailed": {
+    "message": "Could not capture the screenshot: $1"
+  },
+  "chat_input_cropTitle": {
+    "message": "Select an area"
+  },
+  "chat_input_cropHint": {
+    "message": "Drag over the screenshot to select an area. Without a selection, the full screenshot is used."
+  },
+  "chat_input_cropUse": {
+    "message": "Use selection"
+  },
+  "chat_input_cropFull": {
+    "message": "Full screenshot"
+  },
+  "chat_input_cropCancel": {
+    "message": "Cancel"
+  },
+  "chat_input_mentionsLabel": {
+    "message": "Open tabs"
+  },
+  "chat_input_mentionEmpty": {
+    "message": "No matching tabs"
+  },
+  "chat_input_commandsLabel": {
+    "message": "Commands and saved prompts"
+  },
+  "chat_input_commandEmpty": {
+    "message": "No matching commands"
+  },
+  "chat_input_cmd_new": {
+    "message": "Start a new chat"
+  },
+  "chat_input_cmd_replay": {
+    "message": "Replay a past session: /replay <id>"
+  },
+  "chat_input_cmd_state": {
+    "message": "Print the page's interactive elements (debug)"
+  },
+  "chat_input_cmd_nohighlight": {
+    "message": "Remove element highlights"
+  },
+  "chat_input_savedPrompt": {
+    "message": "Saved prompt"
+  },
+  "chat_input_dropHint": {
+    "message": "Drop files to attach them"
   }
 }

@@ -195,12 +195,17 @@ export const inputTextActionSchema = {
 export const uploadFileActionSchema = {
   name: 'upload_file',
   description:
-    'Attach a file to a file input (<input type=file>) by index. Provide the file name and its full text content; use it for forms that require an upload',
+    'Attach a file to a file input (<input type=file>) by index. Either provide the file name and its full text content, or set "attachment" to the exact name of a file the user attached to this task (use this for binary files such as PDFs or images); use it for forms that require an upload',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     index: z.number().int().describe('index of the file input element'),
     file_name: z.string().describe('file name including extension, e.g. report.csv'),
-    content: z.string().describe('full text content of the file'),
+    content: z.string().nullable().optional().describe('full text content of the file (omit when using attachment)'),
+    attachment: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('exact name of a file attached by the user for this task; the bytes are uploaded unchanged'),
     mime_type: z.string().nullable().optional().describe('MIME type, e.g. text/csv; defaults to text/plain'),
   }),
 } satisfies ActionSchema;

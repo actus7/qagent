@@ -919,23 +919,25 @@ export default class Page {
    * Attach a file to an <input type=file>. The extension cannot read the user's disk, so the file is built
    * in the page from its text content and assigned through DataTransfer, firing input/change like a real pick.
    */
-  async uploadFileBySelector(selector: string, file: { name: string; content: string; mimeType?: string }) {
+  async uploadFileBySelector(
+    selector: string,
+    file: { name: string; content?: string; base64?: string; mimeType?: string },
+  ) {
     const element = await this.getElementBySelector(selector);
     if (!element) {
       throw new Error(`Element not found for selector: ${selector}`);
     }
-    const accepted = await element.evaluate(
-      (el, { name, content, mimeType }) => {
-        if (!(el instanceof HTMLInputElement) || el.type !== 'file') return false;
-        const transfer = new DataTransfer();
-        transfer.items.add(new File([content], name, { type: mimeType || 'text/plain' }));
-        el.files = transfer.files;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
-      },
-      file,
-    );
+    const accepted = await element.evaluate((el, { name, content, base64, mimeType }) => {
+      if (!(el instanceof HTMLInputElement) || el.type !== 'file') return false;
+      // Binary attachments arrive as base64 and are decoded byte-for-byte
+      const data = base64 !== undefined ? Uint8Array.from(atob(base64), char => char.charCodeAt(0)) : (content ?? '');
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([data], name, { type: mimeType || 'text/plain' }));
+      el.files = transfer.files;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }, file);
     if (!accepted) {
       throw new Error(`Element ${selector} is not a file input`);
     }

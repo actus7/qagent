@@ -6,7 +6,7 @@ import {
   llmProviderStore,
 } from '@extension/storage';
 import { t } from '@extension/i18n';
-import type { AssistantTaskOptions } from '@extension/shared';
+import type { AssistantAttachment, AssistantTaskOptions } from '@extension/shared';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Executor } from '../agent/executor';
 import { createChatModel } from '../agent/helper';
@@ -22,6 +22,7 @@ export async function setupExecutor(
   task: string,
   browserContext: BrowserContextLike,
   options: AssistantTaskOptions = {},
+  attachments?: AssistantAttachment[],
 ) {
   const usingAgentBrowser = isAgentBrowserContext(browserContext);
   if (usingAgentBrowser) {
@@ -112,6 +113,7 @@ export async function setupExecutor(
       planningInterval: generalSettings.planningInterval,
     },
     generalSettings: generalSettings,
+    attachments,
   });
 
   return executor;

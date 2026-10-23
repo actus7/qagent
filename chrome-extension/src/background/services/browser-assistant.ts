@@ -1,11 +1,12 @@
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Actors, chatHistoryStore, firewallStore } from '@extension/storage';
-import type { AssistantMode, SidePanelResponseMessage } from '@extension/shared';
+import type { AssistantAttachment, AssistantMode, SidePanelResponseMessage } from '@extension/shared';
 import { isUrlAllowed } from '../browser/util';
 import { t } from '@extension/i18n';
 import { wrapUntrustedContent } from '../agent/messages/utils';
 import { createLogger } from '../log';
+import { buildUserContent } from './assistant-attachments';
 
 const MAX_PAGE_CHARS = 18000;
 const STREAM_IDLE_TIMEOUT_MS = 120000;
@@ -64,11 +65,12 @@ export async function streamBrowserAnswer(args: {
   task: string;
   tabIds: number[];
   mode: AssistantMode;
+  attachments?: AssistantAttachment[];
   model: BaseChatModel;
   signal: AbortSignal;
   post: (message: SidePanelResponseMessage) => void;
 }): Promise<void> {
-  const { taskId, task, tabIds, mode, model, signal, post } = args;
+  const { taskId, task, tabIds, mode, attachments, model, signal, post } = args;
   const [context, history] = await Promise.all([readSelectedTabs(tabIds), getConversationContext(taskId)]);
   if (signal.aborted) return;
   // The user message may already have been persisted by the panel.
@@ -86,7 +88,7 @@ export async function streamBrowserAnswer(args: {
         context,
     ),
     ...previous,
-    new HumanMessage(task),
+    new HumanMessage({ content: buildUserContent(task, attachments) }),
   ];
   const streamId = crypto.randomUUID();
   let content = '';

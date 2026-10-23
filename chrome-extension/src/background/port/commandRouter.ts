@@ -4,6 +4,7 @@ import type { SidePanelCommandMessage, SidePanelResponseMessage } from '@extensi
 import { DEFAULT_AGENT_OPTIONS } from '../agent/types';
 import { createLogger } from '../log';
 import { SpeechToTextService } from '../services/speechToText';
+import { captureVisibleTab } from '../services/tabCapture';
 import { browserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 import { actionApprovals } from '../task/actionApprovals';
@@ -60,6 +61,11 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
       const screenshot = await page.takeScreenshot();
       logger.info('screenshot', message.tabId, screenshot);
       return post({ type: 'success', screenshot });
+    }
+
+    case 'capture_visible_tab': {
+      const dataUrl = await captureVisibleTab(message.tabId);
+      return post({ type: 'tab_capture', dataUrl });
     }
 
     case 'state': {

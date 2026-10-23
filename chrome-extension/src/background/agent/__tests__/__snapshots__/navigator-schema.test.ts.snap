@@ -70,8 +70,8 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {get_dropdown_options: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the dropdown element', 'required': true}}}",
   "Select dropdown option for interactive element index by the text of the option you want to select:
 {select_dropdown_option: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the dropdown element', 'required': true}, 'text': {'type': 'text of the option', 'required': true}}}",
-  "Attach a file to a file input (<input type=file>) by index. Provide the file name and its full text content; use it for forms that require an upload:
-{upload_file: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the file input element', 'required': true}, 'file_name': {'type': 'file name including extension, e.g. report.csv', 'required': true}, 'content': {'type': 'full text content of the file', 'required': true}, 'mime_type': {'type': 'MIME type, e.g. text/csv; defaults to text/plain', 'optional': true}}}",
+  "Attach a file to a file input (<input type=file>) by index. Either provide the file name and its full text content, or set "attachment" to the exact name of a file the user attached to this task (use this for binary files such as PDFs or images); use it for forms that require an upload:
+{upload_file: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the file input element', 'required': true}, 'file_name': {'type': 'file name including extension, e.g. report.csv', 'required': true}, 'content': {'type': 'full text content of the file (omit when using attachment)', 'optional': true}, 'attachment': {'type': 'exact name of a file attached by the user for this task; the bytes are uploaded unchanged', 'optional': true}, 'mime_type': {'type': 'MIME type, e.g. text/csv; defaults to text/plain', 'optional': true}}}",
 ]
 `;
 
@@ -799,11 +799,18 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "type": "object",
           },
           "upload_file": {
-            "description": "Attach a file to a file input (<input type=file>) by index. Provide the file name and its full text content; use it for forms that require an upload",
+            "description": "Attach a file to a file input (<input type=file>) by index. Either provide the file name and its full text content, or set "attachment" to the exact name of a file the user attached to this task (use this for binary files such as PDFs or images); use it for forms that require an upload",
             "nullable": true,
             "properties": {
+              "attachment": {
+                "description": "exact name of a file attached by the user for this task; the bytes are uploaded unchanged",
+                "nullable": true,
+                "title": "Attachment",
+                "type": "string",
+              },
               "content": {
-                "description": "full text content of the file",
+                "description": "full text content of the file (omit when using attachment)",
+                "nullable": true,
                 "title": "Content",
                 "type": "string",
               },
@@ -833,7 +840,6 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "required": [
               "index",
               "file_name",
-              "content",
             ],
             "title": "Upload File",
             "type": "object",

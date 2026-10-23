@@ -27,6 +27,7 @@ import { useTaskRunState } from './hooks/useTaskRunState';
 import { useTaskSubmission } from './hooks/useTaskSubmission';
 import { useVoiceInput } from './hooks/useVoiceInput';
 import { assistantCopy } from './lib/assistant-copy';
+import { requestTabCapture } from './lib/tab-capture';
 import { toAgentEvent } from './lib/sidepanel-events';
 import { ExecutionState, type AgentEvent } from './types/event';
 import type {
@@ -170,7 +171,6 @@ const SidePanel = () => {
     };
   }, [currentSessionId, isHistoricalSession, replayEnabled]);
 
-
   // Remembers which streamed answer came from a plan-mode run; stable identity so the port listener never goes stale
   const handleAssistantMessage = useCallback(
     (message: SidePanelResponseMessage) => {
@@ -258,6 +258,15 @@ const SidePanel = () => {
   });
 
   const { handleMicClick } = useVoiceInput({ appendMessage, connection, isRecording });
+
+  /** Captures the active tab through the background; the reply resolves in useSidePanelConnection. */
+  const handleCaptureScreenshot = useCallback(async () => {
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tabId = activeTab?.id;
+    if (tabId === undefined) throw new Error(t('errors_noActiveTab'));
+    ensureConnection();
+    return requestTabCapture(() => sendMessage({ type: 'capture_visible_tab', tabId }));
+  }, [ensureConnection, sendMessage]);
 
   const handleNewChat = () => {
     if (showStopButton) return;
@@ -405,6 +414,9 @@ const SidePanel = () => {
             isRecording={isRecording}
             isProcessingSpeech={isProcessingSpeech}
             onSendMessage={handleSendMessage}
+            savedPrompts={favoritePrompts}
+            onNewChat={handleNewChat}
+            onCaptureScreenshot={handleCaptureScreenshot}
             onStopTask={handleStopTask}
             onMicToggle={handleMicClick}
             onRegisterInputSetter={setter => {

@@ -1244,5 +1244,98 @@
   },
   "act_uploadFile_unsupported": {
     "message": "Este mecanismo de navegador não suporta upload de arquivos"
+  },
+  "bg_cmd_capture_unsupported": {
+    "message": "Só é possível capturar páginas http(s)."
+  },
+  "bg_cmd_capture_notActive": {
+    "message": "Só é possível capturar a aba visível da janela. Ative a aba primeiro."
+  },
+  "bg_cmd_capture_blocked": {
+    "message": "O firewall bloqueia a captura desta página."
+  },
+  "bg_cmd_capture_failed": {
+    "message": "Não foi possível capturar a tela."
+  },
+  "act_uploadFile_noAttachment": {
+    "message": "Nenhum arquivo anexado a esta tarefa se chama \"$1\"."
+  },
+  "act_uploadFile_noContent": {
+    "message": "upload_file precisa de content ou attachment para $1."
+  },
+  "chat_input_imageToken": {
+    "message": "[imagem: $1]"
+  },
+  "chat_input_imageTooLarge": {
+    "message": "$1: a imagem é grande demais, mesmo após redimensionar."
+  },
+  "chat_input_imageUnsupported": {
+    "message": "$1: só é possível anexar imagens PNG, JPEG, WebP e GIF."
+  },
+  "chat_input_binaryFileTooLarge": {
+    "message": "$1: o tamanho máximo é 10 MB."
+  },
+  "chat_input_readFailed": {
+    "message": "$1: não foi possível ler o arquivo."
+  },
+  "chat_input_tooManyImages": {
+    "message": "Você pode anexar até 5 imagens."
+  },
+  "chat_input_tooManyFiles": {
+    "message": "Você pode anexar até 5 arquivos."
+  },
+  "chat_input_removeImage": {
+    "message": "Remover imagem $1"
+  },
+  "chat_input_captureScreenshot": {
+    "message": "Capturar tela"
+  },
+  "chat_input_captureFailed": {
+    "message": "Não foi possível capturar a tela: $1"
+  },
+  "chat_input_cropTitle": {
+    "message": "Selecione uma área"
+  },
+  "chat_input_cropHint": {
+    "message": "Arraste sobre a captura para selecionar uma área. Sem seleção, a captura inteira é usada."
+  },
+  "chat_input_cropUse": {
+    "message": "Usar seleção"
+  },
+  "chat_input_cropFull": {
+    "message": "Captura inteira"
+  },
+  "chat_input_cropCancel": {
+    "message": "Cancelar"
+  },
+  "chat_input_mentionsLabel": {
+    "message": "Abas abertas"
+  },
+  "chat_input_mentionEmpty": {
+    "message": "Nenhuma aba encontrada"
+  },
+  "chat_input_commandsLabel": {
+    "message": "Comandos e prompts salvos"
+  },
+  "chat_input_commandEmpty": {
+    "message": "Nenhum comando encontrado"
+  },
+  "chat_input_cmd_new": {
+    "message": "Iniciar um novo chat"
+  },
+  "chat_input_cmd_replay": {
+    "message": "Reproduzir uma sessão anterior: /replay <id>"
+  },
+  "chat_input_cmd_state": {
+    "message": "Mostrar os elementos interativos da página (depuração)"
+  },
+  "chat_input_cmd_nohighlight": {
+    "message": "Remover os destaques dos elementos"
+  },
+  "chat_input_savedPrompt": {
+    "message": "Prompt salvo"
+  },
+  "chat_input_dropHint": {
+    "message": "Solte os arquivos para anexá-los"
   }
 }

@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react';
 import { Actors, chatHistoryStore } from '@extension/storage';
+import type { AssistantAttachment } from '@extension/shared';
 import type { assistantCopy } from '../lib/assistant-copy';
 import type { AppendMessage } from '../lib/sidepanel-events';
 import type { AssistantWorkspace } from './useAssistantWorkspace';
@@ -54,24 +55,29 @@ export const useTaskSubmission = ({
     sessionIdRef.current = newSession.id;
   };
 
-  const dispatchTask = async (taskId: string, text: string, tabId: number) => {
+  const dispatchTask = async (taskId: string, text: string, tabId: number, attachments: AssistantAttachment[]) => {
     const options = {
       mode: workspace.mode,
       permissionMode: workspace.permissionMode,
       tabIds: workspace.selectedTabs.map(tab => tab.id),
       modelAgent: workspace.modelAgent,
     };
+    const attachmentsPart = attachments.length > 0 ? { attachments } : {};
     if (isFollowUpMode) {
-      await sendMessage({ type: 'follow_up_task', task: text, taskId, tabId, options });
+      await sendMessage({ type: 'follow_up_task', task: text, taskId, tabId, options, ...attachmentsPart });
     } else {
-      await sendMessage({ type: 'new_task', task: text, taskId, tabId, options });
+      await sendMessage({ type: 'new_task', task: text, taskId, tabId, options, ...attachmentsPart });
     }
   };
 
-  const handleSendMessage = async (text: string, displayText?: string): Promise<boolean> => {
+  const handleSendMessage = async (
+    text: string,
+    displayText?: string,
+    attachments: AssistantAttachment[] = [],
+  ): Promise<boolean> => {
     const trimmedText = text.trim();
 
-    if (!trimmedText || !inputEnabled || showStopButton) return false;
+    if ((!trimmedText && attachments.length === 0) || !inputEnabled || showStopButton) return false;
     if (!hasConfiguredModels) {
       setShowSetupRequiredModal(true);
       return false;
@@ -117,7 +123,7 @@ export const useTaskSubmission = ({
       }
 
       ensureConnection();
-      await dispatchTask(taskId, text, tabId);
+      await dispatchTask(taskId, text, tabId, attachments);
     } catch (err) {
       console.error('Task error', errorText(err));
       appendMessage({
