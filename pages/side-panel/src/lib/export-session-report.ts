@@ -1,11 +1,13 @@
 import { agentModelStore, chatHistoryStore } from '@extension/storage';
 import { t } from '@extension/i18n';
 import {
+  attachStepScreenshots,
   buildSessionReportHtml,
   buildSessionReportMarkdown,
   parseAgentStepHistory,
   type ReportLabels,
   type SessionReportInput,
+  type StepScreenshot,
 } from '@extension/shared';
 
 export type ReportFormat = 'html' | 'markdown';
@@ -28,22 +30,37 @@ const reportLabels = (): ReportLabels => ({
   you: t('report_you'),
   assistant: t('report_assistant'),
   system: t('report_system'),
+  screenshot: t('report_screenshot'),
+  screenshotHtmlOnly: t('report_screenshotHtmlOnly'),
 });
+
+/** Screenshots live in the background session store; a missing or failed read just leaves the report without them. */
+async function fetchStepScreenshots(taskId: string): Promise<StepScreenshot[]> {
+  try {
+    const response = (await chrome.runtime.sendMessage({ type: 'qagent:step-screenshots:get', taskId })) as
+      { screenshots?: unknown } | undefined;
+    return Array.isArray(response?.screenshots) ? (response.screenshots as StepScreenshot[]) : [];
+  } catch (error) {
+    console.error('Failed to load step screenshots:', error);
+    return [];
+  }
+}
 
 /** Builds the report for a chat session. Steps come from the stored history of its last task, when one was kept. */
 export async function buildSessionReport(sessionId: string, format: ReportFormat): Promise<string> {
   const session = await chatHistoryStore.getSession(sessionId);
   if (!session) throw new Error('Session not found');
-  const [stored, models] = await Promise.all([
+  const [stored, models, screenshots] = await Promise.all([
     chatHistoryStore.loadAgentStepHistory(sessionId),
     agentModelStore.getAllAgentModels(),
+    fetchStepScreenshots(sessionId),
   ]);
   const input: SessionReportInput = {
     title: session.title,
     generatedAt: Date.now(),
     models: Object.values(models).map(model => `${model.provider}/${model.modelName}`),
     messages: session.messages,
-    steps: stored ? parseAgentStepHistory(stored.history) : [],
+    steps: stored ? attachStepScreenshots(parseAgentStepHistory(stored.history), screenshots) : [],
     labels: reportLabels(),
   };
   return format === 'html' ? buildSessionReportHtml(input) : buildSessionReportMarkdown(input);

@@ -10,6 +10,7 @@ import BrowserPreview from './components/BrowserPreview';
 import ComposeArea from './components/ComposeArea';
 import ConversationArea from './components/ConversationArea';
 import ModeBar from './components/ModeBar';
+import ScheduleDialog from './components/ScheduleDialog';
 import SettingsModal from './components/SettingsModal';
 import SetupRequiredModal from './components/SetupRequiredModal';
 import TaskStatusBar from './components/TaskStatusBar';
@@ -88,6 +89,8 @@ const SidePanel = () => {
   const chatDebugModeRef = useRef<boolean>(false);
   const [browserFrame, setBrowserFrame] = useState<BrowserFramePayload | null>(null);
   const [browserStatus, setBrowserStatus] = useState<BrowserStatusPayload | null>(null);
+  // Prompt the schedule dialog opens with; null while the dialog is closed.
+  const [schedulePrompt, setSchedulePrompt] = useState<string | null>(null);
   const runState = useTaskRunState();
   const {
     pendingApproval,
@@ -475,6 +478,7 @@ const SidePanel = () => {
             savedPrompts={favoritePrompts}
             onNewChat={handleNewChat}
             onCaptureScreenshot={handleCaptureScreenshot}
+            onSchedule={prompt => setSchedulePrompt(prompt)}
             onStopTask={handleStopTask}
             onMicToggle={handleMicClick}
             onRegisterInputSetter={setter => {
@@ -489,6 +493,22 @@ const SidePanel = () => {
           chatDebugMode={chatDebugMode}
           onClose={() => setShowSettings(false)}
           onChatDebugModeChange={handleChatDebugModeChange}
+        />
+      ) : null}
+      {schedulePrompt !== null ? (
+        <ScheduleDialog
+          initialPrompt={schedulePrompt}
+          initialMode={workspace.mode}
+          initialStartUrl={workspace.selectedTabs[0]?.url ?? ''}
+          onClose={() => setSchedulePrompt(null)}
+          onSaved={nextRunAt => {
+            setSchedulePrompt(null);
+            appendMessage({
+              actor: Actors.SYSTEM,
+              content: t('chat_schedule_saved', new Date(nextRunAt).toLocaleString()),
+              timestamp: Date.now(),
+            });
+          }}
         />
       ) : null}
       {showSetupRequiredModal ? (

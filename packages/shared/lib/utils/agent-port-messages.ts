@@ -171,7 +171,8 @@ type BackgroundRuntimeMessage =
   | { type: 'qagent:cancel' }
   | { type: 'qagent:overlay:state' }
   | { type: 'qagent:test-provider'; providerId: string }
-  | { type: 'qagent:schedule:run-now'; id: string };
+  | { type: 'qagent:schedule:run-now'; id: string }
+  | { type: 'qagent:step-screenshots:get'; taskId: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -330,6 +331,9 @@ export function isBackgroundRuntimeMessage(message: unknown): message is Backgro
   }
   if (message.type === 'qagent:schedule:run-now') {
     return typeof message.id === 'string' && message.id.length > 0 && message.id.length <= 100;
+  }
+  if (message.type === 'qagent:step-screenshots:get') {
+    return typeof message.taskId === 'string' && message.taskId.length > 0 && message.taskId.length <= 100;
   }
   return message.type === 'qagent:cancel' || message.type === 'qagent:overlay:state';
 }

@@ -20,6 +20,36 @@ export interface ReportStep {
   url: string;
   title: string;
   actions: ReportAction[];
+  /** Step screenshot as a JPEG or PNG data URL; only set after isSafeScreenshotDataUrl accepted it. */
+  screenshot?: string | null;
+}
+
+/** A stored step screenshot, keyed by the step number it was taken for. */
+export interface StepScreenshot {
+  step: number;
+  dataUrl: string;
+}
+
+// Screenshots are base64 JPEG/PNG data URLs. The strict pattern rejects anything that could carry markup.
+const SCREENSHOT_DATA_URL_PATTERN = /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/;
+/** About 300 KB of base64 per image, far above a 640px JPEG. */
+export const MAX_SCREENSHOT_DATA_URL_LENGTH = 400_000;
+
+export function isSafeScreenshotDataUrl(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length <= MAX_SCREENSHOT_DATA_URL_LENGTH &&
+    SCREENSHOT_DATA_URL_PATTERN.test(value)
+  );
+}
+
+/** Pairs each step with its screenshot. Invalid entries and steps without a match are ignored. */
+export function attachStepScreenshots(steps: ReportStep[], shots: StepScreenshot[]): ReportStep[] {
+  const byStep = new Map<number, string>();
+  for (const shot of shots) {
+    if (Number.isInteger(shot.step) && isSafeScreenshotDataUrl(shot.dataUrl)) byStep.set(shot.step, shot.dataUrl);
+  }
+  return steps.map(step => ({ ...step, screenshot: byStep.get(step.index) ?? null }));
 }
 
 export interface ReportLabels {
@@ -40,6 +70,8 @@ export interface ReportLabels {
   you: string;
   assistant: string;
   system: string;
+  screenshot: string;
+  screenshotHtmlOnly: string;
 }
 
 export interface SessionReportInput {
@@ -137,6 +169,7 @@ h1{font-size:22px}h2{font-size:17px;margin-top:28px;border-bottom:1px solid #d9e
 .who{font-size:12px;color:#52606d;font-weight:600}.body{white-space:pre-wrap;word-break:break-word}
 .step{background:#f5f7fa;border-radius:6px;padding:8px 12px;margin:10px 0}
 .action{margin:6px 0 0 12px}.error{color:#b42318}.url{font-size:12px;color:#52606d;word-break:break-all}
+.shot{display:block;max-width:100%;height:auto;margin:8px 0 0 12px;border:1px solid #d9e2ec;border-radius:4px}
 `;
 
 function htmlMessage(message: ReportMessage, labels: ReportLabels): string {
@@ -161,10 +194,14 @@ function htmlStep(step: ReportStep, labels: ReportLabels): string {
       (action.error ? `<div class="body error">${escapeHtml(labels.error)}: ${escapeHtml(action.error)}</div>` : '') +
       '</div>',
   );
+  const screenshot = isSafeScreenshotDataUrl(step.screenshot)
+    ? `<img class="shot" alt="${escapeHtml(labels.screenshot)} ${step.index}" src="${escapeHtml(step.screenshot)}">`
+    : '';
   return [
     `<div class="step"><strong>${escapeHtml(labels.step)} ${step.index}</strong>`,
     `<div class="url">${escapeHtml(step.title)} ${escapeHtml(step.url)}</div>`,
     ...actions,
+    screenshot,
     '</div>',
   ].join('');
 }
@@ -175,7 +212,9 @@ export function buildSessionReportHtml(input: SessionReportInput): string {
   const answer = finalAnswerOf(input.messages);
   const models = input.models.length > 0 ? input.models.map(escapeHtml).join(', ') : escapeHtml(labels.noModels);
   const steps =
-    input.steps.length > 0 ? input.steps.map(step => htmlStep(step, labels)).join('') : `<p>${escapeHtml(labels.noSteps)}</p>`;
+    input.steps.length > 0
+      ? input.steps.map(step => htmlStep(step, labels)).join('')
+      : `<p>${escapeHtml(labels.noSteps)}</p>`;
   return [
     '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width,initial-scale=1">',
@@ -196,6 +235,7 @@ function markdownSteps(steps: ReportStep[], labels: ReportLabels): string[] {
   return steps.flatMap(step => [
     `### ${labels.step} ${step.index}`,
     step.url ? `${step.title} <${step.url}>` : step.title,
+    ...(step.screenshot ? [labels.screenshotHtmlOnly] : []),
     '',
     ...step.actions.flatMap(action => [
       `- **${action.name}**${action.intent ? ` (${labels.intent}: ${action.intent})` : ''}`,
