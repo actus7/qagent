@@ -1194,6 +1194,24 @@
   "bg_task_busy": {
     "message": "請等待目前任務完成，或先停止執行。"
   },
+  "bg_errors_debuggerConflict": {
+    "message": "其他擴充功能或 DevTools 正在控制此分頁。請關閉 DevTools 或停用其他擴充功能後再試一次。"
+  },
+  "bg_contextMenu_askTitle": {
+    "message": "向 QAgent 詢問此內容"
+  },
+  "chat_context_selection": {
+    "message": "選取內容"
+  },
+  "chat_context_page": {
+    "message": "頁面"
+  },
+  "chat_context_link": {
+    "message": "連結"
+  },
+  "chat_context_image": {
+    "message": "圖片"
+  },
   "bg_errors_modelAuth": {
     "message": "模型提供者拒絕了 API 金鑰。請在「設定 → 模型」中檢查金鑰。"
   },

@@ -14,6 +14,7 @@ import { startAgentBrowserStream, stopAgentBrowserStream, syncAgentBrowserToTabU
 import { actionApprovals } from './actionApprovals';
 import { subscribeToExecutorEvents } from './executorEvents';
 import { setupExecutor } from './setupExecutor';
+import { taskTabGroups } from '../services/tab-groups';
 
 // The single in-flight assistant task. Only this module reads or writes it.
 let activeTask: AbortController | null = null;
@@ -66,6 +67,7 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
     }
     if (tabIds.length === 0) throw new Error(t('bg_task_selectTab'));
     if (browserContext instanceof ScopedBrowserContext) browserContext.setAllowedTabs(tabIds);
+    await taskTabGroups.start(message.taskId, tabIds);
     const history = await getConversationContext(message.taskId);
     const conversation = history
       .slice(-10)
@@ -98,6 +100,7 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
     if (controller.signal.aborted) emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
     else emit(ExecutionState.TASK_FAIL, describeModelError(error, t));
   } finally {
+    await taskTabGroups.finish(message.taskId);
     actionApprovals.cancel();
     if (executor) await executor.cleanup();
     else if (mode === 'act') await browserContext.cleanup();

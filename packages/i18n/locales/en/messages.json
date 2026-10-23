@@ -1194,6 +1194,24 @@
   "bg_task_busy": {
     "message": "Wait for the current task to finish or stop the run."
   },
+  "bg_errors_debuggerConflict": {
+    "message": "Another extension or DevTools is controlling this tab. Close DevTools or disable the other extension and try again."
+  },
+  "bg_contextMenu_askTitle": {
+    "message": "Ask QAgent about this"
+  },
+  "chat_context_selection": {
+    "message": "Selection"
+  },
+  "chat_context_page": {
+    "message": "Page"
+  },
+  "chat_context_link": {
+    "message": "Link"
+  },
+  "chat_context_image": {
+    "message": "Image"
+  },
   "bg_errors_modelAuth": {
     "message": "The model provider rejected the API key. Check the key in Settings → Models."
   },

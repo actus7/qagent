@@ -19,6 +19,7 @@ export function registerTabListeners(): void {
         // Wait a bit for the content script to be ready
         setTimeout(() => {
           sendOverlayMessage(tabId, { type: 'qagent:overlay:show' });
+          sendOverlayMessage(tabId, { type: 'qagent:overlay:mode', mode: runtimeStore.getState().overlayMode });
           if (overlayStatusText) {
             sendOverlayMessage(tabId, {
               type: 'qagent:overlay:status',

@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { Actors, chatHistoryStore } from '@extension/storage';
 import { t } from '@extension/i18n';
-import { useTheme, type AssistantMode } from '@extension/shared';
+import { formatContextPrefill, useTheme, type AssistantMode } from '@extension/shared';
 import { useLanguage } from '@extension/shared';
 import ChatHistoryList from './components/ChatHistoryList';
 import ActionApproval from './components/ActionApproval';
@@ -17,6 +17,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import { useAssistantWorkspace } from './hooks/useAssistantWorkspace';
 import { useChatCommands } from './hooks/useChatCommands';
 import { useChatMessages } from './hooks/useChatMessages';
+import { useContextPrefill } from './hooks/useContextPrefill';
 import { useConfigurationSync } from './hooks/useConfigurationSync';
 import { useFavoritePromptHandlers } from './hooks/useFavoritePromptHandlers';
 import { useHistoryHandlers } from './hooks/useHistoryHandlers';
@@ -98,6 +99,21 @@ const SidePanel = () => {
       setInputTextRef.current(text);
     }
   }, []);
+
+  // "Perguntar ao QAgent": quote the context in the composer and scope the task to the clicked tab
+  useContextPrefill({
+    onPrefill: payload => {
+      workspace.selectOnlyTab(payload.tabId);
+      setInputText(
+        formatContextPrefill(payload, {
+          page: t('chat_context_page'),
+          link: t('chat_context_link'),
+          image: t('chat_context_image'),
+          selection: t('chat_context_selection'),
+        }),
+      );
+    },
+  });
 
   const { handleLoadHistory, handleBackToChat, handleSessionSelect, handleSessionDelete, handleSessionBookmark } =
     useHistoryHandlers({

@@ -7,6 +7,7 @@ import { registerRuntimeMessageListener } from './listeners/runtimeMessages';
 import { registerSidePanelPortListener, setupSidePanelBehavior } from './port/sidePanelPort';
 import { registerPanelForwarders } from './port/panelForwarding';
 import { registerSettingsSync } from './services/settingsSync';
+import { registerContextMenu } from './services/context-menu';
 
 // Service-worker composition root. Chrome requires listeners to be registered synchronously at
 // top level, so every register* call below runs during evaluation, never inside an async callback.
@@ -23,3 +24,4 @@ registerPanelForwarders();
 registerSettingsSync();
 registerRuntimeMessageListener();
 registerSidePanelPortListener();
+registerContextMenu();

@@ -4,8 +4,9 @@ import type { ExecutionPortEventMessage, SidePanelResponseMessage } from '@exten
 import type { Executor } from '../agent/executor';
 import { ExecutionState } from '../agent/event/types';
 import { createLogger } from '../log';
-import { sendOverlayMessage } from '../overlay/overlayMessaging';
+import { applyOverlayMode, sendOverlayMessage } from '../overlay/overlayMessaging';
 import { postToPanel } from '../port/panelPort';
+import { taskTabGroups } from '../services/tab-groups';
 import { browserContext, isAgentBrowserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 
@@ -85,8 +86,19 @@ export function subscribeToExecutorEvents(executor: Executor, onTerminal: (event
             type: 'qagent:overlay:status',
             text: statusText,
           });
+          // Tabs the task opened since the last step join the task's tab group.
+          void browserContext
+            .getAllTabIds()
+            .then(tabIds => taskTabGroups.sync(event.data.taskId, [...tabIds]))
+            .catch(error => logger.warning('Tab group sync skipped', error));
           break;
         }
+        case ExecutionState.TASK_PAUSE:
+          applyOverlayMode(tabId, 'paused');
+          break;
+        case ExecutionState.TASK_RESUME:
+          applyOverlayMode(tabId, 'running');
+          break;
       }
     }
   });
