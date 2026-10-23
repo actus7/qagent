@@ -7,6 +7,7 @@ import { loadAssistantModel } from '../services/assistant-model';
 import { compactChatConversation } from '../services/conversation-compaction';
 import { assertManagedProvidersAllowed, loadManagedPolicy, prepareManagedTask } from '../services/managedPolicy';
 import { SpeechToTextService } from '../services/speechToText';
+import { workflowRecorder } from '../services/workflowRecording';
 import { captureVisibleTab } from '../services/tabCapture';
 import { browserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
@@ -148,6 +149,31 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
       await assertManagedProvidersAllowed(await loadManagedPolicy());
       await runAssistantTask(message, message.historySessionId);
       break;
+    }
+
+    case 'workflow_record_start': {
+      const result = await workflowRecorder.start(message.tabId);
+      if (!result.ok) {
+        return post({
+          type: 'error',
+          error: t(result.reason === 'already_recording' ? 'bg_record_alreadyRecording' : 'bg_record_unsupportedTab'),
+        });
+      }
+      break;
+    }
+
+    case 'workflow_record_stop': {
+      await workflowRecorder.stop();
+      break;
+    }
+
+    case 'workflow_record_discard': {
+      await workflowRecorder.discard();
+      break;
+    }
+
+    case 'workflow_record_status': {
+      return post({ type: 'workflow_recording', snapshot: await workflowRecorder.snapshot() });
     }
   }
 }

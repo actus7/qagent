@@ -16,6 +16,7 @@ import SetupRequiredModal from './components/SetupRequiredModal';
 import TaskStatusBar from './components/TaskStatusBar';
 import TakeoverBanner from './components/TakeoverBanner';
 import WelcomeScreen from './components/WelcomeScreen';
+import WorkflowRecordControl from './components/WorkflowRecordControl';
 import { useAssistantWorkspace } from './hooks/useAssistantWorkspace';
 import { useChatCommands } from './hooks/useChatCommands';
 import { useChatMessages } from './hooks/useChatMessages';
@@ -394,6 +395,7 @@ const SidePanel = () => {
       ) : (
         <>
           <ModeBar copy={copy} mode={workspace.mode} disabled={showStopButton} onModeChange={workspace.setMode} />
+          <WorkflowRecordControl sendMessage={sendMessage} ensureConnection={ensureConnection} />
           {isAgentBrowserEngine && hasConfiguredModels ? (
             <BrowserPreview
               frame={browserFrame}

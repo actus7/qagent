@@ -1,5 +1,6 @@
 import overlayStyles from './overlay.css?inline';
 import { glideDurationMs, glideFrame, type AgentPoint } from '@extension/shared/lib/utils/agent-motion';
+import { registerWorkflowRecorder } from './workflowRecorder';
 
 type OverlayMode = 'running' | 'paused' | 'approval';
 
@@ -266,6 +267,7 @@ chrome.runtime.onMessage.addListener((message: OverlayMessage, _sender, sendResp
   return false;
 });
 
+registerWorkflowRecorder();
 void syncOverlayStateFromBackground();
 
 console.log('[QAgent] Content script loaded');

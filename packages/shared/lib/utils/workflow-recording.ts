@@ -26,7 +26,20 @@ export type RecordedStep =
   | { kind: 'navigate'; url: string; at: number }
   | { kind: 'click'; url: string; element: ElementDescriptor; at: number }
   | { kind: 'type'; url: string; field: ElementDescriptor; value: string; redacted: boolean; at: number }
-  | { kind: 'select'; url: string; field: ElementDescriptor; value: string; at: number };
+  | { kind: 'select'; url: string; field: ElementDescriptor; value: string; at: number }
+  | { kind: 'press'; url: string; field: ElementDescriptor; key: 'Enter'; at: number }
+  | { kind: 'submit'; url: string; element: ElementDescriptor; at: number };
+
+export type WorkflowRecordingStatus = 'idle' | 'recording' | 'stopped';
+
+/** What the side panel shows: the recording state plus every step captured so far. */
+export interface WorkflowRecordingSnapshot {
+  status: WorkflowRecordingStatus;
+  tabId: number | null;
+  steps: RecordedStep[];
+  /** True when steps past MAX_RECORDED_STEPS were dropped. */
+  truncated: boolean;
+}
 
 const SENSITIVE_NAME_PATTERN = /pass|senha|card|cartao|cartão|cvv|cvc|pin\b|secret|token|cpf/i;
 const SENSITIVE_AUTOCOMPLETE_PATTERN = /^cc-|password/i;
@@ -57,6 +70,8 @@ export interface ProcedureLabels {
   click: (element: string) => string;
   type: (field: string, value: string) => string;
   select: (field: string, value: string) => string;
+  press: (field: string, key: string) => string;
+  submit: (form: string) => string;
   unnamed: string;
 }
 
@@ -70,7 +85,8 @@ export function buildProcedureText(steps: RecordedStep[], labels: ProcedureLabel
     .join('\n');
 }
 
-function describeStep(step: RecordedStep, labels: ProcedureLabels): string {
+/** One human-readable line for a step, without its number. Used by the procedure text and the live step list. */
+export function describeStep(step: RecordedStep, labels: ProcedureLabels): string {
   switch (step.kind) {
     case 'navigate':
       return labels.navigate(step.url);
@@ -80,6 +96,10 @@ function describeStep(step: RecordedStep, labels: ProcedureLabels): string {
       return labels.type(step.field.name || labels.unnamed, step.value);
     case 'select':
       return labels.select(step.field.name || labels.unnamed, step.value);
+    case 'press':
+      return labels.press(step.field.name || labels.unnamed, step.key);
+    case 'submit':
+      return labels.submit(step.element.name || labels.unnamed);
   }
 }
 
@@ -93,6 +113,22 @@ const isElement = (value: unknown): value is ElementDescriptor =>
   typeof value.selector === 'string' &&
   value.name.length <= MAX_NAME_CHARS &&
   value.selector.length <= 500;
+
+/** Validates the snapshot the background sends to the side panel. */
+export function isWorkflowRecordingSnapshot(value: unknown): value is WorkflowRecordingSnapshot {
+  if (!isRecord(value)) return false;
+  const { status, tabId, steps, truncated } = value;
+  const validStatus = status === 'idle' || status === 'recording' || status === 'stopped';
+  const validTab = tabId === null || typeof tabId === 'number';
+  return (
+    validStatus &&
+    validTab &&
+    typeof truncated === 'boolean' &&
+    Array.isArray(steps) &&
+    steps.length <= MAX_RECORDED_STEPS &&
+    steps.every(isRecordedStep)
+  );
+}
 
 /** Validates a step sent by the content script before it is stored. */
 export function isRecordedStep(value: unknown): value is RecordedStep {
@@ -112,6 +148,10 @@ export function isRecordedStep(value: unknown): value is RecordedStep {
       );
     case 'select':
       return isElement(value.field) && typeof value.value === 'string' && value.value.length <= MAX_NAME_CHARS;
+    case 'press':
+      return isElement(value.field) && value.key === 'Enter';
+    case 'submit':
+      return isElement(value.element);
     default:
       return false;
   }

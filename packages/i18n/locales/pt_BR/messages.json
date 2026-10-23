@@ -163,6 +163,102 @@
   "chat_input_form": {
     "message": "Formulário de entrada de chat"
   },
+  "chat_record_start": {
+    "message": "Gravar fluxo"
+  },
+  "chat_record_stop": {
+    "message": "Parar"
+  },
+  "chat_record_discard": {
+    "message": "Descartar"
+  },
+  "chat_record_recording": {
+    "message": "Gravando fluxo"
+  },
+  "chat_record_empty": {
+    "message": "Clique, digite ou envie um formulário na aba selecionada. Os passos aparecem aqui."
+  },
+  "chat_record_stepsLabel": {
+    "message": "Passos gravados"
+  },
+  "chat_record_truncated": {
+    "message": "Limite de 200 passos atingido; os passos seguintes foram ignorados."
+  },
+  "chat_record_dialogTitle": {
+    "message": "Salvar fluxo como atalho"
+  },
+  "chat_record_nameLabel": {
+    "message": "Nome do atalho"
+  },
+  "chat_record_nameDefault": {
+    "message": "Fluxo gravado"
+  },
+  "chat_record_procedureLabel": {
+    "message": "Procedimento (edite se quiser)"
+  },
+  "chat_record_save": {
+    "message": "Salvar como atalho"
+  },
+  "chat_record_close": {
+    "message": "Fechar"
+  },
+  "chat_record_noTab": {
+    "message": "Nenhuma aba ativa para gravar."
+  },
+  "chat_record_saveFailed": {
+    "message": "Não foi possível salvar o atalho."
+  },
+  "chat_record_saved": {
+    "message": "Salvo. Digite /nome no campo de mensagem para executar."
+  },
+  "chat_record_indicator_text": {
+    "message": "Gravando fluxo"
+  },
+  "chat_record_indicator_stop": {
+    "message": "Parar"
+  },
+  "chat_record_step_navigate": {
+    "message": "Abrir $URL$",
+    "placeholders": {
+      "url": { "content": "$1", "example": "https://example.com/login" }
+    }
+  },
+  "chat_record_step_click": {
+    "message": "Clicar em \"$NAME$\"",
+    "placeholders": {
+      "name": { "content": "$1", "example": "Entrar" }
+    }
+  },
+  "chat_record_step_type": {
+    "message": "Preencher \"$FIELD$\" com \"$VALUE$\"",
+    "placeholders": {
+      "field": { "content": "$1", "example": "E-mail" },
+      "value": { "content": "$2", "example": "ana@example.com" }
+    }
+  },
+  "chat_record_step_select": {
+    "message": "Escolher \"$VALUE$\" em \"$FIELD$\"",
+    "placeholders": {
+      "field": { "content": "$1", "example": "País" },
+      "value": { "content": "$2", "example": "Brasil" }
+    }
+  },
+  "chat_record_step_press": {
+    "message": "Pressionar $KEY$ em \"$FIELD$\"",
+    "placeholders": {
+      "field": { "content": "$1", "example": "Busca" },
+      "key": { "content": "$2", "example": "Enter" }
+    }
+  },
+  "chat_record_step_submit": {
+    "message": "Enviar o formulário \"$NAME$\"",
+    "placeholders": {
+      "name": { "content": "$1", "example": "Login" }
+    }
+  },
+  "chat_record_step_unnamed": {
+    "message": "elemento sem nome"
+  },
   "chat_input_editor": {
     "message": "Entrada de mensagem"
   },
@@ -612,6 +708,12 @@
   },
   "bg_cmd_nohighlight_ok": {
     "message": "destaque removido"
+  },
+  "bg_record_alreadyRecording": {
+    "message": "Já existe uma gravação em andamento. Pare-a antes de iniciar outra."
+  },
+  "bg_record_unsupportedTab": {
+    "message": "Só é possível gravar páginas http(s)."
   },
   "bg_cmd_stt_noAudioData": {
     "message": "Nenhum dado de áudio fornecido"
