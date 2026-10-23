@@ -28,15 +28,15 @@
   },
   "dependencies": {
     "eslint-plugin-tailwindcss": "^3.18.3",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@types/chrome": "^0.0.330",
     "@types/node": "^22.20.5",
-    "@types/react": "^18.3.31",
-    "@types/react-dom": "^18.3.7",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.6.1",
     "cross-env": "^7.0.3",
     "esbuild": "^0.25.12",
