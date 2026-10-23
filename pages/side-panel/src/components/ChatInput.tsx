@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useId, useMemo, type ReactNode } from 'react';
-import { FiArrowUp, FiCamera, FiPaperclip, FiSquare } from 'react-icons/fi';
+import { FiArrowUp, FiCamera, FiClock, FiPaperclip, FiSquare } from 'react-icons/fi';
 import { FaMicrophone } from 'react-icons/fa';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import { t } from '@extension/i18n';
@@ -55,6 +55,8 @@ interface ChatInputProps {
   onNewChat?: () => void;
   /** Captures the visible area of the active tab as a PNG data URL; omit to hide the capture button. */
   onCaptureScreenshot?: () => Promise<string>;
+  /** Opens the schedule dialog prefilled with the given prompt ("" for /agendar). */
+  onSchedule?: (prompt: string) => void;
 }
 
 interface AttachedFile {
@@ -89,6 +91,7 @@ function buildSlashCommands(savedPrompts: SavedPrompt[]): SlashCommandItem[] {
     { slug: 'state', title: 'state', description: t('chat_input_cmd_state'), kind: 'builtin' },
     { slug: 'nohighlight', title: 'nohighlight', description: t('chat_input_cmd_nohighlight'), kind: 'builtin' },
     { slug: 'compact', title: 'compact', description: t('chat_input_cmd_compact'), kind: 'builtin' },
+    { slug: 'agendar', title: 'agendar', description: t('chat_input_cmd_schedule'), kind: 'builtin' },
   ];
   const taken = new Set(builtIns.map(command => command.slug));
   const prompts = savedPrompts.map(prompt => {
@@ -119,6 +122,7 @@ export default function ChatInput({
   savedPrompts = [],
   onNewChat,
   onCaptureScreenshot,
+  onSchedule,
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [caret, setCaret] = useState(0);
@@ -149,6 +153,10 @@ export default function ChatInput({
     onMention: tabId => onMentionTab?.(tabId),
     onCommand: command => {
       if (command.kind === 'builtin' && command.slug === 'new') onNewChat?.();
+      if (command.kind === 'builtin' && command.slug === 'agendar') {
+        setText('');
+        onSchedule?.('');
+      }
     },
   });
   const activeOptionId =
@@ -194,6 +202,12 @@ export default function ChatInput({
         return;
       }
 
+      if (trimmedText === '/agendar' && !hasAttachments) {
+        setText('');
+        onSchedule?.('');
+        return;
+      }
+
       if (trimmedText || hasAttachments) {
         let messageContent = trimmedText;
         const displayParts = [trimmedText];
@@ -233,7 +247,7 @@ export default function ChatInput({
         }
       }
     },
-    [text, attachedFiles, attachments, hasAttachments, onSendMessage, onNewChat, disabled, action.type],
+    [text, attachedFiles, attachments, hasAttachments, onSendMessage, onNewChat, onSchedule, disabled, action.type],
   );
 
   const handleKeyDown = useCallback(
@@ -518,6 +532,20 @@ export default function ChatInput({
               className="hidden"
               aria-hidden="true"
             />
+
+            {onSchedule && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onSchedule(text.trim())}
+                disabled={disabled}
+                aria-label={t('chat_schedule_btn_a11y')}
+                title={t('chat_schedule_btn_a11y')}
+                className="size-8">
+                <FiClock size={17} />
+              </Button>
+            )}
 
             {onCaptureScreenshot && (
               <Button

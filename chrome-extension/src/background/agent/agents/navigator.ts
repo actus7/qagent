@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BaseAgent, type BaseAgentOptions, type ExtraAgentOptions } from './base';
 import { createLogger } from '@src/background/log';
+import { recordStepScreenshot } from '@src/background/services/step-screenshots';
 import { ActionResult, type AgentOutput } from '../types';
 import type { Action } from '../actions/builder';
 import { buildDynamicActionSchema } from '../actions/builder';
@@ -227,6 +228,12 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         title: currentState.title,
         tabCount: currentState.tabs.length,
       });
+      // Screenshots exist only when vision is on. Stored for the HTML report; failures never stop the step.
+      if (currentState.screenshot) {
+        recordStepScreenshot(this.context.taskId, this.context.nSteps + 1, currentState.screenshot).catch(error =>
+          logger.warning('Failed to store step screenshot', error),
+        );
+      }
       browserStateHistory = new BrowserStateHistory(currentState);
 
       // check if the task is paused or stopped

@@ -48,18 +48,17 @@ export function subscribeToExecutorEvents(
     }
     try {
       const { currentPort } = runtimeStore.getState();
-      if (currentPort) {
-        const executionMessage: SidePanelResponseMessage = {
-          type: 'execution',
-          actor: event.actor,
-          state: event.state,
-          data: event.data,
-          timestamp: event.timestamp,
-        };
-        if ([ExecutionState.TASK_OK, ExecutionState.TASK_FAIL, ExecutionState.TASK_CANCEL].includes(event.state)) {
-          onTerminal(executionMessage);
-        } else currentPort.postMessage(executionMessage);
-      }
+      const executionMessage: SidePanelResponseMessage = {
+        type: 'execution',
+        actor: event.actor,
+        state: event.state,
+        data: event.data,
+        timestamp: event.timestamp,
+      };
+      // The terminal state is reported even without a panel, so unattended (scheduled) runs get their outcome.
+      if ([ExecutionState.TASK_OK, ExecutionState.TASK_FAIL, ExecutionState.TASK_CANCEL].includes(event.state)) {
+        onTerminal(executionMessage);
+      } else currentPort?.postMessage(executionMessage);
     } catch (error) {
       logger.error('Failed to send message to side panel:', error);
     }

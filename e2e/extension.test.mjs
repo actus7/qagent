@@ -127,7 +127,33 @@ function replyStream(res, body) {
   res.end('data: [DONE]\n\n');
 }
 
-describe('extension e2e', { timeout: 180_000 }, () => {
+// Points the planner and navigator at the fake LLM. Runs from an extension page, where chrome.storage is available.
+async function configureFakeLlm(panel, llmBaseUrl) {
+  await panel.evaluate(async url => {
+    await chrome.storage.local.set({
+      'llm-api-keys': {
+        providers: {
+          openai: {
+            name: 'OpenAI',
+            type: 'openai',
+            apiKey: 'sk-test',
+            baseUrl: url,
+            modelNames: ['gpt-4o'],
+            createdAt: 1,
+          },
+        },
+      },
+      'agent-models': {
+        agents: {
+          planner: { provider: 'openai', modelName: 'gpt-4o' },
+          navigator: { provider: 'openai', modelName: 'gpt-4o' },
+        },
+      },
+    });
+  }, `${llmBaseUrl}/v1`);
+}
+
+describe('extension e2e', { timeout: 300_000 }, () => {
   const state = { navigatorSteps: 0, delayMs: 0, script: null, navigatorPrompts: [], imageRequests: 0 };
   const pageErrors = [];
   let server;
@@ -723,6 +749,73 @@ describe('extension e2e', { timeout: 180_000 }, () => {
     assert.equal(takeover?.message, 'Faça login e devolva o controle.');
     assert.ok(events.includes('system:task.resume'), `resume was not reported: ${events.join(', ')}`);
     assert.ok(events.includes('system:task.ok'), `task did not complete after resume: ${events.join(', ')}`);
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('runs a scheduled act task from storage when run-now is sent', async () => {
+    state.navigatorSteps = 0;
+    state.script = null;
+    const panel = await openExtensionPage('side-panel/index.html');
+    await configureFakeLlm(panel, baseUrl);
+    const scheduleId = 'e2e-schedule';
+    const startUrl = `${baseUrl}/page`;
+    // A daily schedule whose next run is far away, so only the explicit run-now can start it during the test.
+    await panel.evaluate(
+      ({ id, url }) =>
+        chrome.storage.local.set({
+          'scheduled-tasks': {
+            tasks: [
+              {
+                id,
+                name: 'Click the Go button',
+                prompt: 'Click the Go button',
+                mode: 'act',
+                startUrl: url,
+                enabled: true,
+                frequency: 'daily',
+                time: '09:00',
+                date: null,
+                weekday: 1,
+                dayOfMonth: 1,
+                nextRunAt: Date.now() + 86_400_000,
+                createdAt: Date.now(),
+                history: [],
+              },
+            ],
+          },
+        }),
+      { id: scheduleId, url: startUrl },
+    );
+
+    const reply = await panel.evaluate(id => chrome.runtime.sendMessage({ type: 'qagent:schedule:run-now', id }), scheduleId);
+    assert.deepEqual(reply, { ok: true }, 'run-now did not reach the background');
+
+    // Poll the stored run history until the background records the outcome.
+    const readSchedule = () =>
+      panel.evaluate(
+        id =>
+          chrome.storage.local
+            .get('scheduled-tasks')
+            .then(data => data['scheduled-tasks'].tasks.find(task => task.id === id)),
+        scheduleId,
+      );
+    const deadline = Date.now() + 90_000;
+    let schedule;
+    while (Date.now() < deadline) {
+      schedule = await readSchedule();
+      if (schedule?.history?.length) break;
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    assert.ok(schedule?.history?.length, 'scheduled run did not record a history entry');
+    assert.equal(schedule.history.at(-1).outcome, 'completed', JSON.stringify(schedule.history));
+    // The scheduler opens its own start tab, which is the most recent page on the target URL.
+    const scheduledPage = context
+      .pages()
+      .filter(page => page.url() === startUrl)
+      .at(-1);
+    assert.ok(scheduledPage, 'scheduled start tab not found');
+    assert.equal(await scheduledPage.locator('#status').textContent(), 'clicked');
     assert.deepEqual(pageErrors, []);
   });
 });

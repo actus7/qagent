@@ -29,6 +29,7 @@ interface ComposeAreaProps {
   savedPrompts: SavedPrompt[];
   onNewChat: () => void;
   onCaptureScreenshot: () => Promise<string>;
+  onSchedule: (prompt: string) => void;
 }
 
 export default function ComposeArea({
@@ -47,6 +48,7 @@ export default function ComposeArea({
   savedPrompts,
   onNewChat,
   onCaptureScreenshot,
+  onSchedule,
 }: ComposeAreaProps) {
   const chatInputAction = showStopButton
     ? { type: 'stop' as const, onStopTask }
@@ -95,6 +97,7 @@ export default function ComposeArea({
         savedPrompts={savedPrompts}
         onNewChat={onNewChat}
         onCaptureScreenshot={onCaptureScreenshot}
+        onSchedule={onSchedule}
       />
       <p className="assistant-composer-caption">
         {workspace.mode === 'act' ? copy.actOnly : workspace.mode === 'plan' ? copy.planHint : copy.readOnly}
