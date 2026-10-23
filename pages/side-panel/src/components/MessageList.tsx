@@ -61,6 +61,16 @@ const MessageBlock = memo(function MessageBlock({ message }: { message: Message 
   const isUser = message.actor === Actors.USER;
   const isNotice = message.actor === Actors.SYSTEM;
   if (message.content === t('sidepanel_progress_message')) return null;
+  if (message.kind === 'compaction') {
+    // The summary is stored for the model; the UI keeps the full history and only marks where it was compacted.
+    return (
+      <div role="separator" className="my-3 flex items-center gap-3 text-xs text-slate-500">
+        <span className="h-px flex-1 bg-slate-300" />
+        <span>{t('chat_compacted_divider')}</span>
+        <span className="h-px flex-1 bg-slate-300" />
+      </div>
+    );
+  }
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(message.content);

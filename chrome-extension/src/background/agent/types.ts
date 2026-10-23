@@ -6,6 +6,7 @@ import type MessageManager from './messages/service';
 import type { EventManager } from './event/manager';
 import { type Actors, type ExecutionState, AgentEvent } from './event/types';
 import { AgentStepHistory } from './history';
+import type { TaskMemoryAction } from './task-memory';
 
 export interface AgentOptions {
   maxSteps: number;
@@ -46,6 +47,8 @@ export class AgentContext {
   nSteps: number;
   stepInfo: AgentStepInfo | null;
   actionResults: ActionResult[];
+  /** Outcome of every action in this run (the step's actionResults are replaced each step); feeds the task memory. */
+  runActions: TaskMemoryAction[];
   stateMessageAdded: boolean;
   history: AgentStepHistory;
   finalAnswer: string | null;
@@ -73,6 +76,7 @@ export class AgentContext {
     this.consecutiveFailures = 0;
     this.stepInfo = null;
     this.actionResults = [];
+    this.runActions = [];
     this.stateMessageAdded = false;
     this.history = new AgentStepHistory();
     this.finalAnswer = null;

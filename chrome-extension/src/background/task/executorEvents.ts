@@ -12,7 +12,11 @@ import { runtimeStore } from '../state/runtimeStore';
 
 const logger = createLogger('background');
 
-export function subscribeToExecutorEvents(executor: Executor, onTerminal: (event: ExecutionPortEventMessage) => void) {
+export function subscribeToExecutorEvents(
+  executor: Executor,
+  onTerminal: (event: ExecutionPortEventMessage) => void,
+  onStep?: (step: number) => void,
+) {
   // Clear previous event listeners to prevent multiple subscriptions
   executor.clearExecutionEvents();
 
@@ -21,6 +25,7 @@ export function subscribeToExecutorEvents(executor: Executor, onTerminal: (event
 
   // Subscribe to new events
   executor.subscribeExecutionEvents(async event => {
+    if (onStep && event.data.step > 0) onStep(event.data.step);
     if (event.state === ExecutionState.TASK_OK && event.data.details && event.data.details !== event.data.taskId) {
       const streamId = crypto.randomUUID();
       // A failed history write must not swallow the completion: the terminal event below still has to reach the panel.

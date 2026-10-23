@@ -3,6 +3,8 @@ import { t } from '@extension/i18n';
 import type { SidePanelCommandMessage, SidePanelResponseMessage } from '@extension/shared';
 import { DEFAULT_AGENT_OPTIONS } from '../agent/types';
 import { createLogger } from '../log';
+import { loadAssistantModel } from '../services/assistant-model';
+import { compactChatConversation } from '../services/conversation-compaction';
 import { SpeechToTextService } from '../services/speechToText';
 import { captureVisibleTab } from '../services/tabCapture';
 import { browserContext } from '../state/browserSession';
@@ -36,6 +38,12 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
     case 'cancel_task': {
       await cancelActiveTask();
       break;
+    }
+
+    case 'compact_chat': {
+      const model = await loadAssistantModel(message.modelAgent);
+      const compacted = await compactChatConversation(message.taskId, model);
+      return post({ type: 'conversation_compacted', taskId: message.taskId, compacted });
     }
 
     case 'approval_result': {

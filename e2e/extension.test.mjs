@@ -338,9 +338,9 @@ describe('extension e2e', { timeout: 180_000 }, () => {
   });
 
   // Runs one task through the side panel port and resolves with the execution states it reported.
-  function runTask(panel, targetTabId, task, taskId) {
+  function runTask(panel, targetTabId, task, taskId, type = 'new_task') {
     return panel.evaluate(
-      ({ targetTabId, task, taskId }) =>
+      ({ targetTabId, task, taskId, type }) =>
         new Promise(resolve => {
           const events = [];
           const port = chrome.runtime.connect({ name: 'side-panel-connection' });
@@ -351,16 +351,47 @@ describe('extension e2e', { timeout: 180_000 }, () => {
             if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) resolve(events);
           });
           port.postMessage({
-            type: 'new_task',
+            type,
             task,
             taskId,
             tabId: targetTabId,
             options: { mode: 'act', permissionMode: 'auto', tabIds: [targetTabId] },
           });
         }),
-      { targetTabId, task, taskId },
+      { targetTabId, task, taskId, type },
     );
   }
+
+  it('continues the previous task when a follow-up is sent in the same chat', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = null;
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/page`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/page` })).at(-1)?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'target tab not found');
+
+    const first = await runTask(panel, tabId, 'Click the Go button', 'e2e-followup-task');
+    assert.ok(first.includes('system:task.ok'), `task 1 did not finish ok: ${first.join(', ')}`);
+
+    // Task 2 reuses the chat (same taskId) through follow_up_task; the navigator must see task 1 in its prompt.
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [{ done: { text: 'Reviewed the earlier click', success: true } }];
+    const second = await runTask(panel, tabId, 'Say what you already did', 'e2e-followup-task', 'follow_up_task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(second.includes('system:task.ok'), `task 2 did not finish ok: ${second.join(', ')}`);
+    assert.ok(prompts[0]?.includes('Previous task: Click the Go button'), 'task 1 text was not sent for task 2');
+    assert.ok(prompts[0]?.includes('Outcome: completed'), 'task 1 outcome was not sent for task 2');
+    assert.ok(prompts[0]?.includes('Say what you already did'), 'task 2 request is missing');
+    assert.deepEqual(pageErrors, []);
+  });
 
   it('reads console errors and failed requests and hands them to the model', async () => {
     state.navigatorSteps = 0;

@@ -1,4 +1,5 @@
-import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, SystemMessage, type BaseMessage } from '@langchain/core/messages';
+import { selectContext, trimToBudget } from './conversation-compaction';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Actors, chatHistoryStore, firewallStore } from '@extension/storage';
 import type { AssistantAttachment, AssistantMode, SidePanelResponseMessage } from '@extension/shared';
@@ -48,16 +49,25 @@ export async function readSelectedTabs(tabIds: number[]): Promise<string> {
   return wrapUntrustedContent(pages.join('\n\n'));
 }
 
-export async function getConversationContext(taskId: string) {
+const MAX_CONTEXT_MESSAGES = 20;
+
+/** The summary of older messages (if the chat was compacted) and the recent messages that fit the budget. */
+export async function loadConversationContext(taskId: string): Promise<{ summary: string | null; messages: BaseMessage[] }> {
   const session = await chatHistoryStore.getSession(taskId);
-  return (session?.messages ?? [])
-    .filter(message => message.actor === Actors.USER || message.actor === Actors.ASSISTANT)
-    .slice(-20)
+  const { summary, recent } = selectContext(session?.messages ?? []);
+  const messages = trimToBudget(recent)
+    .slice(-MAX_CONTEXT_MESSAGES)
     .map(message =>
       message.actor === Actors.USER
         ? new HumanMessage(message.content.slice(0, 12000))
         : new AIMessage(message.content.slice(0, 12000)),
     );
+  return { summary, messages };
+}
+
+export async function getConversationContext(taskId: string): Promise<BaseMessage[]> {
+  const { summary, messages } = await loadConversationContext(taskId);
+  return summary ? [new HumanMessage(`Summary of the earlier conversation (context only):\n${summary}`), ...messages] : messages;
 }
 
 export async function streamBrowserAnswer(args: {

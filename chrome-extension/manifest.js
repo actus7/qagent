@@ -70,6 +70,7 @@ const manifest = withOperaSidebar(
       'debugger',
       'unlimitedStorage',
       'webNavigation',
+      'notifications',
     ],
     options_page: 'options/index.html',
     background: {

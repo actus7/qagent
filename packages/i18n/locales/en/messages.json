@@ -1173,6 +1173,61 @@
   "bg_task_interrupted": {
     "message": "Task interrupted."
   },
+  "bg_task_interruptedByRestart": {
+    "message": "The task was interrupted because the browser restarted the extension. Send 'continue' to resume it."
+  },
+  "chat_input_cmd_compact": {
+    "message": "Summarize the older messages to free up context"
+  },
+  "chat_compacted_divider": {
+    "message": "Conversa compactada"
+  },
+  "chat_compact_nothing": {
+    "message": "Não há mensagens novas para compactar."
+  },
+  "chat_compact_noSession": {
+    "message": "Envie uma mensagem antes de compactar a conversa."
+  },
+  "bg_compact_empty": {
+    "message": "O modelo não retornou um resumo da conversa."
+  },
+  "report_exportHtml_a11y": { "message": "Export HTML report" },
+  "report_exportMd_a11y": { "message": "Export Markdown report" },
+  "report_exportFailed": { "message": "Could not export the report: $ERROR$", "placeholders": { "error": { "content": "$1", "example": "no session" } } },
+  "report_generatedAt": { "message": "Generated" },
+  "report_models": { "message": "Models" },
+  "report_noModels": { "message": "not configured" },
+  "report_messages": { "message": "Conversation" },
+  "report_finalAnswer": { "message": "Final answer" },
+  "report_noFinalAnswer": { "message": "No final answer was recorded." },
+  "report_steps": { "message": "Steps of the last task" },
+  "report_noSteps": { "message": "No step history was stored for this session. Enable \"Replay historical tasks\" in settings to keep it." },
+  "report_step": { "message": "Step" },
+  "report_intent": { "message": "intent" },
+  "report_result": { "message": "Result" },
+  "report_error": { "message": "Error" },
+  "report_compacted": { "message": "Conversation compacted" },
+  "report_you": { "message": "You" },
+  "report_assistant": { "message": "Assistant" },
+  "report_system": { "message": "System" },
+  "options_test_btn": { "message": "Test connection" },
+  "options_test_testing": { "message": "Testing…" },
+  "options_test_success": { "message": "Connection OK" },
+  "options_test_failed": { "message": "Connection test failed. Check the provider settings." },
+  "options_test_saveFirst": { "message": "Save the provider before testing" },
+  "options_test_noProvider": { "message": "Provider not found. Save it first." },
+  "options_test_noModel": { "message": "Add at least one model before testing." },
+  "options_test_timeout": { "message": "The provider did not answer in time." },
+  "options_general_notifyOnCompletion": { "message": "Notify when a task finishes or needs me" },
+  "options_general_notifyOnCompletion_desc": { "message": "Shows a Chrome notification when a task completes, fails, or waits for approval while the side panel is closed." },
+  "options_general_testNotification": { "message": "Test notification" },
+  "options_general_testNotification_title": { "message": "QAgent" },
+  "options_general_testNotification_body": { "message": "Notifications are working." },
+  "bg_notify_completedTitle": { "message": "Task finished" },
+  "bg_notify_failedTitle": { "message": "Task failed" },
+  "bg_notify_approvalTitle": { "message": "Waiting for your approval" },
+  "bg_notify_approvalBody": { "message": "Open the QAgent side panel to approve or deny the action." },
+  "bg_notify_fallbackBody": { "message": "Open the QAgent side panel for details." },
   "bg_assistant_emptyResponse": {
     "message": "The provider returned an empty response."
   },

@@ -1,5 +1,6 @@
 import { useCallback, type MutableRefObject } from 'react';
 import { Actors, chatHistoryStore, type Message } from '@extension/storage';
+import { t } from '@extension/i18n';
 import type { SidePanelResponseMessage } from '../types/port';
 import type { ActionApproval as Approval } from '@extension/shared';
 import { useSidePanelActions } from './useSidePanelSelectors';
@@ -42,7 +43,20 @@ export const useChatMessages = ({ sessionIdRef, progressMessage, setPendingAppro
 
   const onAssistantMessage = useCallback(
     (message: SidePanelResponseMessage) => {
-      if (message.type === 'approval_required') {
+      if (message.type === 'conversation_compacted') {
+        if (message.taskId !== sessionIdRef.current) return;
+        if (!message.compacted) {
+          setMessages(previous => [
+            ...previous,
+            { actor: Actors.SYSTEM, content: t('chat_compact_nothing'), timestamp: Date.now() },
+          ]);
+          return;
+        }
+        // The summary lives in storage; reloading shows the divider and keeps the full history visible.
+        void chatHistoryStore.getSession(message.taskId).then(session => {
+          if (session && message.taskId === sessionIdRef.current) setMessages(session.messages);
+        });
+      } else if (message.type === 'approval_required') {
         if (message.request.taskId === sessionIdRef.current) setPendingApproval(message.request);
       } else if (message.type === 'approval_resolved') {
         setPendingApproval(current => (current?.id === message.requestId ? null : current));

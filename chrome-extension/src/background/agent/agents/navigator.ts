@@ -280,6 +280,9 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
       actionResults.unshift(...(await this.collectDialogNotices()));
 
       this.context.actionResults = actionResults;
+      this.context.runActions.push(
+        ...actionResults.map(result => ({ content: result.extractedContent, error: result.error })),
+      );
 
       // check if the task is paused or stopped
       if (this.context.paused || this.context.stopped) {

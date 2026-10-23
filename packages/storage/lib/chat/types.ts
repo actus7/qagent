@@ -12,7 +12,8 @@ export interface Message {
   content: string;
   timestamp: number; // Unix timestamp in milliseconds
   streamId?: string;
-  kind?: 'answer' | 'activity';
+  // 'compaction' holds the summary that replaces older messages in what the model receives
+  kind?: 'answer' | 'activity' | 'compaction';
 }
 
 export interface ChatMessage extends Message {
@@ -72,4 +73,8 @@ export interface ChatHistoryStorage {
 
   // Load the history of the agent's state
   loadAgentStepHistory: (sessionId: string) => Promise<ChatAgentStepHistory | null>;
+
+  // Compact memory of the last finished act task (task, outcome, action results, URL), reused by follow-ups
+  setTaskMemory: (sessionId: string, memory: string) => Promise<void>;
+  getTaskMemory: (sessionId: string) => Promise<string | null>;
 }

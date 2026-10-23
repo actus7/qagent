@@ -247,8 +247,53 @@ export const GeneralSettings = () => {
               </label>
             </div>
           </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className={`text-base font-medium text-foreground`}>{t('options_general_notifyOnCompletion')}</h3>
+              <p className={`text-sm font-normal text-muted-foreground`}>
+                {t('options_general_notifyOnCompletion_desc')}
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-sm text-primary underline"
+                onClick={() => void sendTestNotification()}>
+                {t('options_general_testNotification')}
+              </button>
+            </div>
+            <div className="relative inline-flex cursor-pointer items-center">
+              <input
+                id="notifyOnCompletion"
+                type="checkbox"
+                checked={settings.notifyOnCompletion}
+                onChange={e => updateSetting('notifyOnCompletion', e.target.checked)}
+                className="peer sr-only"
+              />
+              <label
+                htmlFor="notifyOnCompletion"
+                className={`peer h-6 w-11 rounded-full bg-input peer-checked:bg-primary peer-focus:ring-4 peer-focus:ring-ring peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-card`}>
+                <span className="sr-only">{t('options_general_notifyOnCompletion')}</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </section>
   );
 };
+
+// Shows the same notification the background sends, so the user can check that Chrome displays them.
+function sendTestNotification(): Promise<string> {
+  return new Promise(resolve => {
+    chrome.notifications.create(
+      `qagent-test-${Date.now()}`,
+      {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icon-128.png'),
+        title: t('options_general_testNotification_title'),
+        message: t('options_general_testNotification_body'),
+      },
+      id => resolve(id),
+    );
+  });
+}
