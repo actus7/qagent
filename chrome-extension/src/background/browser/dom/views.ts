@@ -424,7 +424,7 @@ export class DOMElementNode extends DOMBaseNode {
             try {
               const index = Number.parseInt(idx, 10) - 1;
               basePart += `:nth-of-type(${index + 1})`;
-            } catch (error) {
+            } catch {
               // continue
             }
           }
@@ -550,7 +550,7 @@ export class DOMElementNode extends DOMBaseNode {
       }
 
       return cssSelector;
-    } catch (error) {
+    } catch {
       // Fallback to a more basic selector if something goes wrong
       const tagName = this.tagName || '*';
       return `${tagName}[highlightIndex='${this.highlightIndex}']`;

@@ -188,7 +188,7 @@ export function extractJsonFromModelOutput(content: string): Record<string, unkn
           try {
             const outputJson = JSON.parse(pythonCall.parameters.output);
             return outputJson;
-          } catch (e) {
+          } catch {
             // If it's not valid JSON, return as is
             return { output: pythonCall.parameters.output };
           }
@@ -227,7 +227,7 @@ export function extractJsonFromModelOutput(content: string): Record<string, unkn
     }
 
     throw new Error('No valid JSON candidate found');
-  } catch (e) {
+  } catch {
     throw new ResponseParseError(`Could not manually extract JSON from model output`);
   }
 }

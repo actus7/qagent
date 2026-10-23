@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { FiX, FiExternalLink, FiGlobe } from 'react-icons/fi';
 import { t } from '@extension/i18n';
 import { Button } from '@src/components/ui/button';

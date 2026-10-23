@@ -86,7 +86,7 @@ export function isUrlAllowed(url: string, allowList: string[], denyList: string[
 
     // Default policy
     return allowList.length === 0;
-  } catch (error) {
+  } catch {
     // Invalid URL format - deny by default
     return false;
   }

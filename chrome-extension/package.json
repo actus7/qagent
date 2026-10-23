@@ -11,7 +11,7 @@
     "build": "vite build",
     "dev": "cross-env __DEV__=true vite build --mode development",
     "test": "pnpm vitest run",
-    "lint": "eslint ./ --ext .ts,.js,.tsx,.jsx",
+    "lint": "eslint .",
     "lint:fix": "pnpm lint --fix",
     "prettier": "prettier . --write --ignore-path ../.prettierignore",
     "type-check": "tsc --noEmit"

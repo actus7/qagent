@@ -152,7 +152,6 @@ export async function waitForElementStability(element: ElementHandle, timeout = 
 export async function scrollIntoViewIfNeeded(element: ElementHandle, timeout = 1000): Promise<void> {
   const startTime = Date.now();
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     // Check if element is in viewport
     const isVisible = await element.evaluate(el => {

@@ -419,13 +419,13 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
         logger.warning('Unexpected action format', response.action);
         // First try to parse the action string directly
         actions = JSON.parse(response.action);
-      } catch (parseError) {
+      } catch {
         try {
           // If direct parsing fails, try to fix the JSON first
           const fixedAction = repairJsonString(response.action);
           logger.info('Fixed action string', fixedAction);
           actions = JSON.parse(fixedAction);
-        } catch (error) {
+        } catch {
           logger.error('Invalid action format even after repair attempt', response.action);
           throw new Error('Invalid action output format');
         }

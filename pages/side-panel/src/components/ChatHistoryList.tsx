@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { FaTrash } from 'react-icons/fa';
 import { BsBookmark } from 'react-icons/bs';
 import { t } from '@extension/i18n';

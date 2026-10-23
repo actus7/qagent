@@ -147,7 +147,6 @@ export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkW
   try {
     const startTime = Date.now();
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       await new Promise(resolve => setTimeout(resolve, 100));
 
