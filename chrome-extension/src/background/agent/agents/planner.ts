@@ -106,6 +106,7 @@ export class PlannerAgent extends BaseAgent<typeof plannerOutputSchema, PlannerO
       };
 
       // If task is done, emit the final answer; otherwise emit next steps
+      this.context.latestPlanNextSteps = cleanedPlan.next_steps;
       const eventMessage = cleanedPlan.done ? cleanedPlan.final_answer : cleanedPlan.next_steps;
       this.context.emitEvent(Actors.PLANNER, ExecutionState.STEP_OK, eventMessage);
       logger.info('Planner output', JSON.stringify(cleanedPlan, null, 2));

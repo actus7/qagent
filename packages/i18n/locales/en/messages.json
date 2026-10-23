@@ -316,6 +316,27 @@
   "options_tabs_firewall": {
     "message": "Firewall"
   },
+  "options_tabs_sitePermissions": {
+    "message": "Allowed sites"
+  },
+  "options_sitePermissions_header": {
+    "message": "Allowed sites"
+  },
+  "options_sitePermissions_description": {
+    "message": "Sites where the agent acts without asking for each action. Sensitive actions still ask for confirmation."
+  },
+  "options_sitePermissions_empty": {
+    "message": "No sites allowed yet. Choose \"Always allow this site\" in an approval request to add one."
+  },
+  "options_sitePermissions_btnRemove": {
+    "message": "Remove"
+  },
+  "options_sitePermissions_btnRemoveAll": {
+    "message": "Remove all"
+  },
+  "options_sitePermissions_confirmRemoveAll": {
+    "message": "Remove all allowed sites?"
+  },
   "options_tabs_help": {
     "message": "Help"
   },
@@ -1281,6 +1302,33 @@
   },
   "bg_errors_modelUnreachable": {
     "message": "Could not reach the model provider. Check your connection and the provider base URL."
+  },
+  "act_requestUserTakeover_start": {
+    "message": "Waiting for you: $REASON$",
+    "placeholders": {
+      "reason": {
+        "content": "$1",
+        "example": "Login credentials needed"
+      }
+    }
+  },
+  "act_requestUserTakeover_reason_authentication": {
+    "message": "Login credentials needed"
+  },
+  "act_requestUserTakeover_reason_captcha": {
+    "message": "CAPTCHA to solve"
+  },
+  "act_requestUserTakeover_reason_two_factor": {
+    "message": "Two-factor code needed"
+  },
+  "act_requestUserTakeover_reason_payment": {
+    "message": "Payment details needed"
+  },
+  "act_requestUserTakeover_reason_user_requested": {
+    "message": "You asked to take over"
+  },
+  "act_requestUserTakeover_reason_other": {
+    "message": "Manual step needed"
   },
   "act_uploadFile_start": {
     "message": "Uploading $FILE$ to element $INDEX$",

@@ -33,6 +33,8 @@ export interface ActionApproval {
   transition?: { from: string; to: string };
   // Domains covered by a plan approval request.
   domains?: string[];
+  // First next step from the planner, shown with the plan approval request.
+  planSteps?: string;
   allowSiteOption?: boolean;
   // Destination URL for navigation approvals; the "always allow" choice persists its origin.
   targetUrl?: string;
@@ -116,11 +118,19 @@ export type SidePanelCommandMessage =
   | { type: 'speech_to_text'; audio: string }
   | { type: 'replay'; task: string; taskId: string; tabId: number; historySessionId: string };
 
+export interface UserTakeoverPayload {
+  reason: string;
+  reasonLabel: string;
+  message: string;
+}
+
 interface ExecutionEventPayload {
   taskId: string;
   step: number;
   maxSteps: number;
   details: string;
+  // Set on the pause event of a request_user_takeover action.
+  takeover?: UserTakeoverPayload;
 }
 
 export interface ExecutionPortEventMessage {

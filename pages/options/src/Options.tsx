@@ -2,9 +2,9 @@ import { lazy, Suspense, useState } from 'react';
 import { Button } from '@extension/ui';
 import { useTheme, withErrorBoundary, withSuspense, useLanguage  } from '@extension/shared';
 import { t } from '@extension/i18n';
-import { FiSettings, FiCpu, FiShield } from 'react-icons/fi';
+import { FiSettings, FiCpu, FiShield, FiGlobe } from 'react-icons/fi';
 
-type TabTypes = 'general' | 'models' | 'firewall';
+type TabTypes = 'general' | 'models' | 'firewall' | 'sitePermissions';
 
 const GeneralSettingsTab = lazy(async () => {
   const module = await import('./components/GeneralSettings');
@@ -21,6 +21,11 @@ const FirewallSettingsTab = lazy(async () => {
   return { default: module.FirewallSettings };
 });
 
+const SitePermissionsSettingsTab = lazy(async () => {
+  const module = await import('./components/SitePermissionsSettings');
+  return { default: module.SitePermissionsSettings };
+});
+
 const Options = () => {
   const { currentLocale } = useLanguage();
   // Applies the `.dark` class to <html>; the token CSS and every component read from it.
@@ -30,6 +35,7 @@ const Options = () => {
     { id: 'general', icon: FiSettings, label: t('options_tabs_general') },
     { id: 'models', icon: FiCpu, label: t('options_tabs_models') },
     { id: 'firewall', icon: FiShield, label: t('options_tabs_firewall') },
+    { id: 'sitePermissions', icon: FiGlobe, label: t('options_tabs_sitePermissions') },
   ];
 
   const handleTabClick = (tabId: TabTypes) => {
@@ -44,6 +50,8 @@ const Options = () => {
         return <ModelSettingsTab />;
       case 'firewall':
         return <FirewallSettingsTab />;
+      case 'sitePermissions':
+        return <SitePermissionsSettingsTab />;
       default:
         return null;
     }

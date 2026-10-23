@@ -316,6 +316,27 @@
   "options_tabs_firewall": {
     "message": "Firewall"
   },
+  "options_tabs_sitePermissions": {
+    "message": "Sites permitidos"
+  },
+  "options_sitePermissions_header": {
+    "message": "Sites permitidos"
+  },
+  "options_sitePermissions_description": {
+    "message": "Sites em que o agente age sem pedir confirmação a cada ação. Ações sensíveis continuam pedindo confirmação."
+  },
+  "options_sitePermissions_empty": {
+    "message": "Nenhum site permitido ainda. Escolha \"Sempre permitir neste site\" em um pedido de aprovação para adicionar um."
+  },
+  "options_sitePermissions_btnRemove": {
+    "message": "Remover"
+  },
+  "options_sitePermissions_btnRemoveAll": {
+    "message": "Remover todos"
+  },
+  "options_sitePermissions_confirmRemoveAll": {
+    "message": "Remover todos os sites permitidos?"
+  },
   "options_tabs_help": {
     "message": "Ajuda"
   },
@@ -1281,6 +1302,33 @@
   },
   "bg_errors_modelUnreachable": {
     "message": "Não foi possível conectar ao provedor do modelo. Verifique sua conexão e a URL base do provedor."
+  },
+  "act_requestUserTakeover_start": {
+    "message": "Aguardando você: $REASON$",
+    "placeholders": {
+      "reason": {
+        "content": "$1",
+        "example": "Credenciais de login necessárias"
+      }
+    }
+  },
+  "act_requestUserTakeover_reason_authentication": {
+    "message": "Credenciais de login necessárias"
+  },
+  "act_requestUserTakeover_reason_captcha": {
+    "message": "CAPTCHA para resolver"
+  },
+  "act_requestUserTakeover_reason_two_factor": {
+    "message": "Código de dois fatores necessário"
+  },
+  "act_requestUserTakeover_reason_payment": {
+    "message": "Dados de pagamento necessários"
+  },
+  "act_requestUserTakeover_reason_user_requested": {
+    "message": "Você pediu para assumir o controle"
+  },
+  "act_requestUserTakeover_reason_other": {
+    "message": "Etapa manual necessária"
   },
   "act_uploadFile_start": {
     "message": "Enviando $FILE$ para o elemento $INDEX$",

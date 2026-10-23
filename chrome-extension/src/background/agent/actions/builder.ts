@@ -49,6 +49,7 @@ import {
   createResizeViewportAction,
 } from './inspection';
 import { createClickAtAction, createDragAction, createHoverAction } from './pointer';
+import { createRequestUserTakeoverAction } from './takeover';
 
 export { Action, InvalidInputError, buildDynamicActionSchema } from './action';
 
@@ -129,6 +130,7 @@ export class ActionBuilder {
       createHoverAction(context),
       createDragAction(context),
       createResizeViewportAction(context),
+      createRequestUserTakeoverAction(context),
     ];
     // Managed policy removes actions here, so the model never sees them (order is preserved).
     const policy = getManagedPolicy();

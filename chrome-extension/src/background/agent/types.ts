@@ -4,7 +4,7 @@ import { DEFAULT_INCLUDE_ATTRIBUTES } from '../browser/dom/views';
 import type { DOMHistoryElement } from '../browser/dom/history/view';
 import type MessageManager from './messages/service';
 import type { EventManager } from './event/manager';
-import { type Actors, type ExecutionState, AgentEvent } from './event/types';
+import { type Actors, type EventData, type ExecutionState, AgentEvent } from './event/types';
 import { AgentStepHistory } from './history';
 import type { TaskMemoryAction } from './task-memory';
 
@@ -55,6 +55,10 @@ export class AgentContext {
   authorizeAction?: (action: string, input: unknown) => Promise<void>;
   /** Binary files the user attached to this task, keyed by file name; read by upload_file. */
   taskFiles: Map<string, { mimeType: string; base64: string }>;
+  /** Set on resume so the next navigator step refreshes the browser state instead of reusing the cached one. */
+  pageStale: boolean;
+  /** next_steps of the latest planner output; shown with the plan approval request. */
+  latestPlanNextSteps: string | null;
 
   constructor(
     taskId: string,
@@ -81,14 +85,17 @@ export class AgentContext {
     this.history = new AgentStepHistory();
     this.finalAnswer = null;
     this.taskFiles = new Map();
+    this.pageStale = false;
+    this.latestPlanNextSteps = null;
   }
 
-  async emitEvent(actor: Actors, state: ExecutionState, eventDetails: string) {
+  async emitEvent(actor: Actors, state: ExecutionState, eventDetails: string, takeover?: EventData['takeover']) {
     const event = new AgentEvent(actor, state, {
       taskId: this.taskId,
       step: this.nSteps,
       maxSteps: this.options.maxSteps,
       details: eventDetails,
+      takeover,
     });
     await this.eventManager.emit(event);
   }
@@ -99,6 +106,8 @@ export class AgentContext {
 
   async resume() {
     this.paused = false;
+    // The page may have changed while the user had control; the next step must re-read it.
+    this.pageStale = true;
   }
 
   async stop() {
