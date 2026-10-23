@@ -2,6 +2,7 @@ import { t } from '@extension/i18n';
 import type { ProviderConfig } from '@extension/storage';
 import { Button } from '@extension/ui';
 import { getProviderActionState } from './providerUtils';
+import { ProviderConnectionTest } from './ProviderConnectionTest';
 import { ProviderFormFields } from './ProviderFormFields';
 import type { ProviderSettings } from './useProviderSettings';
 
@@ -28,6 +29,7 @@ export function ProviderCard({ providerId, config, showDivider, settings }: Prov
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-foreground">{config.name || providerId}</h3>
         <div className="flex space-x-2">
+          <ProviderConnectionTest providerId={providerId} disabled={isModified || !isInStorage} />
           {isModified && (
             <Button variant="secondary" onClick={() => void settings.handleCancelProvider(providerId)}>
               {t('options_models_providers_btnCancel')}

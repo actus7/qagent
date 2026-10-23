@@ -1173,6 +1173,61 @@
   "bg_task_interrupted": {
     "message": "Tarefa interrompida."
   },
+  "bg_task_interruptedByRestart": {
+    "message": "A tarefa foi interrompida porque o navegador reiniciou a extensão. Envie 'continuar' para retomar."
+  },
+  "chat_input_cmd_compact": {
+    "message": "Resume as mensagens antigas para liberar contexto"
+  },
+  "chat_compacted_divider": {
+    "message": "Conversa compactada"
+  },
+  "chat_compact_nothing": {
+    "message": "Não há mensagens novas para compactar."
+  },
+  "chat_compact_noSession": {
+    "message": "Envie uma mensagem antes de compactar a conversa."
+  },
+  "bg_compact_empty": {
+    "message": "O modelo não retornou um resumo da conversa."
+  },
+  "report_exportHtml_a11y": { "message": "Exportar relatório (HTML)" },
+  "report_exportMd_a11y": { "message": "Exportar Markdown" },
+  "report_exportFailed": { "message": "Não foi possível exportar o relatório: $ERROR$", "placeholders": { "error": { "content": "$1", "example": "sem sessão" } } },
+  "report_generatedAt": { "message": "Gerado em" },
+  "report_models": { "message": "Modelos" },
+  "report_noModels": { "message": "não configurado" },
+  "report_messages": { "message": "Conversa" },
+  "report_finalAnswer": { "message": "Resposta final" },
+  "report_noFinalAnswer": { "message": "Nenhuma resposta final foi registrada." },
+  "report_steps": { "message": "Passos da última tarefa" },
+  "report_noSteps": { "message": "Nenhum histórico de passos foi salvo nesta sessão. Ative \"Repetir tarefas históricas\" nas configurações para mantê-lo." },
+  "report_step": { "message": "Passo" },
+  "report_intent": { "message": "intenção" },
+  "report_result": { "message": "Resultado" },
+  "report_error": { "message": "Erro" },
+  "report_compacted": { "message": "Conversa compactada" },
+  "report_you": { "message": "Você" },
+  "report_assistant": { "message": "Assistente" },
+  "report_system": { "message": "Sistema" },
+  "options_test_btn": { "message": "Testar conexão" },
+  "options_test_testing": { "message": "Testando…" },
+  "options_test_success": { "message": "Conexão OK" },
+  "options_test_failed": { "message": "Falha no teste de conexão. Verifique as configurações do provedor." },
+  "options_test_saveFirst": { "message": "Salve o provedor antes de testar" },
+  "options_test_noProvider": { "message": "Provedor não encontrado. Salve-o primeiro." },
+  "options_test_noModel": { "message": "Adicione pelo menos um modelo antes de testar." },
+  "options_test_timeout": { "message": "O provedor não respondeu a tempo." },
+  "options_general_notifyOnCompletion": { "message": "Notificar ao concluir ou quando precisar de mim" },
+  "options_general_notifyOnCompletion_desc": { "message": "Mostra uma notificação do Chrome quando uma tarefa termina, falha ou aguarda aprovação com o painel lateral fechado." },
+  "options_general_testNotification": { "message": "Testar notificação" },
+  "options_general_testNotification_title": { "message": "QAgent" },
+  "options_general_testNotification_body": { "message": "As notificações estão funcionando." },
+  "bg_notify_completedTitle": { "message": "Tarefa concluída" },
+  "bg_notify_failedTitle": { "message": "Tarefa falhou" },
+  "bg_notify_approvalTitle": { "message": "Aguardando sua aprovação" },
+  "bg_notify_approvalBody": { "message": "Abra o painel lateral do QAgent para aprovar ou negar a ação." },
+  "bg_notify_fallbackBody": { "message": "Abra o painel lateral do QAgent para ver os detalhes." },
   "bg_assistant_emptyResponse": {
     "message": "O provedor retornou uma resposta vazia."
   },

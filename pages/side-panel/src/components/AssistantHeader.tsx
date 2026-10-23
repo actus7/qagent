@@ -1,4 +1,4 @@
-import { FiSettings, FiSun, FiMoon, FiMonitor } from 'react-icons/fi';
+import { FiDownload, FiFileText, FiSettings, FiSun, FiMoon, FiMonitor } from 'react-icons/fi';
 import { PiPlusBold } from 'react-icons/pi';
 import { GrHistory } from 'react-icons/gr';
 import type { Theme } from '@extension/shared';
@@ -13,6 +13,8 @@ interface AssistantHeaderProps {
   onBackToChat: () => void;
   onNewChat: () => void;
   onLoadHistory: () => void;
+  hasSession: boolean;
+  onExportReport: (format: 'html' | 'markdown') => void;
   onOpenSettings: () => void;
 }
 
@@ -29,6 +31,8 @@ export default function AssistantHeader({
   onBackToChat,
   onNewChat,
   onLoadHistory,
+  hasSession,
+  onExportReport,
   onOpenSettings,
 }: AssistantHeaderProps) {
   return (
@@ -62,6 +66,24 @@ export default function AssistantHeader({
               aria-label={t('nav_loadHistory_a11y')}
               title={t('nav_loadHistory_a11y')}>
               <GrHistory size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={!hasSession}
+              onClick={() => onExportReport('html')}
+              aria-label={t('report_exportHtml_a11y')}
+              title={t('report_exportHtml_a11y')}>
+              <FiDownload size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={!hasSession}
+              onClick={() => onExportReport('markdown')}
+              aria-label={t('report_exportMd_a11y')}
+              title={t('report_exportMd_a11y')}>
+              <FiFileText size={16} />
             </Button>
           </>
         )}

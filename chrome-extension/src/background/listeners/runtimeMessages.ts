@@ -1,8 +1,10 @@
+import { t } from '@extension/i18n';
 import { isBackgroundRuntimeMessage } from '@extension/shared';
 import { createLogger } from '../log';
 import { browserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 import { cancelActiveTask } from '../task/taskRunner';
+import { testProviderConnection } from '../services/provider-test';
 
 const logger = createLogger('background');
 
@@ -26,6 +28,15 @@ export function registerRuntimeMessageListener(): void {
       }
       sendResponse({ ok: true });
       return false;
+    }
+
+    // Options page: one minimal request through a saved provider. Extension pages only, never content scripts.
+    if (message?.type === 'qagent:test-provider') {
+      if (sender.tab) return false;
+      testProviderConnection(message.providerId)
+        .then(result => sendResponse(result))
+        .catch(() => sendResponse({ ok: false, error: t('options_test_failed') }));
+      return true;
     }
 
     // Content script asks the background for the current overlay state.

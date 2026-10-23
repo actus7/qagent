@@ -8,6 +8,8 @@ import { registerSidePanelPortListener, setupSidePanelBehavior } from './port/si
 import { registerPanelForwarders } from './port/panelForwarding';
 import { registerSettingsSync } from './services/settingsSync';
 import { registerContextMenu } from './services/context-menu';
+import { recoverInterruptedTask } from './task/runState';
+import { registerTaskNotificationClicks } from './services/task-notifications';
 
 // Service-worker composition root. Chrome requires listeners to be registered synchronously at
 // top level, so every register* call below runs during evaluation, never inside an async callback.
@@ -25,3 +27,8 @@ registerSettingsSync();
 registerRuntimeMessageListener();
 registerSidePanelPortListener();
 registerContextMenu();
+
+// Marks a task that the previous worker died during as interrupted, before any new task can start.
+registerTaskNotificationClicks();
+
+recoverInterruptedTask().catch(error => logger.error('Failed to recover the interrupted task:', error));

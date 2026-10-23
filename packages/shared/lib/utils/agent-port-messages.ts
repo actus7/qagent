@@ -112,6 +112,7 @@ export type SidePanelCommandMessage =
   | { type: 'capture_visible_tab'; tabId: number }
   | { type: 'state' }
   | { type: 'nohighlight' }
+  | { type: 'compact_chat'; taskId: string; modelAgent?: 'navigator' | 'planner' }
   | { type: 'speech_to_text'; audio: string }
   | { type: 'replay'; task: string; taskId: string; tabId: number; historySessionId: string };
 
@@ -153,9 +154,13 @@ export type SidePanelResponseMessage =
   | { type: 'success'; msg?: string; screenshot?: string | null }
   | { type: 'tab_capture'; dataUrl: string }
   | { type: 'speech_to_text_result'; text: string }
+  | { type: 'conversation_compacted'; taskId: string; compacted: boolean }
   | { type: 'speech_to_text_error'; error: string };
 
-type BackgroundRuntimeMessage = { type: 'qagent:cancel' } | { type: 'qagent:overlay:state' };
+type BackgroundRuntimeMessage =
+  | { type: 'qagent:cancel' }
+  | { type: 'qagent:overlay:state' }
+  | { type: 'qagent:test-provider'; providerId: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -196,6 +201,12 @@ export function isSidePanelCommandMessage(message: unknown): message is SidePane
     case 'state':
     case 'nohighlight':
       return true;
+    case 'compact_chat':
+      return (
+        typeof message.taskId === 'string' &&
+        message.taskId.length > 0 &&
+        (message.modelAgent === undefined || message.modelAgent === 'navigator' || message.modelAgent === 'planner')
+      );
     case 'new_task':
     case 'follow_up_task':
       return (
@@ -277,6 +288,8 @@ export function isSidePanelResponseMessage(message: unknown): message is SidePan
       return typeof message.dataUrl === 'string' && message.dataUrl.startsWith('data:image/png;base64,');
     case 'speech_to_text_result':
       return typeof message.text === 'string';
+    case 'conversation_compacted':
+      return typeof message.taskId === 'string' && typeof message.compacted === 'boolean';
     case 'speech_to_text_error':
       return typeof message.error === 'string';
     case 'debug_log':
@@ -300,6 +313,9 @@ export function isSidePanelResponseMessage(message: unknown): message is SidePan
 export function isBackgroundRuntimeMessage(message: unknown): message is BackgroundRuntimeMessage {
   if (!isRecord(message) || typeof message.type !== 'string') {
     return false;
+  }
+  if (message.type === 'qagent:test-provider') {
+    return typeof message.providerId === 'string' && message.providerId.length > 0 && message.providerId.length <= 200;
   }
   return message.type === 'qagent:cancel' || message.type === 'qagent:overlay:state';
 }

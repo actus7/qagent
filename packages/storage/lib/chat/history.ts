@@ -62,14 +62,32 @@ const getSessionAgentStepHistoryStorage = (sessionId: string) => {
   return storage;
 };
 
+// Per-session compact memory of the last act task, kept apart from the replay-format agent step history
+const getSessionTaskMemoryKey = (sessionId: string) => `chat_task_memory_${sessionId}`;
+const sessionTaskMemoryStorageCache = new Map<string, BaseStorage<string>>();
+
+const getSessionTaskMemoryStorage = (sessionId: string) => {
+  const cachedStorage = sessionTaskMemoryStorageCache.get(sessionId);
+  if (cachedStorage) return cachedStorage;
+
+  const storage = createStorage<string>(getSessionTaskMemoryKey(sessionId), '', {
+    storageEnum: StorageEnum.Local,
+    liveUpdate: false,
+  });
+  sessionTaskMemoryStorageCache.set(sessionId, storage);
+  return storage;
+};
+
 const clearSessionStorageCaches = (sessionId: string) => {
   sessionMessagesStorageCache.delete(sessionId);
   sessionAgentStepHistoryStorageCache.delete(sessionId);
+  sessionTaskMemoryStorageCache.delete(sessionId);
 };
 
 const clearAllSessionStorageCaches = () => {
   sessionMessagesStorageCache.clear();
   sessionAgentStepHistoryStorageCache.clear();
+  sessionTaskMemoryStorageCache.clear();
 };
 
 // Helper function to get current timestamp in milliseconds
@@ -98,6 +116,7 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
         await messagesStorage.set([]);
         const agentStepHistoryStorage = getSessionAgentStepHistoryStorage(sessionMeta.id);
         await agentStepHistoryStorage.set(EMPTY_AGENT_STEP_HISTORY);
+        await getSessionTaskMemoryStorage(sessionMeta.id).set('');
         clearSessionStorageCaches(sessionMeta.id);
       }
       clearAllSessionStorageCaches();
@@ -190,6 +209,7 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
       await messagesStorage.set([]);
       const agentStepHistoryStorage = getSessionAgentStepHistoryStorage(sessionId);
       await agentStepHistoryStorage.set(EMPTY_AGENT_STEP_HISTORY);
+      await getSessionTaskMemoryStorage(sessionId).set('');
       clearSessionStorageCaches(sessionId);
     },
 
@@ -287,6 +307,15 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
       if (!history || !history.task || !history.timestamp || history.history === '' || history.history === '[]')
         return null;
       return history;
+    },
+
+    setTaskMemory: async (sessionId: string, memory: string): Promise<void> => {
+      await getSessionTaskMemoryStorage(sessionId).set(memory);
+    },
+
+    getTaskMemory: async (sessionId: string): Promise<string | null> => {
+      const memory = await getSessionTaskMemoryStorage(sessionId).get();
+      return memory || null;
     },
   };
 }

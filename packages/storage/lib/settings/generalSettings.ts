@@ -13,6 +13,7 @@ export interface GeneralSettingsConfig {
   displayHighlights: boolean;
   minWaitPageLoad: number;
   replayHistoricalTasks: boolean;
+  notifyOnCompletion: boolean;
   chatDebugMode: boolean;
   language: string;
 }
@@ -34,6 +35,7 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsConfig = {
   displayHighlights: false,
   minWaitPageLoad: 250,
   replayHistoricalTasks: false,
+  notifyOnCompletion: true,
   chatDebugMode: false,
   language: 'auto',
 };
@@ -104,6 +106,7 @@ function sanitizeGeneralSettings(
       GENERAL_SETTINGS_LIMITS.minWaitPageLoad.max,
     ),
     replayHistoricalTasks: sanitizeBoolean(merged.replayHistoricalTasks, fallback.replayHistoricalTasks),
+    notifyOnCompletion: sanitizeBoolean(merged.notifyOnCompletion, fallback.notifyOnCompletion),
     chatDebugMode: sanitizeBoolean(merged.chatDebugMode, fallback.chatDebugMode),
     language: sanitizeLanguage(merged.language, fallback.language),
   };

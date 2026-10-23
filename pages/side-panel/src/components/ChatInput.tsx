@@ -88,6 +88,7 @@ function buildSlashCommands(savedPrompts: SavedPrompt[]): SlashCommandItem[] {
     { slug: 'replay', title: 'replay', description: t('chat_input_cmd_replay'), kind: 'builtin' },
     { slug: 'state', title: 'state', description: t('chat_input_cmd_state'), kind: 'builtin' },
     { slug: 'nohighlight', title: 'nohighlight', description: t('chat_input_cmd_nohighlight'), kind: 'builtin' },
+    { slug: 'compact', title: 'compact', description: t('chat_input_cmd_compact'), kind: 'builtin' },
   ];
   const taken = new Set(builtIns.map(command => command.slug));
   const prompts = savedPrompts.map(prompt => {

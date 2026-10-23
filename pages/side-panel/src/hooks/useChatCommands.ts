@@ -15,7 +15,7 @@ interface UseChatCommandsArgs {
 
 /** Only these composer inputs are local commands; any other text starting with "/" is sent as a message. */
 export const isChatCommand = (text: string): boolean =>
-  text === '/state' || text === '/nohighlight' || text === '/replay' || text.startsWith('/replay ');
+  text === '/state' || text === '/nohighlight' || text === '/compact' || text === '/replay' || text.startsWith('/replay ');
 
 /** Slash commands typed in the composer (/state, /nohighlight, /replay <id>). */
 export const useChatCommands = ({
@@ -137,6 +137,17 @@ export const useChatCommands = ({
 
       if (command === '/nohighlight') {
         await sendMessage({ type: 'nohighlight' });
+        return true;
+      }
+
+      if (command === '/compact') {
+        // The background answers with conversation_compacted; the message list reloads when it arrives.
+        const taskId = sessionIdRef.current;
+        if (!taskId) {
+          appendMessage({ actor: Actors.SYSTEM, content: t('chat_compact_noSession'), timestamp: Date.now() });
+          return true;
+        }
+        await sendMessage({ type: 'compact_chat', taskId });
         return true;
       }
 

@@ -1,5 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { type ActionResult, AgentContext, type AgentOptions, type AgentOutput } from './types';
+import type { TaskMemoryAction } from './task-memory';
 import { t } from '@extension/i18n';
 import { NavigatorAgent, NavigatorActionRegistry } from './agents/navigator';
 import { PlannerAgent, type PlannerOutput } from './agents/planner';
@@ -141,6 +142,11 @@ export class Executor {
   clearExecutionEvents(): void {
     // Clear all execution event listeners
     this.context.eventManager.clearSubscribers(EventType.EXECUTION);
+  }
+
+  /** What this run did, used to build the memory a follow-up task starts from. */
+  getRunMemory(): { finalAnswer: string | null; actions: TaskMemoryAction[] } {
+    return { finalAnswer: this.context.finalAnswer, actions: this.context.runActions };
   }
 
   addFollowUpTask(task: string): void {

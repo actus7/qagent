@@ -1173,6 +1173,61 @@
   "bg_task_interrupted": {
     "message": "任務已中斷。"
   },
+  "bg_task_interruptedByRestart": {
+    "message": "任務因瀏覽器重新啟動擴充功能而中斷。傳送「繼續」即可恢復。"
+  },
+  "chat_input_cmd_compact": {
+    "message": "總結較早的訊息以釋放上下文"
+  },
+  "chat_compacted_divider": {
+    "message": "對話已壓縮"
+  },
+  "chat_compact_nothing": {
+    "message": "沒有可壓縮的新訊息。"
+  },
+  "chat_compact_noSession": {
+    "message": "請先傳送訊息再壓縮對話。"
+  },
+  "bg_compact_empty": {
+    "message": "模型沒有回傳對話摘要。"
+  },
+  "report_exportHtml_a11y": { "message": "匯出報告（HTML）" },
+  "report_exportMd_a11y": { "message": "匯出 Markdown" },
+  "report_exportFailed": { "message": "無法匯出報告：$ERROR$", "placeholders": { "error": { "content": "$1", "example": "沒有工作階段" } } },
+  "report_generatedAt": { "message": "產生時間" },
+  "report_models": { "message": "模型" },
+  "report_noModels": { "message": "未設定" },
+  "report_messages": { "message": "對話" },
+  "report_finalAnswer": { "message": "最終答覆" },
+  "report_noFinalAnswer": { "message": "未記錄最終答覆。" },
+  "report_steps": { "message": "上一個任務的步驟" },
+  "report_noSteps": { "message": "此工作階段沒有儲存步驟記錄。請在設定中啟用「重播歷史任務」以保存。" },
+  "report_step": { "message": "步驟" },
+  "report_intent": { "message": "意圖" },
+  "report_result": { "message": "結果" },
+  "report_error": { "message": "錯誤" },
+  "report_compacted": { "message": "對話已壓縮" },
+  "report_you": { "message": "你" },
+  "report_assistant": { "message": "助理" },
+  "report_system": { "message": "系統" },
+  "options_test_btn": { "message": "測試連線" },
+  "options_test_testing": { "message": "測試中…" },
+  "options_test_success": { "message": "連線正常" },
+  "options_test_failed": { "message": "連線測試失敗，請檢查提供者設定。" },
+  "options_test_saveFirst": { "message": "請先儲存提供者再測試" },
+  "options_test_noProvider": { "message": "找不到提供者，請先儲存。" },
+  "options_test_noModel": { "message": "測試前請至少新增一個模型。" },
+  "options_test_timeout": { "message": "提供者未在時限內回應。" },
+  "options_general_notifyOnCompletion": { "message": "任務完成或需要我時通知" },
+  "options_general_notifyOnCompletion_desc": { "message": "側邊面板關閉時，任務完成、失敗或等待核准時顯示 Chrome 通知。" },
+  "options_general_testNotification": { "message": "測試通知" },
+  "options_general_testNotification_title": { "message": "QAgent" },
+  "options_general_testNotification_body": { "message": "通知運作正常。" },
+  "bg_notify_completedTitle": { "message": "任務已完成" },
+  "bg_notify_failedTitle": { "message": "任務失敗" },
+  "bg_notify_approvalTitle": { "message": "等待你的核准" },
+  "bg_notify_approvalBody": { "message": "請開啟 QAgent 側邊面板以核准或拒絕此操作。" },
+  "bg_notify_fallbackBody": { "message": "請開啟 QAgent 側邊面板查看詳情。" },
   "bg_assistant_emptyResponse": {
     "message": "提供者回傳了空白回應。"
   },

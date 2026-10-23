@@ -17,6 +17,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import { useAssistantWorkspace } from './hooks/useAssistantWorkspace';
 import { useChatCommands } from './hooks/useChatCommands';
 import { useChatMessages } from './hooks/useChatMessages';
+import { exportSessionReport } from './lib/export-session-report';
 import { useContextPrefill } from './hooks/useContextPrefill';
 import { useConfigurationSync } from './hooks/useConfigurationSync';
 import { useFavoritePromptHandlers } from './hooks/useFavoritePromptHandlers';
@@ -341,6 +342,17 @@ const SidePanel = () => {
         onBackToChat={() => handleBackToChat(false)}
         onNewChat={handleNewChat}
         onLoadHistory={handleLoadHistory}
+        hasSession={Boolean(currentSessionId)}
+        onExportReport={format => {
+          if (!currentSessionId) return;
+          exportSessionReport(currentSessionId, format === 'html' ? 'html' : 'markdown').catch(error =>
+            appendMessage({
+              actor: Actors.SYSTEM,
+              content: t('report_exportFailed', error instanceof Error ? error.message : String(error)),
+              timestamp: Date.now(),
+            }),
+          );
+        }}
         onOpenSettings={() => setShowSettings(true)}
       />
       {showHistory ? (
