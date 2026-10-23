@@ -1,7 +1,6 @@
-import type { z } from 'zod';
+import { z } from 'zod';
 import { jsonrepair } from 'jsonrepair';
 import { createLogger } from '@src/background/log';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 const logger = createLogger('Utils');
 
@@ -105,22 +104,18 @@ function addTitlesToProperties(jsonSchema: Record<string, unknown>): Record<stri
 }
 
 export function convertZodToJsonSchema(zodSchema: z.ZodType, name: string, addTitle = false): Record<string, unknown> {
-  const jsonSchema = zodToJsonSchema(zodSchema, {
-    name: name,
-    nameStrategy: 'title',
-    target: 'openApi3',
-    allowedAdditionalProperties: undefined,
-    rejectedAdditionalProperties: undefined,
-    postProcess: addTitle
-      ? schema => {
-          // Titles of the properties of the schema will make some models follow the schema better, especially for Haiku
-          if (schema && typeof schema === 'object') {
-            return addTitlesToProperties(schema as Record<string, unknown>);
-          }
-          return schema;
-        }
-      : undefined,
+  // `io: 'input'` keeps fields with defaults optional, as the model may omit them; reused sub-schemas are inlined.
+  const jsonSchema: Record<string, unknown> = z.toJSONSchema(zodSchema, {
+    target: 'openapi-3.0',
+    io: 'input',
+    // .int() emits ±MAX_SAFE_INTEGER bounds; they say nothing to the model and cost tokens on every call.
+    override: ({ jsonSchema: node }) => {
+      if (node.minimum === Number.MIN_SAFE_INTEGER) delete node.minimum;
+      if (node.maximum === Number.MAX_SAFE_INTEGER) delete node.maximum;
+    },
   });
-
-  return jsonSchema;
+  delete jsonSchema.$schema; // the dialect URI is noise for the model
+  const named = { ...jsonSchema, title: name };
+  // Titles of the properties of the schema will make some models follow the schema better, especially for Haiku
+  return addTitle ? addTitlesToProperties(named) : named;
 }

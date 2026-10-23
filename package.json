@@ -66,7 +66,6 @@
       "nanoid": "3.3.11",
       "tar-fs": "^3.1.1",
       "glob": "^11.0.1",
-      "@langchain/core": "^0.3.80",
       "preact": "^10.27.3",
       "@isaacs/brace-expansion": "^5.0.1",
       "diff": "^4.0.4",

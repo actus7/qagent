@@ -314,7 +314,7 @@ export default class MessageManager {
     } else if (Array.isArray(message.content)) {
       message.content = message.content.map(item => {
         // Add null check to match Python's isinstance() behavior
-        if (typeof item === 'object' && item !== null && 'text' in item) {
+        if (typeof item === 'object' && item !== null && 'text' in item && typeof item.text === 'string') {
           return { ...item, text: replaceSensitive(item.text) };
         }
         return item;
@@ -336,7 +336,7 @@ export default class MessageManager {
       for (const item of message.content) {
         if ('image_url' in item) {
           tokens += this.settings.imageTokens;
-        } else if (typeof item === 'object' && 'text' in item) {
+        } else if (typeof item === 'object' && 'text' in item && typeof item.text === 'string') {
           tokens += this._countTextTokens(item.text);
         }
       }

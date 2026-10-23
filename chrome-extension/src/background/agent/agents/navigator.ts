@@ -61,7 +61,7 @@ export class NavigatorActionRegistry {
     return this.actions[name];
   }
 
-  setupModelOutputSchema(): z.ZodType {
+  setupModelOutputSchema() {
     const actionSchema = buildDynamicActionSchema(Object.values(this.actions));
     return z.object({
       current_state: agentBrainSchema,
@@ -74,7 +74,9 @@ interface NavigatorResult {
   done: boolean;
 }
 
-export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
+type NavigatorOutputSchema = ReturnType<NavigatorActionRegistry['setupModelOutputSchema']>;
+
+export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorResult> {
   private actionRegistry: NavigatorActionRegistry;
   private jsonSchema: Record<string, unknown>;
 
@@ -132,7 +134,7 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
         );
 
         if (response.parsed) {
-          return response.parsed;
+          return response.parsed as this['ModelOutput'];
         }
       } catch (error) {
         if (error instanceof LLMTimeoutError) {
@@ -165,8 +167,8 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
       const rawResponse = response.raw as BaseMessage & {
         tool_calls?: Array<{
           args: {
-            currentState: typeof agentBrainSchema._type;
-            action: z.infer<ReturnType<typeof buildDynamicActionSchema>>;
+            currentState: z.infer<typeof agentBrainSchema>;
+            action: Array<z.infer<ReturnType<typeof buildDynamicActionSchema>>>;
           };
         }>;
       };

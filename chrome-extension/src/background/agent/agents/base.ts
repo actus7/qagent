@@ -350,7 +350,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
 
         if (response.parsed) {
           logger.debug(`[${this.modelName}] Successfully parsed structured output`);
-          return response.parsed;
+          return response.parsed as this['ModelOutput'];
         }
         logger.error('Failed to parse response', response);
         throw new Error('Could not parse response with structured output');

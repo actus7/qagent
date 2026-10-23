@@ -31,7 +31,8 @@ function parseRefToIndex(selector: unknown): number | null {
 /**
  * An action is a function that takes an input and returns an ActionResult
  */
-export class Action<TInput = unknown> {
+// `never` default: any Action<X> is assignable to the bare `Action` used by registries and arrays.
+export class Action<TInput = never> {
   beforeCall?: (action: string, input: unknown) => Promise<void>;
   constructor(
     private readonly handler: (input: TInput) => Promise<ActionResult>,
@@ -139,7 +140,7 @@ export class Action<TInput = unknown> {
 }
 
 // TODO: can not make every action optional, don't know why
-export function buildDynamicActionSchema(actions: Action[]): z.ZodType {
+export function buildDynamicActionSchema(actions: Action[]): z.ZodType<Record<string, unknown>> {
   let schema = z.object({});
   for (const action of actions) {
     // create a schema for the action, it could be action.schema.schema or null

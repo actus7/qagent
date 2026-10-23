@@ -6,63 +6,63 @@ export interface ActionSchema {
   schema: z.ZodType;
 }
 
-export const doneActionSchema: ActionSchema = {
+export const doneActionSchema = {
   name: 'done',
   description: 'Complete task',
   schema: z.object({
     text: z.string(),
     success: z.boolean(),
   }),
-};
+} satisfies ActionSchema;
 
 const selectorField = z
   .string()
   .describe('selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.');
 
 // agent-browser style navigation actions
-export const openActionSchema: ActionSchema = {
+export const openActionSchema = {
   name: 'open',
   description: 'Navigate to URL in the current tab',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     url: z.string(),
   }),
-};
+} satisfies ActionSchema;
 
-export const backActionSchema: ActionSchema = {
+export const backActionSchema = {
   name: 'back',
   description: 'Go back to the previous page',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
   }),
-};
+} satisfies ActionSchema;
 
-export const forwardActionSchema: ActionSchema = {
+export const forwardActionSchema = {
   name: 'forward',
   description: 'Go forward to the next page in history',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
   }),
-};
+} satisfies ActionSchema;
 
-export const reloadActionSchema: ActionSchema = {
+export const reloadActionSchema = {
   name: 'reload',
   description: 'Reload current page',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
   }),
-};
+} satisfies ActionSchema;
 
-export const clickActionSchema: ActionSchema = {
+export const clickActionSchema = {
   name: 'click',
   description: 'Click element by selector',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     selector: selectorField,
   }),
-};
+} satisfies ActionSchema;
 
-export const fillActionSchema: ActionSchema = {
+export const fillActionSchema = {
   name: 'fill',
   description: 'Clear and fill text in an input element',
   schema: z.object({
@@ -70,9 +70,9 @@ export const fillActionSchema: ActionSchema = {
     selector: selectorField,
     text: z.string().describe('text to fill'),
   }),
-};
+} satisfies ActionSchema;
 
-export const typeActionSchema: ActionSchema = {
+export const typeActionSchema = {
   name: 'type',
   description: 'Type text in an element without clearing existing content first',
   schema: z.object({
@@ -80,18 +80,18 @@ export const typeActionSchema: ActionSchema = {
     selector: selectorField,
     text: z.string().describe('text to type'),
   }),
-};
+} satisfies ActionSchema;
 
-export const pressActionSchema: ActionSchema = {
+export const pressActionSchema = {
   name: 'press',
   description: 'Press keyboard keys like Enter, Tab, Backspace and combinations like Control+o or Control+Shift+T',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     key: z.string().describe('key or shortcut to send'),
   }),
-};
+} satisfies ActionSchema;
 
-export const scrollActionSchema: ActionSchema = {
+export const scrollActionSchema = {
   name: 'scroll',
   description: 'Scroll the page by direction and optional pixels',
   schema: z.object({
@@ -99,52 +99,52 @@ export const scrollActionSchema: ActionSchema = {
     direction: z.enum(['up', 'down', 'left', 'right']).describe('scroll direction'),
     pixels: z.number().int().positive().optional().describe('pixel amount to scroll'),
   }),
-};
+} satisfies ActionSchema;
 
-export const scrollIntoViewActionSchema: ActionSchema = {
+export const scrollIntoViewActionSchema = {
   name: 'scrollintoview',
   description: 'Scroll the target element into view',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     selector: selectorField,
   }),
-};
+} satisfies ActionSchema;
 
-export const snapshotActionSchema: ActionSchema = {
+export const snapshotActionSchema = {
   name: 'snapshot',
   description: 'Get current interactive elements snapshot with refs',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
   }),
-};
+} satisfies ActionSchema;
 
-export const getTextActionSchema: ActionSchema = {
+export const getTextActionSchema = {
   name: 'get_text',
   description: 'Get element text by selector',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     selector: selectorField,
   }),
-};
+} satisfies ActionSchema;
 
-export const getTitleActionSchema: ActionSchema = {
+export const getTitleActionSchema = {
   name: 'get_title',
   description: 'Get current page title',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
   }),
-};
+} satisfies ActionSchema;
 
-export const getUrlActionSchema: ActionSchema = {
+export const getUrlActionSchema = {
   name: 'get_url',
   description: 'Get current page URL',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
   }),
-};
+} satisfies ActionSchema;
 
 // Basic Navigation Actions
-export const searchGoogleActionSchema: ActionSchema = {
+export const searchGoogleActionSchema = {
   name: 'search_google',
   description:
     'Search the query in Google in the current tab, the query should be a search query like humans search in Google, concrete and not vague or super long. More the single most important items.',
@@ -152,26 +152,26 @@ export const searchGoogleActionSchema: ActionSchema = {
     intent: z.string().default('').describe('purpose of this action'),
     query: z.string(),
   }),
-};
+} satisfies ActionSchema;
 
-export const goToUrlActionSchema: ActionSchema = {
+export const goToUrlActionSchema = {
   name: 'go_to_url',
   description: 'Navigate to URL in the current tab',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     url: z.string(),
   }),
-};
+} satisfies ActionSchema;
 
-export const goBackActionSchema: ActionSchema = {
+export const goBackActionSchema = {
   name: 'go_back',
   description: 'Go back to the previous page',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
   }),
-};
+} satisfies ActionSchema;
 
-export const clickElementActionSchema: ActionSchema = {
+export const clickElementActionSchema = {
   name: 'click_element',
   description: 'Click element by index',
   schema: z.object({
@@ -179,9 +179,9 @@ export const clickElementActionSchema: ActionSchema = {
     index: z.number().int().describe('index of the element'),
     xpath: z.string().nullable().optional().describe('xpath of the element'),
   }),
-};
+} satisfies ActionSchema;
 
-export const inputTextActionSchema: ActionSchema = {
+export const inputTextActionSchema = {
   name: 'input_text',
   description: 'Input text into an interactive input element',
   schema: z.object({
@@ -190,47 +190,47 @@ export const inputTextActionSchema: ActionSchema = {
     text: z.string().describe('text to input'),
     xpath: z.string().nullable().optional().describe('xpath of the element'),
   }),
-};
+} satisfies ActionSchema;
 
 // Tab Management Actions
-export const switchTabActionSchema: ActionSchema = {
+export const switchTabActionSchema = {
   name: 'switch_tab',
   description: 'Switch to tab by tab id',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     tab_id: z.number().int().describe('id of the tab to switch to'),
   }),
-};
+} satisfies ActionSchema;
 
-export const openTabActionSchema: ActionSchema = {
+export const openTabActionSchema = {
   name: 'open_tab',
   description: 'Open URL in new tab',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     url: z.string().describe('url to open'),
   }),
-};
+} satisfies ActionSchema;
 
-export const closeTabActionSchema: ActionSchema = {
+export const closeTabActionSchema = {
   name: 'close_tab',
   description: 'Close tab by tab id',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     tab_id: z.number().int().describe('id of the tab'),
   }),
-};
+} satisfies ActionSchema;
 
 // Cache Actions
-export const cacheContentActionSchema: ActionSchema = {
+export const cacheContentActionSchema = {
   name: 'cache_content',
   description: 'Cache what you have found so far from the current page for future use',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     content: z.string().default('').describe('content to cache'),
   }),
-};
+} satisfies ActionSchema;
 
-export const scrollToPercentActionSchema: ActionSchema = {
+export const scrollToPercentActionSchema = {
   name: 'scroll_to_percent',
   description:
     'Scrolls to a particular vertical percentage of the document or an element. If no index of element is specified, scroll the whole document.',
@@ -239,27 +239,27 @@ export const scrollToPercentActionSchema: ActionSchema = {
     yPercent: z.number().int().describe('percentage to scroll to - min 0, max 100; 0 is top, 100 is bottom'),
     index: z.number().int().nullable().optional().describe('index of the element'),
   }),
-};
+} satisfies ActionSchema;
 
-export const scrollToTopActionSchema: ActionSchema = {
+export const scrollToTopActionSchema = {
   name: 'scroll_to_top',
   description: 'Scroll the document in the window or an element to the top',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     index: z.number().int().nullable().optional().describe('index of the element'),
   }),
-};
+} satisfies ActionSchema;
 
-export const scrollToBottomActionSchema: ActionSchema = {
+export const scrollToBottomActionSchema = {
   name: 'scroll_to_bottom',
   description: 'Scroll the document in the window or an element to the bottom',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     index: z.number().int().nullable().optional().describe('index of the element'),
   }),
-};
+} satisfies ActionSchema;
 
-export const previousPageActionSchema: ActionSchema = {
+export const previousPageActionSchema = {
   name: 'previous_page',
   description:
     'Scroll the document in the window or an element to the previous page. If no index is specified, scroll the whole document.',
@@ -267,9 +267,9 @@ export const previousPageActionSchema: ActionSchema = {
     intent: z.string().default('').describe('purpose of this action'),
     index: z.number().int().nullable().optional().describe('index of the element'),
   }),
-};
+} satisfies ActionSchema;
 
-export const nextPageActionSchema: ActionSchema = {
+export const nextPageActionSchema = {
   name: 'next_page',
   description:
     'Scroll the document in the window or an element to the next page. If no index is specified, scroll the whole document.',
@@ -277,9 +277,9 @@ export const nextPageActionSchema: ActionSchema = {
     intent: z.string().default('').describe('purpose of this action'),
     index: z.number().int().nullable().optional().describe('index of the element'),
   }),
-};
+} satisfies ActionSchema;
 
-export const scrollToTextActionSchema: ActionSchema = {
+export const scrollToTextActionSchema = {
   name: 'scroll_to_text',
   description: 'If you dont find something which you want to interact with in current viewport, try to scroll to it',
   schema: z.object({
@@ -292,9 +292,9 @@ export const scrollToTextActionSchema: ActionSchema = {
       .default(1)
       .describe('which occurrence of the text to scroll to (1-indexed, default: 1)'),
   }),
-};
+} satisfies ActionSchema;
 
-export const sendKeysActionSchema: ActionSchema = {
+export const sendKeysActionSchema = {
   name: 'send_keys',
   description:
     'Send strings of special keys like Backspace, Insert, PageDown, Delete, Enter. Shortcuts such as `Control+o`, `Control+Shift+T` are supported as well. This gets used in keyboard press. Be aware of different operating systems and their shortcuts',
@@ -302,18 +302,18 @@ export const sendKeysActionSchema: ActionSchema = {
     intent: z.string().default('').describe('purpose of this action'),
     keys: z.string().describe('keys to send'),
   }),
-};
+} satisfies ActionSchema;
 
-export const getDropdownOptionsActionSchema: ActionSchema = {
+export const getDropdownOptionsActionSchema = {
   name: 'get_dropdown_options',
   description: 'Get all options from a native dropdown',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     index: z.number().int().describe('index of the dropdown element'),
   }),
-};
+} satisfies ActionSchema;
 
-export const selectDropdownOptionActionSchema: ActionSchema = {
+export const selectDropdownOptionActionSchema = {
   name: 'select_dropdown_option',
   description: 'Select dropdown option for interactive element index by the text of the option you want to select',
   schema: z.object({
@@ -321,13 +321,13 @@ export const selectDropdownOptionActionSchema: ActionSchema = {
     index: z.number().int().describe('index of the dropdown element'),
     text: z.string().describe('text of the option'),
   }),
-};
+} satisfies ActionSchema;
 
-export const waitActionSchema: ActionSchema = {
+export const waitActionSchema = {
   name: 'wait',
   description: 'Wait for x seconds default 3, do NOT use this action unless user asks to wait explicitly',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     seconds: z.number().int().default(3).describe('amount of seconds'),
   }),
-};
+} satisfies ActionSchema;

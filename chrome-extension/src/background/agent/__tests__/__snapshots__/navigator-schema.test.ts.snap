@@ -216,8 +216,9 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
                 "type": "string",
               },
               "selector": {
-                "$ref": "#/definitions/NavigatorAgentOutput/properties/action/items/properties/click/properties/selector",
+                "description": "selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.",
                 "title": "Selector",
+                "type": "string",
               },
               "text": {
                 "description": "text to fill",
@@ -279,8 +280,9 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
                 "type": "string",
               },
               "selector": {
-                "$ref": "#/definitions/NavigatorAgentOutput/properties/action/items/properties/click/properties/selector",
+                "description": "selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.",
                 "title": "Selector",
+                "type": "string",
               },
             },
             "required": [
@@ -648,8 +650,9 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
                 "type": "string",
               },
               "selector": {
-                "$ref": "#/definitions/NavigatorAgentOutput/properties/action/items/properties/click/properties/selector",
+                "description": "selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.",
                 "title": "Selector",
+                "type": "string",
               },
             },
             "required": [
@@ -776,8 +779,9 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
                 "type": "string",
               },
               "selector": {
-                "$ref": "#/definitions/NavigatorAgentOutput/properties/action/items/properties/click/properties/selector",
+                "description": "selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.",
                 "title": "Selector",
+                "type": "string",
               },
               "text": {
                 "description": "text to type",
