@@ -14,6 +14,10 @@ export interface CompanionServerOptions {
   launch?: BrowserManagerLaunchOptions;
   allowedUrls?: string[];
   deniedUrls?: string[];
+  /** Exact extension id allowed to connect; any chrome-extension:// origin when unset. */
+  extensionId?: string;
+  /** Let clients read/write local files (upload filePaths, screenshotPath). Off by default. */
+  allowFileAccess?: boolean;
 }
 
 interface ConnectionState {
@@ -192,6 +196,8 @@ export class AgentBrowserCompanionServer {
   private readonly token?: string;
   private readonly allowedUrls: string[];
   private readonly deniedUrls: string[];
+  private readonly extensionId?: string;
+  private readonly allowFileAccess: boolean;
   private readonly manager: BrowserSessionManager;
   private readonly tool: ReturnType<typeof createBrowserTool>;
   private wss: WebSocketServer | null = null;
@@ -204,6 +210,8 @@ export class AgentBrowserCompanionServer {
     this.token = options.token;
     this.allowedUrls = options.allowedUrls ?? [];
     this.deniedUrls = options.deniedUrls ?? [];
+    this.extensionId = options.extensionId;
+    this.allowFileAccess = options.allowFileAccess ?? false;
 
     this.manager = new BrowserSessionManager({
       sessionTimeoutMs: options.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS,
@@ -231,6 +239,8 @@ export class AgentBrowserCompanionServer {
     const allowedUrls = parseCsvEnv(env.AGENT_BROWSER_ALLOWED_URLS);
     const deniedUrls = parseCsvEnv(env.AGENT_BROWSER_DENIED_URLS);
     const profile = env.AGENT_BROWSER_PROFILE?.trim() || undefined;
+    const extensionId = env.AGENT_BROWSER_EXTENSION_ID?.trim() || undefined;
+    const allowFileAccess = env.AGENT_BROWSER_ALLOW_FILE_ACCESS === 'true';
 
     return new AgentBrowserCompanionServer({
       host,
@@ -241,6 +251,8 @@ export class AgentBrowserCompanionServer {
       allowedUrls,
       deniedUrls,
       profile,
+      extensionId,
+      allowFileAccess,
     });
   }
 
@@ -254,7 +266,11 @@ export class AgentBrowserCompanionServer {
       port: this.port,
       // Any web page can open ws://127.0.0.1 (no CORS for websockets) and browsers always send Origin.
       // Accept only the extension, or non-browser local clients (no Origin header).
-      verifyClient: ({ origin }: { origin?: string }) => !origin || origin.startsWith('chrome-extension://'),
+      verifyClient: ({ origin }: { origin?: string }) =>
+        !origin ||
+        (this.extensionId
+          ? origin === `chrome-extension://${this.extensionId}`
+          : origin.startsWith('chrome-extension://')),
     });
 
     this.wss.on('connection', ws => {
@@ -554,7 +570,9 @@ export class AgentBrowserCompanionServer {
     maybeAssignString('waitText', message.action.waitText ?? message.action.text);
     maybeAssignString('waitUrl', message.action.waitUrl ?? message.action.url);
     maybeAssignString('scopeSelector', message.action.scopeSelector ?? message.action.selector);
-    maybeAssignString('screenshotPath', message.action.screenshotPath);
+    // Local file access is opt-in: the extension never needs it, and it would turn the companion into a
+    // file reader/writer for any connected client.
+    if (this.allowFileAccess) maybeAssignString('screenshotPath', message.action.screenshotPath);
     maybeAssignNumber('maxDepth', message.action.maxDepth ?? message.action.depth);
     maybeAssignNumber('waitMs', message.action.waitMs ?? message.action.ms);
     maybeAssignNumber('timeoutMs', message.action.timeoutMs);
@@ -594,7 +612,9 @@ export class AgentBrowserCompanionServer {
       input.getWhat = message.action.what as BrowserToolInput['getWhat'];
     }
 
-    if (Array.isArray(message.action.filePaths)) {
+    if (!this.allowFileAccess) {
+      // filePaths stays unset, so the upload action fails with its own validation error.
+    } else if (Array.isArray(message.action.filePaths)) {
       input.filePaths = message.action.filePaths.filter((value): value is string => typeof value === 'string');
     } else if (Array.isArray(message.action.paths)) {
       input.filePaths = message.action.paths.filter((value): value is string => typeof value === 'string');

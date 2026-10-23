@@ -61,6 +61,12 @@ VITE_BROWSER_ENGINE=chrome-debugger
 VITE_AGENT_BROWSER_WS_URL=ws://127.0.0.1:9223
 ```
 
+Segurança do companion: ele só aceita conexões da extensão (`Origin: chrome-extension://…`) ou de clientes locais sem `Origin`; páginas web são recusadas. Variáveis opcionais do processo do companion:
+
+- `AGENT_BROWSER_EXTENSION_ID` — aceita apenas o ID exato da sua extensão (recomendado).
+- `AGENT_BROWSER_WS_TOKEN` — exige um token no handshake (configure o mesmo valor em `VITE_AGENT_BROWSER_WS_TOKEN`).
+- `AGENT_BROWSER_ALLOW_FILE_ACCESS=true` — libera `upload` por caminho local e `screenshotPath` (desligado por padrão).
+
 ## Build
 
 ```bash
