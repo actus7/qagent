@@ -1,12 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { t } from '@extension/i18n';
-import {
-  ProviderTypeEnum,
-  getDefaultDisplayNameFromProviderId,
-  getDefaultProviderConfig,
-  llmProviderStore,
-} from '@extension/storage';
+import { ProviderTypeEnum, agentModelStore, getDefaultProviderConfig, llmProviderStore } from '@extension/storage';
 import type { ProviderConfig } from '@extension/storage';
 import { PROVIDER_SCROLL_DELAY_MS } from './constants';
 import {
@@ -17,10 +12,17 @@ import {
   getNextAzureProviderId,
   getNextCustomProviderNumber,
   getProviderSaveError,
+  getProviderSaveErrorMessage,
   removeFromListField,
   sortProviderEntries,
+  withPendingEntry,
 } from './providerUtils';
 import type { AvailableModel, ProviderMap } from './types';
+
+interface UseProviderSettingsOptions {
+  /** Called when agents were reset because the provider or one of its models was removed. */
+  onAgentModelsReset?: () => void;
+}
 
 async function loadAvailableModels(): Promise<AvailableModel[]> {
   try {
@@ -37,13 +39,14 @@ function scrollToProviderSoon(providerId: string): void {
   }, PROVIDER_SCROLL_DELAY_MS);
 }
 
-export function useProviderSettings() {
+export function useProviderSettings({ onAgentModelsReset }: UseProviderSettingsOptions = {}) {
   const [providers, setProviders] = useState<ProviderMap>({});
   const [modifiedProviders, setModifiedProviders] = useState<Set<string>>(() => new Set());
   const [providersFromStorage, setProvidersFromStorage] = useState<Set<string>>(() => new Set());
   const [newModelInputs, setNewModelInputs] = useState<Record<string, string>>({});
   const [isProviderSelectorOpen, setIsProviderSelectorOpen] = useState(false);
   const [nameErrors, setNameErrors] = useState<Record<string, string>>({});
+  const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
   const [visibleApiKeys, setVisibleApiKeys] = useState<Record<string, boolean>>({});
   const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
   const newlyAddedProviderRef = useRef<string | null>(null);
@@ -198,29 +201,53 @@ export function useProviderSettings() {
     }));
   };
 
-  const handleSave = async (providerId: string) => {
-    try {
-      const config = providers[providerId];
-      const saveError = getProviderSaveError(config);
-      if (saveError === 'spacesInName') {
-        setNameErrors(prev => ({
-          ...prev,
-          [providerId]: t('options_models_providers_errors_spacesNotAllowed'),
-        }));
-        return;
-      }
-      if (saveError === 'baseUrlRequired') {
-        alert(t('options_models_providers_errors_baseUrlRequired', getDefaultDisplayNameFromProviderId(providerId)));
-        return;
-      }
-
-      await llmProviderStore.setProvider(providerId, buildProviderConfigToSave(providerId, config));
-
-      setNameErrors(prev => {
-        const next = { ...prev };
+  const setErrorFor = (setter: typeof setSaveErrors, providerId: string, message: string | null) => {
+    setter(prev => {
+      const next = { ...prev };
+      if (message) {
+        next[providerId] = message;
+      } else {
         delete next[providerId];
-        return next;
-      });
+      }
+      return next;
+    });
+  };
+
+  const notifyIfAgentsReset = async (providerId: string, keepModelNames: string[]) => {
+    const resetAgents = await agentModelStore.resetAgentModelsForProvider(providerId, keepModelNames);
+    if (resetAgents.length > 0) {
+      onAgentModelsReset?.();
+    }
+  };
+
+  const handleSave = async (providerId: string) => {
+    const config = withPendingEntry(providerId, providers[providerId], newModelInputs[providerId]);
+    if (!config) {
+      return;
+    }
+    const saveError = getProviderSaveError(config);
+    if (saveError === 'spacesInName') {
+      setErrorFor(setNameErrors, providerId, getProviderSaveErrorMessage(saveError, providerId));
+      return;
+    }
+    if (saveError) {
+      setErrorFor(setSaveErrors, providerId, getProviderSaveErrorMessage(saveError, providerId));
+      return;
+    }
+
+    try {
+      const payloadToSave = buildProviderConfigToSave(providerId, config);
+      await llmProviderStore.setProvider(providerId, payloadToSave);
+      const keepModelNames =
+        payloadToSave.type === ProviderTypeEnum.AzureOpenAI
+          ? (payloadToSave.azureDeploymentNames ?? [])
+          : (payloadToSave.modelNames ?? []);
+      await notifyIfAgentsReset(providerId, keepModelNames);
+
+      setProviders(prev => ({ ...prev, [providerId]: config }));
+      setNewModelInputs(prev => ({ ...prev, [providerId]: '' }));
+      setErrorFor(setNameErrors, providerId, null);
+      setErrorFor(setSaveErrors, providerId, null);
       setProvidersFromStorage(prev => new Set(prev).add(providerId));
       setModifiedProviders(prev => {
         const next = new Set(prev);
@@ -228,13 +255,15 @@ export function useProviderSettings() {
         return next;
       });
     } catch (error) {
-      console.error('Error saving API key:', error);
+      console.error('Error saving provider:', error);
+      setErrorFor(setSaveErrors, providerId, t('options_models_providers_errors_saveFailed'));
     }
   };
 
   const handleDelete = async (providerId: string) => {
     try {
       await llmProviderStore.removeProvider(providerId);
+      await notifyIfAgentsReset(providerId, []);
       setProvidersFromStorage(prev => {
         const next = new Set(prev);
         next.delete(providerId);
@@ -252,20 +281,37 @@ export function useProviderSettings() {
       });
     } catch (error) {
       console.error('Error deleting provider:', error);
+      setErrorFor(setSaveErrors, providerId, t('options_models_providers_errors_deleteFailed'));
     }
   };
 
-  const handleCancelProvider = (providerId: string) => {
-    setProviders(prev => {
-      const next = { ...prev };
-      delete next[providerId];
-      return next;
-    });
+  /** Stored providers revert to their saved config; unsaved ones are discarded. */
+  const handleCancelProvider = async (providerId: string) => {
+    if (providersFromStorage.has(providerId)) {
+      try {
+        const stored = await llmProviderStore.getProvider(providerId);
+        if (stored) {
+          setProviders(prev => ({ ...prev, [providerId]: stored }));
+        }
+      } catch (error) {
+        console.error('Error restoring provider:', error);
+        return;
+      }
+    } else {
+      setProviders(prev => {
+        const next = { ...prev };
+        delete next[providerId];
+        return next;
+      });
+    }
     setModifiedProviders(prev => {
       const next = new Set(prev);
       next.delete(providerId);
       return next;
     });
+    setNewModelInputs(prev => ({ ...prev, [providerId]: '' }));
+    setErrorFor(setNameErrors, providerId, null);
+    setErrorFor(setSaveErrors, providerId, null);
   };
 
   const addProviderEntry = (providerId: string, config: ProviderConfig) => {
@@ -317,6 +363,7 @@ export function useProviderSettings() {
     providersFromStorage,
     newModelInputs,
     nameErrors,
+    saveErrors,
     visibleApiKeys,
     availableModels,
     sortedProviders,

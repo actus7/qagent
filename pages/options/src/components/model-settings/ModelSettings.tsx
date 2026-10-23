@@ -7,8 +7,8 @@ import { useSpeechToTextSettings } from './useSpeechToTextSettings';
 
 /** Options page "Models" tab: providers, per-agent model selection, and speech-to-text. */
 export const ModelSettings = () => {
-  const providerSettings = useProviderSettings();
   const agentSettings = useAgentModelSettings();
+  const providerSettings = useProviderSettings({ onAgentModelsReset: agentSettings.reloadAgentModels });
   const speechToText = useSpeechToTextSettings();
 
   return (

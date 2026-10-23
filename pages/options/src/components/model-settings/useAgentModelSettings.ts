@@ -33,68 +33,61 @@ export function useAgentModelSettings() {
   const modelParametersRef = useRef<Record<AgentNameEnum, AgentModelParameters>>(createDefaultModelParameters());
   const parameterPersistTimeoutsRef = useRef<Partial<Record<AgentNameEnum, number>>>({});
 
-  // Load saved agent models and parameters on mount
-  useEffect(() => {
-    let cancelled = false;
+  // Reads saved agent models and parameters from storage into state
+  const reloadAgentModels = useCallback(async () => {
+    try {
+      const agents = Object.values(AgentNameEnum);
+      const configs = await Promise.all(agents.map(agent => agentModelStore.getAgentModel(agent)));
 
-    const loadAgentModels = async () => {
-      try {
-        const agents = Object.values(AgentNameEnum);
-        const configs = await Promise.all(agents.map(agent => agentModelStore.getAgentModel(agent)));
-        if (cancelled) {
+      const nextSelectedModels = createEmptySelectedModels();
+      const nextModelParameters = createDefaultModelParameters();
+      const nextReasoningEffort = createDefaultReasoningEffort();
+
+      agents.forEach((agent, index) => {
+        const config = configs[index];
+        if (!config) {
           return;
         }
 
-        const nextSelectedModels = createEmptySelectedModels();
-        const nextModelParameters = createDefaultModelParameters();
-        const nextReasoningEffort = createDefaultReasoningEffort();
+        nextSelectedModels[agent] = `${config.provider}>${config.modelName}`;
 
-        agents.forEach((agent, index) => {
-          const config = configs[index];
-          if (!config) {
-            return;
-          }
+        const savedTemperature =
+          typeof config.parameters?.temperature === 'number'
+            ? config.parameters.temperature
+            : nextModelParameters[agent].temperature;
+        const savedTopP =
+          typeof config.parameters?.topP === 'number' ? config.parameters.topP : nextModelParameters[agent].topP;
+        const savedRequestsPerMinute =
+          typeof config.requestsPerMinute === 'number' && Number.isFinite(config.requestsPerMinute)
+            ? Math.max(MIN_REQUESTS_PER_MINUTE, Math.round(config.requestsPerMinute))
+            : getDefaultModelRequestsPerMinute(config.provider, config.modelName);
 
-          nextSelectedModels[agent] = `${config.provider}>${config.modelName}`;
+        nextModelParameters[agent] = {
+          temperature: savedTemperature,
+          topP: savedTopP,
+          requestsPerMinute: savedRequestsPerMinute,
+        };
 
-          const savedTemperature =
-            typeof config.parameters?.temperature === 'number'
-              ? config.parameters.temperature
-              : nextModelParameters[agent].temperature;
-          const savedTopP =
-            typeof config.parameters?.topP === 'number' ? config.parameters.topP : nextModelParameters[agent].topP;
-          const savedRequestsPerMinute =
-            typeof config.requestsPerMinute === 'number' && Number.isFinite(config.requestsPerMinute)
-              ? Math.max(MIN_REQUESTS_PER_MINUTE, Math.round(config.requestsPerMinute))
-              : getDefaultModelRequestsPerMinute(config.provider, config.modelName);
+        const normalizedReasoningEffort = normalizeReasoningEffort(config.reasoningEffort);
+        if (normalizedReasoningEffort) {
+          nextReasoningEffort[agent] = normalizedReasoningEffort;
+        }
+      });
 
-          nextModelParameters[agent] = {
-            temperature: savedTemperature,
-            topP: savedTopP,
-            requestsPerMinute: savedRequestsPerMinute,
-          };
-
-          const normalizedReasoningEffort = normalizeReasoningEffort(config.reasoningEffort);
-          if (normalizedReasoningEffort) {
-            nextReasoningEffort[agent] = normalizedReasoningEffort;
-          }
-        });
-
-        selectedModelsRef.current = nextSelectedModels;
-        modelParametersRef.current = nextModelParameters;
-        setSelectedModels(nextSelectedModels);
-        setModelParameters(nextModelParameters);
-        setReasoningEffort(nextReasoningEffort);
-      } catch (error) {
-        console.error('Error loading agent models:', error);
-      }
-    };
-
-    void loadAgentModels();
-    return () => {
-      cancelled = true;
-    };
+      selectedModelsRef.current = nextSelectedModels;
+      modelParametersRef.current = nextModelParameters;
+      setSelectedModels(nextSelectedModels);
+      setModelParameters(nextModelParameters);
+      setReasoningEffort(nextReasoningEffort);
+    } catch (error) {
+      console.error('Error loading agent models:', error);
+    }
   }, []);
+
+  // Load saved agent models and parameters on mount
+  useEffect(() => {
+    void reloadAgentModels();
+  }, [reloadAgentModels]);
 
   useEffect(() => {
     selectedModelsRef.current = selectedModels;
@@ -204,11 +197,16 @@ export function useAgentModelSettings() {
         return;
       }
 
+      // Keep the saved reasoning effort: setAgentModel overwrites the whole config
+      const stored = await agentModelStore.getAgentModel(agentName);
+      const isSameModel = stored?.provider === provider && stored?.modelName === modelName;
+
       await agentModelStore.setAgentModel(agentName, {
         provider,
         modelName,
         parameters: toStoredParameters(selectedModel, newParameters),
         requestsPerMinute: newParameters.requestsPerMinute,
+        reasoningEffort: isSameModel ? stored?.reasoningEffort : undefined,
       });
     } catch (error) {
       console.error('Error saving agent parameters:', error);
@@ -254,6 +252,7 @@ export function useAgentModelSettings() {
     handleModelChange,
     handleReasoningEffortChange,
     handleParameterChange,
+    reloadAgentModels,
   };
 }
 
