@@ -21,7 +21,8 @@ vi.mock('@langchain/openai', () => {
   return { ChatOpenAI, AzureChatOpenAI };
 });
 
-describe('createChatModel reasoning effort compatibility', () => {
+// The dynamic import of ../helper loads every LangChain provider; under a parallel run it can exceed the 5s default.
+describe('createChatModel reasoning effort compatibility', { timeout: 30_000 }, () => {
   beforeEach(() => {
     openAICalls.length = 0;
     azureCalls.length = 0;
