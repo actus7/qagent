@@ -61,7 +61,7 @@ const manifest = withOperaSidebar(
     version: packageJson.version,
     description: '__MSG_app_metadata_description__',
     host_permissions: ['<all_urls>'],
-    permissions: ['storage', 'scripting', 'tabs', 'activeTab', 'debugger', 'unlimitedStorage', 'webNavigation'],
+    permissions: ['storage', 'scripting', 'tabs', 'debugger', 'unlimitedStorage', 'webNavigation'],
     options_page: 'options/index.html',
     background: {
       service_worker: 'background.iife.js',
@@ -86,20 +86,8 @@ const manifest = withOperaSidebar(
         js: ['content/index.iife.js'],
       },
     ],
-    web_accessible_resources: [
-      {
-        resources: [
-          '*.js',
-          '*.css',
-          '*.svg',
-          'icon-128.png',
-          'icon-32.png',
-          'permission/index.html',
-          'permission/permission.js',
-        ],
-        matches: ['*://*/*'],
-      },
-    ],
+    // No web_accessible_resources: the content script loads nothing from the extension and the permission
+    // page opens in its own extension window. Exposing files let any site fingerprint or frame the extension.
   }),
 );
 
