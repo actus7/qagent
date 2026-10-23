@@ -1076,6 +1076,7 @@ export default class Page {
   async evaluateScript(script: string, timeoutMs = JS_EVALUATION_TIMEOUT_MS): Promise<EvaluationOutcome> {
     const page = this._requirePuppeteerPage();
     const session = await page.createCDPSession();
+    let outcome: EvaluationOutcome;
     try {
       const evaluation = session.send('Runtime.evaluate', {
         expression: script,
@@ -1086,12 +1087,15 @@ export default class Page {
       const response = await withTimeout(evaluation, timeoutMs, () => {
         session.send('Runtime.terminateExecution').catch(() => {});
       });
-      return formatEvaluationResponse(response);
+      outcome = formatEvaluationResponse(response);
     } catch (error) {
-      return { ok: false, text: error instanceof Error ? error.message : String(error) };
+      outcome = { ok: false, text: error instanceof Error ? error.message : String(error) };
     } finally {
       await session.detach().catch(() => {});
     }
+    // A script can navigate (location.href = ...); the URL policy must still apply.
+    await this._checkAndHandleNavigation();
+    return outcome;
   }
 
   async setViewportSize(size: Size, mobile: boolean): Promise<void> {
