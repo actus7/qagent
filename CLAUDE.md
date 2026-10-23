@@ -268,7 +268,8 @@ Use Chrome i18n placeholder format with proper definitions:
 - Always use `pnpm` package manager (required for this project)
 - Node.js version: follow `.nvmrc` and `package.json` engines
 - Use `nvm use` to match `.nvmrc` before installing
-- `engine-strict=true` is enabled in `.npmrc`; non-matching engines fail install
+- pnpm 11 settings (`engineStrict`, `overrides`, `allowBuilds`, `minimumReleaseAge*`) live in `pnpm-workspace.yaml`; `.npmrc` is auth-only
+- New dependency versions must be at least 1 day old (`minimumReleaseAge`); a dependency with install scripts must be listed in `allowBuilds`
 - Turbo manages task dependencies and caching across workspaces
 - Extension builds to `dist/` directory which is loaded as unpacked extension
 - Zipped distributions are written to `dist-zip/`
