@@ -1,4 +1,88 @@
 {
+  "options_models_providers_errors_invalidBaseUrl": {
+    "message": "Enter a valid URL starting with http:// or https://."
+  },
+  "options_models_providers_errors_insecureBaseUrl": {
+    "message": "Use an https:// URL. Plain http:// is only allowed for localhost, 127.0.0.1 or [::1]."
+  },
+  "options_models_providers_errors_noModels": {
+    "message": "Add at least one model before saving."
+  },
+  "options_models_providers_errors_saveFailed": {
+    "message": "Could not save the provider. See the console for details."
+  },
+  "options_models_providers_errors_deleteFailed": {
+    "message": "Could not delete the provider. Try again."
+  },
+  "options_firewall_remove": {
+    "message": "Remove"
+  },
+  "options_general_displayHighlights_visionLocked": {
+    "message": "Always on while vision is enabled, because screenshots need the highlights."
+  },
+  "chat_input_fileUnsupported": {
+    "message": "$NAME$: use TXT, Markdown, JSON, CSV, LOG, XML or YAML.",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "notes.txt"
+      }
+    }
+  },
+  "chat_input_fileTooLarge": {
+    "message": "$NAME$: maximum size is 1 MB.",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "notes.txt"
+      }
+    }
+  },
+  "errors_noActiveTab": {
+    "message": "No active tab found"
+  },
+  "nav_theme_a11y": {
+    "message": "Theme: $THEME$",
+    "placeholders": {
+      "theme": {
+        "content": "$1",
+        "example": "dark"
+      }
+    }
+  },
+  "chat_pageContext_removeTab": {
+    "message": "Remove $TITLE$",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Example page"
+      }
+    }
+  },
+  "chat_history_deleteConfirm": {
+    "message": "Delete the conversation \"$TITLE$\"? This cannot be undone.",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Example conversation"
+      }
+    }
+  },
+  "chat_browser_statusLoading": {
+    "message": "Loading companion status..."
+  },
+  "chat_browser_statusOffline": {
+    "message": "Companion offline"
+  },
+  "chat_browser_statusAuthRequired": {
+    "message": "Companion authentication required"
+  },
+  "chat_browser_statusPairActive": {
+    "message": "Pair browsing active"
+  },
+  "chat_browser_statusConnected": {
+    "message": "Companion connected"
+  },
   "app_metadata_description": {
     "description": "Extension description",
     "message": "Chat about pages, plan and complete tasks in your browser tabs with AI and configurable providers."

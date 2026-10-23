@@ -1,4 +1,5 @@
 import { FiGlobe, FiPlus, FiX, FiCheck, FiCrosshair } from 'react-icons/fi';
+import { t } from '@extension/i18n';
 import type { WorkspaceTab } from '../hooks/useAssistantWorkspace';
 import type { assistantCopy } from '../lib/assistant-copy';
 
@@ -38,7 +39,7 @@ export default function PageContext({
                 type="button"
                 disabled={disabled}
                 onClick={() => onToggle(tab.id)}
-                aria-label={`${copy.noTabs}: ${tab.title}`}>
+                aria-label={t('chat_pageContext_removeTab', [tab.title])}>
                 <FiX />
               </button>
             </span>

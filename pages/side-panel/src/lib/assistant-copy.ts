@@ -133,6 +133,23 @@ const zh: typeof en = {
   executePlan: '執行此計畫',
   activity: '活動',
   saved: '已儲存的提示',
+  chatHint: '閱讀並回答',
+  planHint: '規劃，不執行操作',
+  actHint: '使用瀏覽器完成任務',
+  summarizePrompt: '請摘要此頁，並標出主要重點。',
+  comparePrompt: '請比較所選分頁，並以表格整理其差異。',
+  researchPrompt: '請建立逐步計畫，研究此頁面的主題。',
+  automatePrompt: '請協助我在此頁面完成以下任務：',
+  tabsHint: '只有所選網頁會與您的模型共享。最多 12 個分頁。',
+  paused: '執行已暫停',
+  stopping: '正在停止…',
+  readOnly: '正在讀取所選網頁',
+  actOnly: '僅控制所選分頁及任務新建的分頁',
+  setupTitle: '連接您偏好的模型',
+  setupBody: '新增供應商並選擇模型，即可在分頁中開始對話與工作。',
+  emptyHistory: '您的對話將顯示在這裡。',
+  continueChat: '繼續對話',
+  noActive: '請選取一個網頁以執行任務。',
 };
 
 export function assistantCopy(locale: string) {

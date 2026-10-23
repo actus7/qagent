@@ -4,7 +4,9 @@ import type { ProviderConfig } from '@extension/storage';
 import { BASE_URL_PROVIDER_TYPES } from './constants';
 import type { AvailableModel, ListField, ProviderMap } from './types';
 
-export type ProviderSaveError = 'spacesInName' | 'baseUrlRequired';
+export type ProviderSaveError = 'spacesInName' | 'baseUrlRequired' | 'invalidBaseUrl' | 'insecureBaseUrl' | 'noModels';
+
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 export function getDefaultModelNames(providerId: string): string[] {
   return llmProviderModelNames[providerId as keyof typeof llmProviderModelNames] || [];
@@ -69,6 +71,23 @@ export function requiresBaseUrl(type: ProviderTypeEnum | undefined): boolean {
   return type !== undefined && BASE_URL_PROVIDER_TYPES.includes(type);
 }
 
+/** Only http(s) is allowed; plain http is limited to local servers such as Ollama. */
+function getBaseUrlSaveError(baseUrl: string): 'invalidBaseUrl' | 'insecureBaseUrl' | null {
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    return 'invalidBaseUrl';
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    return 'invalidBaseUrl';
+  }
+  if (url.protocol === 'http:' && !LOCAL_HOSTNAMES.has(url.hostname)) {
+    return 'insecureBaseUrl';
+  }
+  return null;
+}
+
 export function getProviderSaveError(config: ProviderConfig): ProviderSaveError | null {
   if (config.type === ProviderTypeEnum.CustomOpenAI && config.name?.includes(' ')) {
     return 'spacesInName';
@@ -76,7 +95,51 @@ export function getProviderSaveError(config: ProviderConfig): ProviderSaveError 
   if (requiresBaseUrl(config.type) && !config.baseUrl?.trim()) {
     return 'baseUrlRequired';
   }
+  if (config.baseUrl?.trim()) {
+    const urlError = getBaseUrlSaveError(config.baseUrl.trim());
+    if (urlError) {
+      return urlError;
+    }
+  }
+  const hasModels =
+    config.type === ProviderTypeEnum.AzureOpenAI
+      ? Boolean(config.azureDeploymentNames?.length)
+      : Boolean(config.modelNames?.length);
+  if (!hasModels) {
+    return 'noModels';
+  }
   return null;
+}
+
+export function getProviderSaveErrorMessage(error: ProviderSaveError, providerId: string): string {
+  switch (error) {
+    case 'spacesInName':
+      return t('options_models_providers_errors_spacesNotAllowed');
+    case 'baseUrlRequired':
+      return t('options_models_providers_errors_baseUrlRequired', getDefaultDisplayNameFromProviderId(providerId));
+    case 'invalidBaseUrl':
+      return t('options_models_providers_errors_invalidBaseUrl');
+    case 'insecureBaseUrl':
+      return t('options_models_providers_errors_insecureBaseUrl');
+    case 'noModels':
+      return t('options_models_providers_errors_noModels');
+  }
+}
+
+/** Appends a tag-input value that was typed but not committed (Enter/Space), so Save never drops it. */
+export function withPendingEntry(
+  providerId: string,
+  config: ProviderConfig | undefined,
+  pendingValue: string | undefined,
+): ProviderConfig | undefined {
+  const value = pendingValue?.trim();
+  if (!config || !value) {
+    return config;
+  }
+  const isAzure = config.type === ProviderTypeEnum.AzureOpenAI;
+  const field = isAzure ? 'azureDeploymentNames' : 'modelNames';
+  const fallback = isAzure ? [] : getDefaultModelNames(providerId);
+  return addToListField({ [providerId]: config }, providerId, field, value, fallback)[providerId];
 }
 
 /** Builds the payload for llmProviderStore.setProvider. Azure never stores modelNames. */
@@ -107,10 +170,18 @@ export function getNextCustomProviderNumber(providers: ProviderMap): number {
 }
 
 export function getNextAzureProviderId(providers: ProviderMap): { providerId: string; nextNumber: number } {
-  const azureCount = Object.keys(providers).filter(
-    key => key === ProviderTypeEnum.AzureOpenAI || key.startsWith(`${ProviderTypeEnum.AzureOpenAI}_`),
-  ).length;
-  const nextNumber = azureCount + 1;
+  let maxNumber = 0;
+  for (const providerId of Object.keys(providers)) {
+    if (providerId === ProviderTypeEnum.AzureOpenAI) {
+      maxNumber = Math.max(maxNumber, 1);
+    } else if (providerId.startsWith(`${ProviderTypeEnum.AzureOpenAI}_`)) {
+      const match = providerId.match(/_(\d+)$/);
+      if (match) {
+        maxNumber = Math.max(maxNumber, Number.parseInt(match[1], 10));
+      }
+    }
+  }
+  const nextNumber = maxNumber + 1;
   const providerId = nextNumber === 1 ? ProviderTypeEnum.AzureOpenAI : `${ProviderTypeEnum.AzureOpenAI}_${nextNumber}`;
   return { providerId, nextNumber };
 }

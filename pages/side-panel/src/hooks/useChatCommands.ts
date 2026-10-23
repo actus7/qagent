@@ -13,6 +13,10 @@ interface UseChatCommandsArgs {
   isHistoricalSession: boolean;
 }
 
+/** Only these composer inputs are local commands; any other text starting with "/" is sent as a message. */
+export const isChatCommand = (text: string): boolean =>
+  text === '/state' || text === '/nohighlight' || text === '/replay' || text.startsWith('/replay ');
+
 /** Slash commands typed in the composer (/state, /nohighlight, /replay <id>). */
 export const useChatCommands = ({
   appendMessage,
@@ -136,7 +140,7 @@ export const useChatCommands = ({
         return true;
       }
 
-      if (command.startsWith('/replay ')) {
+      if (command === '/replay' || command.startsWith('/replay ')) {
         // Parse replay command: /replay <historySessionId>
         // Handle multiple spaces by filtering out empty strings
         const parts = command.split(' ').filter(part => part.trim() !== '');

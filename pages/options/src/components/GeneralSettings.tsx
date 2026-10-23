@@ -2,17 +2,68 @@ import { useState, useEffect } from 'react';
 import { type GeneralSettingsConfig, generalSettingsStore, DEFAULT_GENERAL_SETTINGS } from '@extension/storage';
 import { t } from '@extension/i18n';
 
+type ClampedIntegerKey = 'maxSteps' | 'maxActionsPerStep' | 'maxFailures' | 'planningInterval' | 'minWaitPageLoad';
+
+const clampInteger = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+interface ClampedIntegerInputProps {
+  id: string;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  onCommit: (value: number) => void;
+}
+
+/** Number input that edits a local draft and clamps only on blur or Enter, so the user can type freely. */
+const ClampedIntegerInput = ({ id, label, value, min, max, step, onCommit }: ClampedIntegerInputProps) => {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const parsed = Number.parseInt(draft, 10);
+    if (Number.isNaN(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+    const clamped = clampInteger(parsed, min, max);
+    setDraft(String(clamped));
+    if (clamped !== value) {
+      onCommit(clamped);
+    }
+  };
+
+  return (
+    <>
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <input
+        id={id}
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            commit();
+          }
+        }}
+        className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
+      />
+    </>
+  );
+};
+
 export const GeneralSettings = () => {
   const [settings, setSettings] = useState<GeneralSettingsConfig>(DEFAULT_GENERAL_SETTINGS);
-
-  const parseIntegerInput = (rawValue: string): number | null => {
-    const parsed = Number.parseInt(rawValue, 10);
-    return Number.isNaN(parsed) ? null : parsed;
-  };
-
-  const clampInteger = (value: number, min: number, max: number): number => {
-    return Math.min(max, Math.max(min, value));
-  };
 
   useEffect(() => {
     let active = true;
@@ -60,105 +111,55 @@ export const GeneralSettings = () => {
     }
   };
 
-  const updateClampedIntegerSetting = async <
-    K extends 'maxSteps' | 'maxActionsPerStep' | 'maxFailures' | 'planningInterval' | 'minWaitPageLoad',
-  >(
-    key: K,
-    rawValue: string,
-    min: number,
-    max: number,
-  ) => {
-    const parsed = parseIntegerInput(rawValue);
-    if (parsed === null) return;
-    await updateSetting(key, clampInteger(parsed, min, max) as GeneralSettingsConfig[K]);
-  };
+  const clampedIntegerInput = (key: ClampedIntegerKey, label: string, min: number, max: number, step?: number) => (
+    <ClampedIntegerInput
+      id={key}
+      label={label}
+      value={settings[key]}
+      min={min}
+      max={max}
+      step={step}
+      onCommit={value => void updateSetting(key, value as GeneralSettingsConfig[ClampedIntegerKey])}
+    />
+  );
+
+  // The store forces displayHighlights on while vision is enabled, so the toggle is locked in that case
+  const isHighlightsLocked = settings.useVision;
 
   return (
     <section className="space-y-6">
-      <div
-        className={`rounded-lg border border-border bg-card p-6 text-left shadow-xs`}>
-        <h2 className={`mb-4 text-left text-xl font-semibold text-foreground`}>
-          {t('options_general_header')}
-        </h2>
+      <div className={`rounded-lg border border-border bg-card p-6 text-left shadow-xs`}>
+        <h2 className={`mb-4 text-left text-xl font-semibold text-foreground`}>{t('options_general_header')}</h2>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium text-foreground`}>
-                {t('options_general_maxSteps')}
-              </h3>
-              <p className={`text-sm font-normal text-muted-foreground`}>
-                {t('options_general_maxSteps_desc')}
-              </p>
+              <h3 className={`text-base font-medium text-foreground`}>{t('options_general_maxSteps')}</h3>
+              <p className={`text-sm font-normal text-muted-foreground`}>{t('options_general_maxSteps_desc')}</p>
             </div>
-            <label htmlFor="maxSteps" className="sr-only">
-              {t('options_general_maxSteps')}
-            </label>
-            <input
-              id="maxSteps"
-              type="number"
-              min={1}
-              max={100}
-              value={settings.maxSteps}
-              onChange={e => void updateClampedIntegerSetting('maxSteps', e.target.value, 1, 100)}
-              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
-            />
+            {clampedIntegerInput('maxSteps', t('options_general_maxSteps'), 1, 100)}
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium text-foreground`}>
-                {t('options_general_maxActions')}
-              </h3>
-              <p className={`text-sm font-normal text-muted-foreground`}>
-                {t('options_general_maxActions_desc')}
-              </p>
+              <h3 className={`text-base font-medium text-foreground`}>{t('options_general_maxActions')}</h3>
+              <p className={`text-sm font-normal text-muted-foreground`}>{t('options_general_maxActions_desc')}</p>
             </div>
-            <label htmlFor="maxActionsPerStep" className="sr-only">
-              {t('options_general_maxActions')}
-            </label>
-            <input
-              id="maxActionsPerStep"
-              type="number"
-              min={1}
-              max={50}
-              value={settings.maxActionsPerStep}
-              onChange={e => void updateClampedIntegerSetting('maxActionsPerStep', e.target.value, 1, 50)}
-              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
-            />
+            {clampedIntegerInput('maxActionsPerStep', t('options_general_maxActions'), 1, 50)}
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium text-foreground`}>
-                {t('options_general_maxFailures')}
-              </h3>
-              <p className={`text-sm font-normal text-muted-foreground`}>
-                {t('options_general_maxFailures_desc')}
-              </p>
+              <h3 className={`text-base font-medium text-foreground`}>{t('options_general_maxFailures')}</h3>
+              <p className={`text-sm font-normal text-muted-foreground`}>{t('options_general_maxFailures_desc')}</p>
             </div>
-            <label htmlFor="maxFailures" className="sr-only">
-              {t('options_general_maxFailures')}
-            </label>
-            <input
-              id="maxFailures"
-              type="number"
-              min={1}
-              max={10}
-              value={settings.maxFailures}
-              onChange={e => void updateClampedIntegerSetting('maxFailures', e.target.value, 1, 10)}
-              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
-            />
+            {clampedIntegerInput('maxFailures', t('options_general_maxFailures'), 1, 10)}
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium text-foreground`}>
-                {t('options_general_enableVision')}
-              </h3>
-              <p className={`text-sm font-normal text-muted-foreground`}>
-                {t('options_general_enableVision_desc')}
-              </p>
+              <h3 className={`text-base font-medium text-foreground`}>{t('options_general_enableVision')}</h3>
+              <p className={`text-sm font-normal text-muted-foreground`}>{t('options_general_enableVision_desc')}</p>
             </div>
             <div className="relative inline-flex cursor-pointer items-center">
               <input
@@ -178,11 +179,11 @@ export const GeneralSettings = () => {
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium text-foreground`}>
-                {t('options_general_displayHighlights')}
-              </h3>
+              <h3 className={`text-base font-medium text-foreground`}>{t('options_general_displayHighlights')}</h3>
               <p className={`text-sm font-normal text-muted-foreground`}>
-                {t('options_general_displayHighlights_desc')}
+                {isHighlightsLocked
+                  ? t('options_general_displayHighlights_visionLocked')
+                  : t('options_general_displayHighlights_desc')}
               </p>
             </div>
             <div className="relative inline-flex cursor-pointer items-center">
@@ -190,12 +191,13 @@ export const GeneralSettings = () => {
                 id="displayHighlights"
                 type="checkbox"
                 checked={settings.displayHighlights}
+                disabled={isHighlightsLocked}
                 onChange={e => updateSetting('displayHighlights', e.target.checked)}
                 className="peer sr-only"
               />
               <label
                 htmlFor="displayHighlights"
-                className={`peer h-6 w-11 rounded-full bg-input peer-checked:bg-primary peer-focus:ring-4 peer-focus:ring-ring peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-card`}>
+                className={`peer h-6 w-11 rounded-full bg-input peer-checked:bg-primary peer-focus:ring-4 peer-focus:ring-ring peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-card ${isHighlightsLocked ? 'cursor-not-allowed opacity-60' : ''}`}>
                 <span className="sr-only">{t('options_general_displayHighlights')}</span>
               </label>
             </div>
@@ -203,58 +205,27 @@ export const GeneralSettings = () => {
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium text-foreground`}>
-                {t('options_general_planningInterval')}
-              </h3>
+              <h3 className={`text-base font-medium text-foreground`}>{t('options_general_planningInterval')}</h3>
               <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_planningInterval_desc')}
               </p>
             </div>
-            <label htmlFor="planningInterval" className="sr-only">
-              {t('options_general_planningInterval')}
-            </label>
-            <input
-              id="planningInterval"
-              type="number"
-              min={1}
-              max={20}
-              value={settings.planningInterval}
-              onChange={e => void updateClampedIntegerSetting('planningInterval', e.target.value, 1, 20)}
-              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
-            />
+            {clampedIntegerInput('planningInterval', t('options_general_planningInterval'), 1, 20)}
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium text-foreground`}>
-                {t('options_general_minWaitPageLoad')}
-              </h3>
-              <p className={`text-sm font-normal text-muted-foreground`}>
-                {t('options_general_minWaitPageLoad_desc')}
-              </p>
+              <h3 className={`text-base font-medium text-foreground`}>{t('options_general_minWaitPageLoad')}</h3>
+              <p className={`text-sm font-normal text-muted-foreground`}>{t('options_general_minWaitPageLoad_desc')}</p>
             </div>
             <div className="flex items-center space-x-2">
-              <label htmlFor="minWaitPageLoad" className="sr-only">
-                {t('options_general_minWaitPageLoad')}
-              </label>
-            <input
-              id="minWaitPageLoad"
-              type="number"
-              min={250}
-              max={5000}
-              step={50}
-              value={settings.minWaitPageLoad}
-              onChange={e => void updateClampedIntegerSetting('minWaitPageLoad', e.target.value, 250, 5000)}
-              className={`w-20 rounded-md border border-input bg-card px-3 py-2 text-foreground`}
-            />
+              {clampedIntegerInput('minWaitPageLoad', t('options_general_minWaitPageLoad'), 250, 5000, 50)}
             </div>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-base font-medium text-foreground`}>
-                {t('options_general_replayHistoricalTasks')}
-              </h3>
+              <h3 className={`text-base font-medium text-foreground`}>{t('options_general_replayHistoricalTasks')}</h3>
               <p className={`text-sm font-normal text-muted-foreground`}>
                 {t('options_general_replayHistoricalTasks_desc')}
               </p>
@@ -274,7 +245,6 @@ export const GeneralSettings = () => {
               </label>
             </div>
           </div>
-
         </div>
       </div>
     </section>

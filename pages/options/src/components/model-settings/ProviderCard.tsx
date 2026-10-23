@@ -19,6 +19,7 @@ export function ProviderCard({ providerId, config, showDivider, settings }: Prov
   const isModified = modifiedProviders.has(providerId);
   const isNewProvider = isModified && !isInStorage;
   const actionState = getProviderActionState(config, isInStorage, isModified);
+  const saveError = settings.saveErrors[providerId];
 
   return (
     <div
@@ -27,8 +28,8 @@ export function ProviderCard({ providerId, config, showDivider, settings }: Prov
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-foreground">{config.name || providerId}</h3>
         <div className="flex space-x-2">
-          {isNewProvider && (
-            <Button variant="secondary" onClick={() => settings.handleCancelProvider(providerId)}>
+          {isModified && (
+            <Button variant="secondary" onClick={() => void settings.handleCancelProvider(providerId)}>
               {t('options_models_providers_btnCancel')}
             </Button>
           )}
@@ -42,6 +43,12 @@ export function ProviderCard({ providerId, config, showDivider, settings }: Prov
           </Button>
         </div>
       </div>
+
+      {saveError && (
+        <p role="alert" className="text-sm text-destructive">
+          {saveError}
+        </p>
+      )}
 
       {isNewProvider && (
         <div className="mb-2 text-sm text-primary">

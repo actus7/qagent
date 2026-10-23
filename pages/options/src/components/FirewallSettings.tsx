@@ -189,7 +189,7 @@ export const FirewallSettings = () => {
                     <Button
                       onClick={() => handleRemoveUrl(url, 'deny')}
                       className={`rounded-l-none bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:opacity-90`}>
-                      Remove
+                      {t('options_firewall_remove')}
                     </Button>
                   </li>
                 ))}
