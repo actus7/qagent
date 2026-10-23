@@ -98,6 +98,7 @@ export default class Page {
             'Isso também pode ocorrer no Comet sem políticas administrativas configuradas. ' +
             'Use Conversar/Planejar ou execute a tarefa no Chrome/Chromium. ' +
             `Detalhe: ${error.message}`,
+          { cause: error },
         );
       }
       throw error;
@@ -262,7 +263,7 @@ export default class Page {
         if (pages.length > 0) {
           this._puppeteerPage = pages[0];
         } else {
-          throw new Error('Browser closed: no valid pages available');
+          throw new Error('Browser closed: no valid pages available', { cause: error });
         }
       }
     }
@@ -618,7 +619,9 @@ export default class Page {
       logger.info('sendKeys complete', keys);
     } catch (error) {
       logger.error('Failed to send keys:', error);
-      throw new Error(`Failed to send keys: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to send keys: ${error instanceof Error ? error.message : String(error)}`, {
+        cause: error,
+      });
     } finally {
       // Release all modifier keys in reverse order regardless of any errors in key press.
       for (const modifier of [...modifiers].reverse()) {
@@ -657,7 +660,9 @@ export default class Page {
       }
       return await readSelectOptions(elementHandle);
     } catch (error) {
-      throw new Error(`Failed to get dropdown options: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to get dropdown options: ${error instanceof Error ? error.message : String(error)}`, {
+        cause: error,
+      });
     }
   }
 
@@ -689,7 +694,7 @@ export default class Page {
     } catch (error) {
       const errorMessage = `${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMessage);
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: error });
     }
   }
 
@@ -721,7 +726,7 @@ export default class Page {
     } catch (error) {
       const errorMsg = `Failed to input text into element: ${elementNode}. Error: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
-      throw new Error(errorMsg);
+      throw new Error(errorMsg, { cause: error });
     }
   }
 
@@ -756,6 +761,7 @@ export default class Page {
     } catch (error) {
       throw new Error(
         `Failed to click element: ${elementNode}. Error: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }

@@ -160,7 +160,9 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
             return parsed;
           }
         }
-        throw new Error(`Failed to invoke ${this.modelName} with structured output: \n${errorMessage}`);
+        throw new Error(`Failed to invoke ${this.modelName} with structured output: \n${errorMessage}`, {
+          cause: error,
+        });
       }
 
       // Use type assertion to access the properties
@@ -409,7 +411,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
    * @returns
    */
   private fixActions(response: this['ModelOutput']): Record<string, unknown>[] {
-    let actions: Record<string, unknown>[] = [];
+    let actions: Record<string, unknown>[];
     if (Array.isArray(response.action)) {
       // if the item is null, skip it
       actions = response.action.filter((item: unknown) => item !== null);
@@ -523,7 +525,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMessage);
         errCount++;
         if (errCount > 3) {
-          throw new Error('Too many errors in actions');
+          throw new Error('Too many errors in actions', { cause: error });
         }
         results.push(
           new ActionResult({
@@ -553,7 +555,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
     try {
       parsedOutput = JSON.parse(historyItem.modelOutput) as ParsedModelOutput;
     } catch (error) {
-      throw new Error(`Could not parse modelOutput: ${error}`);
+      throw new Error(`Could not parse modelOutput: ${error}`, { cause: error });
     }
 
     const goal = parsedOutput?.current_state?.next_goal || '';
@@ -691,7 +693,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
           );
 
           if (!skipFailures) {
-            throw new Error(failMsg);
+            throw new Error(failMsg, { cause: error });
           }
         } else {
           replayLogger.warning(`Step ${stepIndex + 1} failed (attempt ${retryCount}/${maxRetries}), retrying...`);

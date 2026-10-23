@@ -321,8 +321,8 @@ function _locateMatchingIframeNode(
     const frameName = iframeNode.attributes['name'];
     const frameUrl = iframeNode.attributes['src'];
     const frameTitle = iframeNode.attributes['title'];
-    let heightMatch = false;
-    let widthMatch = false;
+    let heightMatch: boolean;
+    let widthMatch: boolean;
     const nameMatch = !frameName || !frameInfo.name || frameInfo.name === frameName;
     let urlMatch;
     let titleMatch;

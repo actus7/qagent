@@ -125,7 +125,7 @@ export function useAssistantWorkspace(frozen = false) {
     selectedTabs: tabs.filter(tab => selectedIds.includes(tab.id)),
     toggleTab,
     followActive,
-    useActiveTab: () => setFollowActive(true),
+    followActiveTab: () => setFollowActive(true),
     error,
   };
 }

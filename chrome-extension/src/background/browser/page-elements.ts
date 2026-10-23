@@ -81,7 +81,7 @@ export async function scrollToTextOnPage(page: PuppeteerPage, text: string, nth:
     }
     return false;
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : String(error));
+    throw new Error(error instanceof Error ? error.message : String(error), { cause: error });
   }
 }
 
@@ -296,7 +296,9 @@ export async function clickWithFallback(
       if (secondError instanceof URLNotAllowedError) {
         throw secondError;
       }
-      throw new Error(`${errorPrefix}: ${secondError instanceof Error ? secondError.message : String(secondError)}`);
+      throw new Error(`${errorPrefix}: ${secondError instanceof Error ? secondError.message : String(secondError)}`, {
+        cause: secondError,
+      });
     }
   }
 }

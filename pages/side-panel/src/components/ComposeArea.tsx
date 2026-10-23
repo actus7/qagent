@@ -46,7 +46,7 @@ export default function ComposeArea({
         tabs={workspace.tabs}
         selectedTabs={workspace.selectedTabs}
         onToggle={workspace.toggleTab}
-        onUseActive={workspace.useActiveTab}
+        onUseActive={workspace.followActiveTab}
         followActive={workspace.followActive}
         disabled={showStopButton}
         copy={copy}

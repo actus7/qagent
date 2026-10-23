@@ -70,7 +70,9 @@ export class SpeechToTextService {
       return transcribedText;
     } catch (error) {
       logger.error('Failed to transcribe audio:', error);
-      throw new Error(`Speech transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Speech transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+        cause: error,
+      });
     }
   }
 }

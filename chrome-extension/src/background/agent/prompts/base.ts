@@ -30,7 +30,7 @@ abstract class BasePrompt {
     const browserState = await context.browserContext.getState(context.options.useVision);
     const rawElementsText = browserState.elementTree.clickableElementsToString(context.options.includeAttributes);
 
-    let formattedElementsText = '';
+    let formattedElementsText: string;
     if (rawElementsText !== '') {
       const scrollInfo = `[Scroll info of current page] window.scrollY: ${browserState.scrollY}, document.body.scrollHeight: ${browserState.scrollHeight}, window.visualViewport.height: ${browserState.visualViewportHeight}, visual viewport height as percentage of scrollable distance: ${Math.round((browserState.visualViewportHeight / (browserState.scrollHeight - browserState.visualViewportHeight)) * 100)}%\n`;
       logger.info(scrollInfo);

@@ -69,8 +69,7 @@ export async function acquireRateLimitSlot(args: AcquireRateLimitSlotArgs): Prom
 
   const bucket = getBucket(key);
   const task = bucket.tail.then(async () => {
-    let hasSlot = false;
-    while (!hasSlot) {
+    for (;;) {
       if (args.signal?.aborted) {
         throw args.signal.reason ?? new DOMException('Aborted', 'AbortError');
       }
@@ -80,7 +79,6 @@ export async function acquireRateLimitSlot(args: AcquireRateLimitSlotArgs): Prom
 
       if (bucket.timestamps.length < normalizedLimit) {
         bucket.timestamps.push(now);
-        hasSlot = true;
         return;
       }
 
