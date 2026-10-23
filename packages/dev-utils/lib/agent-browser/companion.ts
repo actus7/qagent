@@ -117,7 +117,12 @@ function domainMatches(urlHostname: string, rule: string): boolean {
 function isUrlAllowed(url: string, allowList: string[], denyList: string[]): boolean {
   let hostname: string;
   try {
-    hostname = new URL(url).hostname;
+    const parsed = new URL(url);
+    // Only web pages: file:, data:, javascript:, chrome: etc. would expose the local machine.
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false;
+    }
+    hostname = parsed.hostname.replace(/\.+$/, '');
   } catch {
     return false;
   }
@@ -247,6 +252,9 @@ export class AgentBrowserCompanionServer {
     this.wss = new WebSocketServer({
       host: this.host,
       port: this.port,
+      // Any web page can open ws://127.0.0.1 (no CORS for websockets) and browsers always send Origin.
+      // Accept only the extension, or non-browser local clients (no Origin header).
+      verifyClient: ({ origin }: { origin?: string }) => !origin || origin.startsWith('chrome-extension://'),
     });
 
     this.wss.on('connection', ws => {
@@ -433,7 +441,7 @@ export class AgentBrowserCompanionServer {
       return;
     }
 
-    if (normalizedInput.action === 'open' && normalizedInput.url) {
+    if ((normalizedInput.action === 'open' || normalizedInput.action === 'tab_new') && normalizedInput.url) {
       if (!isUrlAllowed(normalizedInput.url, this.allowedUrls, this.deniedUrls)) {
         sendJson(ws, {
           type: 'rpc_response',
