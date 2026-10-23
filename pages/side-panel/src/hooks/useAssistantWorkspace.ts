@@ -113,9 +113,16 @@ export function useAssistantWorkspace(frozen = false) {
     );
   }, []);
 
+  // Context-menu prefills scope the task to the tab the user clicked in
+  const selectOnlyTab = useCallback((id: number) => {
+    setFollowActive(false);
+    setSelectedIds([id]);
+  }, []);
+
   return {
     mode,
     setMode,
+    selectOnlyTab,
     permissionMode,
     setPermissionMode,
     modelAgent,

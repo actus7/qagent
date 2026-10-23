@@ -1194,6 +1194,24 @@
   "bg_task_busy": {
     "message": "Aguarde a tarefa atual terminar ou interrompa a execução."
   },
+  "bg_errors_debuggerConflict": {
+    "message": "Outra extensão ou o DevTools está controlando esta aba. Feche o DevTools ou desative a outra extensão e tente novamente."
+  },
+  "bg_contextMenu_askTitle": {
+    "message": "Perguntar ao QAgent sobre isto"
+  },
+  "chat_context_selection": {
+    "message": "Seleção"
+  },
+  "chat_context_page": {
+    "message": "Página"
+  },
+  "chat_context_link": {
+    "message": "Link"
+  },
+  "chat_context_image": {
+    "message": "Imagem"
+  },
   "bg_errors_modelAuth": {
     "message": "O provedor do modelo recusou a chave de API. Verifique a chave em Configurações → Modelos."
   },

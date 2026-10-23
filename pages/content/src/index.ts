@@ -1,4 +1,7 @@
 import overlayStyles from './overlay.css?inline';
+import { glideDurationMs, glideFrame, type AgentPoint } from '@extension/shared/lib/utils/agent-motion';
+
+type OverlayMode = 'running' | 'paused' | 'approval';
 
 interface OverlayMessage {
   type:
@@ -6,15 +9,32 @@ interface OverlayMessage {
     | 'qagent:overlay:hide'
     | 'qagent:overlay:status'
     | 'qagent:overlay:ripple'
-    | 'qagent:overlay:state';
+    | 'qagent:overlay:state'
+    | 'qagent:overlay:pointer'
+    | 'qagent:overlay:mode';
   text?: string;
   x?: number;
   y?: number;
+  mode?: OverlayMode;
 }
+
+// Pointer tip sits at the top-left of the arrow glyph (see the SVG in createOverlay).
+const CURSOR_TIP_X = 4;
+const CURSOR_TIP_Y = 3;
+// The cursor fades out this long after its last movement, so it is only visible while the agent acts.
+const CURSOR_IDLE_HIDE_MS = 1800;
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 let shadowHost: HTMLDivElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
 let statusTextEl: HTMLSpanElement | null = null;
+let borderEl: HTMLDivElement | null = null;
+let cursorEl: HTMLDivElement | null = null;
+// Last rendered cursor point; the next glide starts here.
+let cursorPoint: AgentPoint | null = null;
+// Incremented per glide so a newer pointer message cancels the one in flight.
+let glideToken = 0;
+let cursorIdleTimer: ReturnType<typeof setTimeout> | null = null;
 
 function createOverlay(): void {
   if (shadowHost) return;
@@ -28,10 +48,18 @@ function createOverlay(): void {
   style.textContent = overlayStyles;
   shadowRoot.appendChild(style);
 
-  // Wave border
-  const border = document.createElement('div');
-  border.className = 'qagent-border';
-  shadowRoot.appendChild(border);
+  // Glow border; data-mode drives paused (frozen) and approval (amber) looks
+  borderEl = document.createElement('div');
+  borderEl.className = 'qagent-border';
+  borderEl.dataset.mode = 'running';
+  shadowRoot.appendChild(borderEl);
+
+  // Agent cursor: hidden until the first pointer message, never receives pointer events
+  cursorEl = document.createElement('div');
+  cursorEl.className = 'qagent-agent-cursor';
+  cursorEl.setAttribute('aria-hidden', 'true');
+  cursorEl.innerHTML = `<svg viewBox="0 0 24 24"><path d="M4 3v16l4.6-4.2 3 6.2 2.6-1.3-3-6.1H17z"/></svg>`;
+  shadowRoot.appendChild(cursorEl);
 
   // A page-wide input lock would also intercept trusted CDP mouse events sent by the agent.
   // Keep the indicator transparent to input; only the stop control receives pointer events.
@@ -75,6 +103,12 @@ function destroyOverlay(): void {
     shadowHost = null;
     shadowRoot = null;
     statusTextEl = null;
+    borderEl = null;
+    cursorEl = null;
+    cursorPoint = null;
+    glideToken++;
+    if (cursorIdleTimer) clearTimeout(cursorIdleTimer);
+    cursorIdleTimer = null;
   }
 }
 
@@ -82,6 +116,60 @@ function updateStatus(text: string): void {
   if (statusTextEl) {
     statusTextEl.textContent = text;
   }
+}
+
+function updateMode(mode: OverlayMode): void {
+  if (borderEl) {
+    borderEl.dataset.mode = mode;
+  }
+}
+
+function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+  } catch {
+    return false;
+  }
+}
+
+function placeCursor(point: AgentPoint): void {
+  if (!cursorEl) return;
+  cursorEl.style.transform = `translate3d(${point.x - CURSOR_TIP_X}px, ${point.y - CURSOR_TIP_Y}px, 0)`;
+  cursorEl.classList.add('is-visible');
+  cursorPoint = point;
+}
+
+function scheduleCursorHide(): void {
+  if (cursorIdleTimer) clearTimeout(cursorIdleTimer);
+  cursorIdleTimer = setTimeout(() => {
+    cursorEl?.classList.remove('is-visible');
+    cursorIdleTimer = null;
+  }, CURSOR_IDLE_HIDE_MS);
+}
+
+/** Glides the cursor along the curved path; `onArrive` runs once it is on the target. Reduced motion jumps. */
+function moveCursorTo(target: AgentPoint, onArrive: () => void): void {
+  const token = ++glideToken;
+  const from = cursorPoint;
+  if (!from || prefersReducedMotion()) {
+    placeCursor(target);
+    onArrive();
+    return;
+  }
+
+  const durationMs = glideDurationMs(from, target);
+  const startedAt = performance.now();
+  const step = (now: number): void => {
+    if (token !== glideToken) return;
+    const { point, done } = glideFrame(from, target, now - startedAt, durationMs);
+    placeCursor(point);
+    if (done) {
+      onArrive();
+      return;
+    }
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 function createRipple(x: number, y: number): void {
@@ -111,6 +199,7 @@ function createRipple(x: number, y: number): void {
 interface OverlayStateResponse {
   active?: boolean;
   statusText?: string | null;
+  mode?: OverlayMode;
 }
 
 async function syncOverlayStateFromBackground(): Promise<void> {
@@ -127,6 +216,9 @@ async function syncOverlayStateFromBackground(): Promise<void> {
     createOverlay();
     if (response.statusText) {
       updateStatus(response.statusText);
+    }
+    if (response.mode) {
+      updateMode(response.mode);
     }
   } catch {
     // Background may be unavailable momentarily while service worker spins up.
@@ -152,6 +244,23 @@ chrome.runtime.onMessage.addListener((message: OverlayMessage, _sender, sendResp
         createRipple(message.x, message.y);
       }
       break;
+    case 'qagent:overlay:mode':
+      if (message.mode) {
+        updateMode(message.mode);
+      }
+      break;
+    case 'qagent:overlay:pointer': {
+      // The background sends this to every frame of the tab; only the top frame draws the cursor.
+      if (window.top !== window || !cursorEl) return false;
+      if (message.x === undefined || message.y === undefined) return false;
+      if (cursorIdleTimer) clearTimeout(cursorIdleTimer);
+      moveCursorTo({ x: message.x, y: message.y }, () => {
+        scheduleCursorHide();
+        sendResponse({ ok: true });
+      });
+      // Reply after the glide finishes, so the action starts once the cursor has arrived.
+      return true;
+    }
   }
   sendResponse({ ok: true });
   return false;

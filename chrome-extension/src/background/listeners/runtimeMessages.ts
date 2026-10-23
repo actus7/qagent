@@ -31,7 +31,7 @@ export function registerRuntimeMessageListener(): void {
     // Content script asks the background for the current overlay state.
     if (message?.type === 'qagent:overlay:state') {
       const tabId = sender.tab?.id;
-      const { currentExecutor, overlayStatusText, overlayVisible } = runtimeStore.getState();
+      const { currentExecutor, overlayStatusText, overlayVisible, overlayMode } = runtimeStore.getState();
       const shouldShowOverlay = Boolean(
         tabId && overlayVisible && currentExecutor && browserContext.currentTabId === tabId,
       );
@@ -39,6 +39,7 @@ export function registerRuntimeMessageListener(): void {
       sendResponse({
         active: shouldShowOverlay,
         statusText: shouldShowOverlay ? overlayStatusText : null,
+        mode: overlayMode,
       });
       return false;
     }

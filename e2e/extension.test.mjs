@@ -194,6 +194,9 @@ describe('extension e2e', { timeout: 180_000 }, () => {
     const seen = await events;
     assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
     assert.equal(await target.locator('#status').textContent(), 'clicked');
+    // The task's tab stays in a tab group after the task ends (the group is kept, only marked done)
+    const groupId = await panel.evaluate(id => chrome.tabs.get(id).then(tab => tab.groupId), tabId);
+    assert.notEqual(groupId, -1, 'task tab was not put in a tab group');
     assert.deepEqual(pageErrors, []);
   });
 

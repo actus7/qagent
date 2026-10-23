@@ -315,6 +315,9 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         throw new RequestCancelledError(errorMessage);
       } else if (isExtensionConflictError(error)) {
         throw new ExtensionConflictError(EXTENSION_CONFLICT_ERROR_MESSAGE, error);
+      } else if (error instanceof ExtensionConflictError) {
+        // Already localized (for example a debugger conflict raised while attaching the tab)
+        throw error;
       } else if (isForbiddenError(error)) {
         throw new ChatModelForbiddenError(LLM_FORBIDDEN_ERROR_MESSAGE, error);
       } else if (error instanceof URLNotAllowedError) {

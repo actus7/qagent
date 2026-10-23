@@ -1,4 +1,4 @@
-/* QAgent Overlay — injected into Shadow DOM */
+/* QAgent overlay, injected into Shadow DOM */
 
 :host {
   all: initial;
@@ -12,6 +12,7 @@
   --qa-primary: #de916d;
   --qa-primary-strong: #bd5836;
   --qa-primary-soft: rgba(222, 145, 109, 0.35);
+  --qa-approval: #e7b84f;
   --qa-surface: rgba(36, 35, 33, 0.92);
   --qa-foreground: #e9e7e0;
   --qa-border: #403e38;
@@ -19,113 +20,84 @@
   --qa-destructive-soft: rgba(229, 115, 107, 0.16);
 }
 
-/* ── Wave Border ── */
+/* ── Glow border ──
+   A soft inner glow around the viewport. The glow lives on a pseudo-element and only its opacity animates,
+   which stays on the compositor. data-mode: running (default), paused (frozen), approval (amber, faster). */
 .qagent-border {
+  --glow: rgba(222, 145, 109, 0.55);
   position: fixed;
   inset: 0;
   pointer-events: none;
-  border: 3px solid transparent;
-  border-image: linear-gradient(
-      var(--wave-angle, 0deg),
-      var(--qa-primary-strong),
-      var(--qa-primary),
-      #f0c3a8,
-      var(--qa-primary),
-      var(--qa-primary-strong)
-    )
-    1;
-  animation:
-    wave-rotate 3s linear infinite,
-    border-pulse 2s ease-in-out infinite;
-  opacity: 0.85;
 }
 
-@keyframes wave-rotate {
-  0% {
-    --wave-angle: 0deg;
-  }
-
-  100% {
-    --wave-angle: 360deg;
-  }
+.qagent-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow:
+    inset 0 0 0 1px var(--glow),
+    inset 0 0 32px 4px var(--glow),
+    inset 0 0 90px 10px rgba(222, 145, 109, 0.22);
+  opacity: 0.8;
+  animation: glow-breathe 3.2s ease-in-out infinite;
 }
 
-/* Fallback for browsers that don't support @property */
-@supports not (animation-timeline: auto) {
-  @keyframes wave-rotate {
-    0% {
-      border-image: linear-gradient(
-          0deg,
-          var(--qa-primary-strong),
-          var(--qa-primary),
-          #f0c3a8,
-          var(--qa-primary),
-          var(--qa-primary-strong)
-        )
-        1;
-    }
-
-    25% {
-      border-image: linear-gradient(
-          90deg,
-          var(--qa-primary-strong),
-          var(--qa-primary),
-          #f0c3a8,
-          var(--qa-primary),
-          var(--qa-primary-strong)
-        )
-        1;
-    }
-
-    50% {
-      border-image: linear-gradient(
-          180deg,
-          var(--qa-primary-strong),
-          var(--qa-primary),
-          #f0c3a8,
-          var(--qa-primary),
-          var(--qa-primary-strong)
-        )
-        1;
-    }
-
-    75% {
-      border-image: linear-gradient(
-          270deg,
-          var(--qa-primary-strong),
-          var(--qa-primary),
-          #f0c3a8,
-          var(--qa-primary),
-          var(--qa-primary-strong)
-        )
-        1;
-    }
-
-    100% {
-      border-image: linear-gradient(
-          360deg,
-          var(--qa-primary-strong),
-          var(--qa-primary),
-          #f0c3a8,
-          var(--qa-primary),
-          var(--qa-primary-strong)
-        )
-        1;
-    }
-  }
+.qagent-border[data-mode='paused']::before {
+  animation-play-state: paused;
 }
 
-@keyframes border-pulse {
+.qagent-border[data-mode='approval'] {
+  --glow: rgba(231, 184, 79, 0.75);
+}
+
+.qagent-border[data-mode='approval']::before {
+  box-shadow:
+    inset 0 0 0 2px var(--glow),
+    inset 0 0 36px 6px var(--glow),
+    inset 0 0 100px 12px rgba(231, 184, 79, 0.25);
+  animation-duration: 1.4s;
+}
+
+@keyframes glow-breathe {
   0%,
   100% {
-    opacity: 0.6;
-    border-width: 3px;
+    opacity: 0.5;
   }
 
   50% {
     opacity: 1;
-    border-width: 4px;
   }
+}
+
+/* ── Agent cursor ──
+   A phantom pointer that glides to each target (see content index.ts). Hidden until the first move,
+   faded out when idle, and never intercepts input. */
+.qagent-agent-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  transition: opacity 0.25s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.qagent-agent-cursor.is-visible {
+  opacity: 1;
+}
+
+.qagent-agent-cursor svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: var(--qa-primary);
+  stroke: #fff;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
 }
 
 /* ── Status Bar ── */
@@ -280,5 +252,22 @@
   100% {
     transform: translate(-50%, -50%) scale(5);
     opacity: 0;
+  }
+}
+
+/* ── Reduced motion: keep the state (glow, cursor) but drop the movement ── */
+@media (prefers-reduced-motion: reduce) {
+  .qagent-border::before,
+  .qagent-spinner {
+    animation: none;
+  }
+
+  .qagent-agent-cursor {
+    transition: none;
+  }
+
+  .qagent-ripple,
+  .qagent-ripple-ring {
+    animation-duration: 0.01ms;
   }
 }

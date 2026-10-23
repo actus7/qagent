@@ -1,4 +1,5 @@
 import { createLogger } from '../log';
+import { runtimeStore } from '../state/runtimeStore';
 
 const logger = createLogger('background');
 const OVERLAY_RECEIVER_MISSING_ERROR = 'Could not establish connection. Receiving end does not exist.';
@@ -63,6 +64,39 @@ async function injectOverlayReceiver(tabId: number): Promise<boolean> {
   } finally {
     overlayInjectionInFlight.delete(tabId);
   }
+}
+
+// Longest the action waits for the cursor to reach its target. The glide itself takes 300-450 ms.
+export const AGENT_POINTER_WAIT_MS = 500;
+
+/**
+ * Glides the agent cursor to a viewport point (CSS px) before an action. Resolves once the content script
+ * reports arrival or after AGENT_POINTER_WAIT_MS; missing content scripts never reject or block the action.
+ */
+export function showAgentPointer(tabId: number | null | undefined, x: number, y: number): Promise<void> {
+  if (!tabId || !Number.isFinite(x) || !Number.isFinite(y)) return Promise.resolve();
+
+  let arrived: Promise<unknown>;
+  try {
+    arrived = chrome.tabs.sendMessage(tabId, { type: 'qagent:overlay:pointer', x, y }).catch(() => undefined);
+  } catch {
+    return Promise.resolve();
+  }
+  return new Promise<void>(resolve => {
+    const timer = setTimeout(resolve, AGENT_POINTER_WAIT_MS);
+    void arrived.finally(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
+export type OverlayMode = 'running' | 'paused' | 'approval';
+
+/** Records the mode and tells the content overlay, which restyles the glow border (paused freezes it). */
+export function applyOverlayMode(tabId: number | null, mode: OverlayMode): void {
+  runtimeStore.getState().setOverlayMode(mode);
+  sendOverlayMessage(tabId, { type: 'qagent:overlay:mode', mode });
 }
 
 // Send a message to the active tab's content script for overlay updates

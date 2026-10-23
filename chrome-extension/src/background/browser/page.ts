@@ -1,4 +1,5 @@
 import 'webextension-polyfill';
+import { t } from '@extension/i18n';
 import {
   connect,
   ExtensionTransport,
@@ -17,6 +18,9 @@ import {
 import type { DOMElementNode, DOMState } from './dom/views';
 import { type BrowserContextConfig, DEFAULT_BROWSER_CONTEXT_CONFIG, type PageState, URLNotAllowedError } from './views';
 import { createLogger } from '@src/background/log';
+import { ExtensionConflictError } from '../agent/agents/errors';
+import { showAgentPointer } from '../overlay/overlayMessaging';
+import { isDebuggerConflictError } from './debugger-conflict';
 import { ClickableElementProcessor } from './dom/clickable/service';
 import { isUrlAllowed } from './util';
 import { build_initial_state, CachedStateClickableElementsHashes, parseSelectorIndex } from './page-state';
@@ -102,6 +106,10 @@ export default class Page {
             `Detalhe: ${error.message}`,
           { cause: error },
         );
+      }
+      // Reported as an extension conflict so the executor stops the task instead of retrying it.
+      if (isDebuggerConflictError(error)) {
+        throw new ExtensionConflictError(t('bg_errors_debuggerConflict'), error);
       }
       throw error;
     }
@@ -747,6 +755,7 @@ export default class Page {
         throw new Error(`Element: ${elementNode} not found`);
       }
 
+      await this._showAgentPointer(element);
       await typeIntoElementNode(element, text);
 
       // Wait for page stability after input
@@ -770,6 +779,12 @@ export default class Page {
     return scrollIntoViewIfNeeded(element, timeout);
   }
 
+  /** Glides the agent cursor to the element's center before an action. Failures never stop the action. */
+  private async _showAgentPointer(element: ElementHandle): Promise<void> {
+    const box = await element.boundingBox().catch(() => null);
+    if (box) await showAgentPointer(this._tabId, box.x + box.width / 2, box.y + box.height / 2);
+  }
+
   async clickElementNode(useVision: boolean, elementNode: DOMElementNode): Promise<void> {
     if (!this._puppeteerPage) {
       throw new Error('Puppeteer is not connected');
@@ -785,6 +800,7 @@ export default class Page {
 
       // Scroll element into view if needed
       await this._scrollIntoViewIfNeeded(element);
+      await this._showAgentPointer(element);
       await clickWithFallback(element, () => this._checkAndHandleNavigation(), 'Failed to click element');
     } catch (error) {
       if (error instanceof URLNotAllowedError) throw error;
@@ -859,6 +875,7 @@ export default class Page {
     }
 
     await this._scrollIntoViewIfNeeded(element);
+    await this._showAgentPointer(element);
     await clickWithFallback(element, () => this._checkAndHandleNavigation(), `Failed to click selector "${selector}"`);
   }
 
@@ -881,6 +898,7 @@ export default class Page {
       throw new Error(`Element not found for selector: ${selector}`);
     }
 
+    await this._showAgentPointer(element);
     await typeIntoSelectorElement(element, selector, text, clearBeforeTyping);
 
     await this.waitForPageAndFramesLoad();
