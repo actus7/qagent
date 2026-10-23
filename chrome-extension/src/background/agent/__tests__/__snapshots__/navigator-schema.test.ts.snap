@@ -1,0 +1,853 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`navigator model contract > keeps the action prompts stable 1`] = `
+[
+  "Complete task:
+{done: {'text': {'type': 'undefined', 'required': true}, 'success': {'type': 'undefined', 'required': true}}}",
+  "Search the query in Google in the current tab, the query should be a search query like humans search in Google, concrete and not vague or super long. More the single most important items.:
+{search_google: {'intent': {'type': 'purpose of this action', 'optional': true}, 'query': {'type': 'undefined', 'required': true}}}",
+  "Navigate to URL in the current tab:
+{open: {'intent': {'type': 'purpose of this action', 'optional': true}, 'url': {'type': 'undefined', 'required': true}}}",
+  "Navigate to URL in the current tab:
+{go_to_url: {'intent': {'type': 'purpose of this action', 'optional': true}, 'url': {'type': 'undefined', 'required': true}}}",
+  "Go back to the previous page:
+{back: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Go back to the previous page:
+{go_back: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Go forward to the next page in history:
+{forward: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Reload current page:
+{reload: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Wait for x seconds default 3, do NOT use this action unless user asks to wait explicitly:
+{wait: {'intent': {'type': 'purpose of this action', 'optional': true}, 'seconds': {'type': 'amount of seconds', 'optional': true}}}",
+  "Click element by selector:
+{click: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}}}",
+  "Click element by index:
+{click_element: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the element', 'required': true}, 'xpath': {'type': 'xpath of the element', 'optional': true}}}",
+  "Clear and fill text in an input element:
+{fill: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}, 'text': {'type': 'text to fill', 'required': true}}}",
+  "Type text in an element without clearing existing content first:
+{type: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}, 'text': {'type': 'text to type', 'required': true}}}",
+  "Input text into an interactive input element:
+{input_text: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the element', 'required': true}, 'text': {'type': 'text to input', 'required': true}, 'xpath': {'type': 'xpath of the element', 'optional': true}}}",
+  "Press keyboard keys like Enter, Tab, Backspace and combinations like Control+o or Control+Shift+T:
+{press: {'intent': {'type': 'purpose of this action', 'optional': true}, 'key': {'type': 'key or shortcut to send', 'required': true}}}",
+  "Scroll the page by direction and optional pixels:
+{scroll: {'intent': {'type': 'purpose of this action', 'optional': true}, 'direction': {'type': 'scroll direction', 'required': true}, 'pixels': {'type': 'pixel amount to scroll', 'optional': true}}}",
+  "Scroll the target element into view:
+{scrollintoview: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}}}",
+  "Get element text by selector:
+{get_text: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}}}",
+  "Get current page title:
+{get_title: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Get current page URL:
+{get_url: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Get current interactive elements snapshot with refs:
+{snapshot: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Switch to tab by tab id:
+{switch_tab: {'intent': {'type': 'purpose of this action', 'optional': true}, 'tab_id': {'type': 'id of the tab to switch to', 'required': true}}}",
+  "Open URL in new tab:
+{open_tab: {'intent': {'type': 'purpose of this action', 'optional': true}, 'url': {'type': 'url to open', 'required': true}}}",
+  "Close tab by tab id:
+{close_tab: {'intent': {'type': 'purpose of this action', 'optional': true}, 'tab_id': {'type': 'id of the tab', 'required': true}}}",
+  "Cache what you have found so far from the current page for future use:
+{cache_content: {'intent': {'type': 'purpose of this action', 'optional': true}, 'content': {'type': 'content to cache', 'optional': true}}}",
+  "Scrolls to a particular vertical percentage of the document or an element. If no index of element is specified, scroll the whole document.:
+{scroll_to_percent: {'intent': {'type': 'purpose of this action', 'optional': true}, 'yPercent': {'type': 'percentage to scroll to - min 0, max 100; 0 is top, 100 is bottom', 'required': true}, 'index': {'type': 'index of the element', 'optional': true}}}",
+  "Scroll the document in the window or an element to the top:
+{scroll_to_top: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the element', 'optional': true}}}",
+  "Scroll the document in the window or an element to the bottom:
+{scroll_to_bottom: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the element', 'optional': true}}}",
+  "Scroll the document in the window or an element to the previous page. If no index is specified, scroll the whole document.:
+{previous_page: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the element', 'optional': true}}}",
+  "Scroll the document in the window or an element to the next page. If no index is specified, scroll the whole document.:
+{next_page: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the element', 'optional': true}}}",
+  "If you dont find something which you want to interact with in current viewport, try to scroll to it:
+{scroll_to_text: {'intent': {'type': 'purpose of this action', 'optional': true}, 'text': {'type': 'text to scroll to', 'required': true}, 'nth': {'type': 'which occurrence of the text to scroll to (1-indexed, default: 1)', 'optional': true}}}",
+  "Send strings of special keys like Backspace, Insert, PageDown, Delete, Enter. Shortcuts such as \`Control+o\`, \`Control+Shift+T\` are supported as well. This gets used in keyboard press. Be aware of different operating systems and their shortcuts:
+{send_keys: {'intent': {'type': 'purpose of this action', 'optional': true}, 'keys': {'type': 'keys to send', 'required': true}}}",
+  "Get all options from a native dropdown:
+{get_dropdown_options: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the dropdown element', 'required': true}}}",
+  "Select dropdown option for interactive element index by the text of the option you want to select:
+{select_dropdown_option: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the dropdown element', 'required': true}, 'text': {'type': 'text of the option', 'required': true}}}",
+]
+`;
+
+exports[`navigator model contract > keeps the structured-output JSON schema stable 1`] = `
+{
+  "properties": {
+    "action": {
+      "items": {
+        "properties": {
+          "back": {
+            "description": "Go back to the previous page",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Back",
+            "type": "object",
+          },
+          "cache_content": {
+            "description": "Cache what you have found so far from the current page for future use",
+            "nullable": true,
+            "properties": {
+              "content": {
+                "default": "",
+                "description": "content to cache",
+                "title": "Content",
+                "type": "string",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Cache Content",
+            "type": "object",
+          },
+          "click": {
+            "description": "Click element by selector",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "selector": {
+                "description": "selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.",
+                "title": "Selector",
+                "type": "string",
+              },
+            },
+            "required": [
+              "selector",
+            ],
+            "title": "Click",
+            "type": "object",
+          },
+          "click_element": {
+            "description": "Click element by index",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the element",
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "xpath": {
+                "description": "xpath of the element",
+                "nullable": true,
+                "title": "Xpath",
+                "type": "string",
+              },
+            },
+            "required": [
+              "index",
+            ],
+            "title": "Click Element",
+            "type": "object",
+          },
+          "close_tab": {
+            "description": "Close tab by tab id",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "tab_id": {
+                "description": "id of the tab",
+                "title": "Tab Id",
+                "type": "integer",
+              },
+            },
+            "required": [
+              "tab_id",
+            ],
+            "title": "Close Tab",
+            "type": "object",
+          },
+          "done": {
+            "description": "Complete task",
+            "nullable": true,
+            "properties": {
+              "success": {
+                "title": "Success",
+                "type": "boolean",
+              },
+              "text": {
+                "title": "Text",
+                "type": "string",
+              },
+            },
+            "required": [
+              "text",
+              "success",
+            ],
+            "title": "Done",
+            "type": "object",
+          },
+          "fill": {
+            "description": "Clear and fill text in an input element",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "selector": {
+                "$ref": "#/definitions/NavigatorAgentOutput/properties/action/items/properties/click/properties/selector",
+                "title": "Selector",
+              },
+              "text": {
+                "description": "text to fill",
+                "title": "Text",
+                "type": "string",
+              },
+            },
+            "required": [
+              "selector",
+              "text",
+            ],
+            "title": "Fill",
+            "type": "object",
+          },
+          "forward": {
+            "description": "Go forward to the next page in history",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Forward",
+            "type": "object",
+          },
+          "get_dropdown_options": {
+            "description": "Get all options from a native dropdown",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the dropdown element",
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "required": [
+              "index",
+            ],
+            "title": "Get Dropdown Options",
+            "type": "object",
+          },
+          "get_text": {
+            "description": "Get element text by selector",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "selector": {
+                "$ref": "#/definitions/NavigatorAgentOutput/properties/action/items/properties/click/properties/selector",
+                "title": "Selector",
+              },
+            },
+            "required": [
+              "selector",
+            ],
+            "title": "Get Text",
+            "type": "object",
+          },
+          "get_title": {
+            "description": "Get current page title",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Get Title",
+            "type": "object",
+          },
+          "get_url": {
+            "description": "Get current page URL",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Get Url",
+            "type": "object",
+          },
+          "go_back": {
+            "description": "Go back to the previous page",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Go Back",
+            "type": "object",
+          },
+          "go_to_url": {
+            "description": "Navigate to URL in the current tab",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "url": {
+                "title": "Url",
+                "type": "string",
+              },
+            },
+            "required": [
+              "url",
+            ],
+            "title": "Go To Url",
+            "type": "object",
+          },
+          "input_text": {
+            "description": "Input text into an interactive input element",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the element",
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "text": {
+                "description": "text to input",
+                "title": "Text",
+                "type": "string",
+              },
+              "xpath": {
+                "description": "xpath of the element",
+                "nullable": true,
+                "title": "Xpath",
+                "type": "string",
+              },
+            },
+            "required": [
+              "index",
+              "text",
+            ],
+            "title": "Input Text",
+            "type": "object",
+          },
+          "next_page": {
+            "description": "Scroll the document in the window or an element to the next page. If no index is specified, scroll the whole document.",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the element",
+                "nullable": true,
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Next Page",
+            "type": "object",
+          },
+          "open": {
+            "description": "Navigate to URL in the current tab",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "url": {
+                "title": "Url",
+                "type": "string",
+              },
+            },
+            "required": [
+              "url",
+            ],
+            "title": "Open",
+            "type": "object",
+          },
+          "open_tab": {
+            "description": "Open URL in new tab",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "url": {
+                "description": "url to open",
+                "title": "Url",
+                "type": "string",
+              },
+            },
+            "required": [
+              "url",
+            ],
+            "title": "Open Tab",
+            "type": "object",
+          },
+          "press": {
+            "description": "Press keyboard keys like Enter, Tab, Backspace and combinations like Control+o or Control+Shift+T",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "key": {
+                "description": "key or shortcut to send",
+                "title": "Key",
+                "type": "string",
+              },
+            },
+            "required": [
+              "key",
+            ],
+            "title": "Press",
+            "type": "object",
+          },
+          "previous_page": {
+            "description": "Scroll the document in the window or an element to the previous page. If no index is specified, scroll the whole document.",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the element",
+                "nullable": true,
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Previous Page",
+            "type": "object",
+          },
+          "reload": {
+            "description": "Reload current page",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Reload",
+            "type": "object",
+          },
+          "scroll": {
+            "description": "Scroll the page by direction and optional pixels",
+            "nullable": true,
+            "properties": {
+              "direction": {
+                "description": "scroll direction",
+                "enum": [
+                  "up",
+                  "down",
+                  "left",
+                  "right",
+                ],
+                "title": "Direction",
+                "type": "string",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "pixels": {
+                "description": "pixel amount to scroll",
+                "exclusiveMinimum": true,
+                "minimum": 0,
+                "title": "Pixels",
+                "type": "integer",
+              },
+            },
+            "required": [
+              "direction",
+            ],
+            "title": "Scroll",
+            "type": "object",
+          },
+          "scroll_to_bottom": {
+            "description": "Scroll the document in the window or an element to the bottom",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the element",
+                "nullable": true,
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Scroll To Bottom",
+            "type": "object",
+          },
+          "scroll_to_percent": {
+            "description": "Scrolls to a particular vertical percentage of the document or an element. If no index of element is specified, scroll the whole document.",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the element",
+                "nullable": true,
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "yPercent": {
+                "description": "percentage to scroll to - min 0, max 100; 0 is top, 100 is bottom",
+                "title": "Y Percent",
+                "type": "integer",
+              },
+            },
+            "required": [
+              "yPercent",
+            ],
+            "title": "Scroll To Percent",
+            "type": "object",
+          },
+          "scroll_to_text": {
+            "description": "If you dont find something which you want to interact with in current viewport, try to scroll to it",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "nth": {
+                "default": 1,
+                "description": "which occurrence of the text to scroll to (1-indexed, default: 1)",
+                "minimum": 1,
+                "title": "Nth",
+                "type": "integer",
+              },
+              "text": {
+                "description": "text to scroll to",
+                "title": "Text",
+                "type": "string",
+              },
+            },
+            "required": [
+              "text",
+            ],
+            "title": "Scroll To Text",
+            "type": "object",
+          },
+          "scroll_to_top": {
+            "description": "Scroll the document in the window or an element to the top",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the element",
+                "nullable": true,
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Scroll To Top",
+            "type": "object",
+          },
+          "scrollintoview": {
+            "description": "Scroll the target element into view",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "selector": {
+                "$ref": "#/definitions/NavigatorAgentOutput/properties/action/items/properties/click/properties/selector",
+                "title": "Selector",
+              },
+            },
+            "required": [
+              "selector",
+            ],
+            "title": "Scrollintoview",
+            "type": "object",
+          },
+          "search_google": {
+            "description": "Search the query in Google in the current tab, the query should be a search query like humans search in Google, concrete and not vague or super long. More the single most important items.",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "query": {
+                "title": "Query",
+                "type": "string",
+              },
+            },
+            "required": [
+              "query",
+            ],
+            "title": "Search Google",
+            "type": "object",
+          },
+          "select_dropdown_option": {
+            "description": "Select dropdown option for interactive element index by the text of the option you want to select",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the dropdown element",
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "text": {
+                "description": "text of the option",
+                "title": "Text",
+                "type": "string",
+              },
+            },
+            "required": [
+              "index",
+              "text",
+            ],
+            "title": "Select Dropdown Option",
+            "type": "object",
+          },
+          "send_keys": {
+            "description": "Send strings of special keys like Backspace, Insert, PageDown, Delete, Enter. Shortcuts such as \`Control+o\`, \`Control+Shift+T\` are supported as well. This gets used in keyboard press. Be aware of different operating systems and their shortcuts",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "keys": {
+                "description": "keys to send",
+                "title": "Keys",
+                "type": "string",
+              },
+            },
+            "required": [
+              "keys",
+            ],
+            "title": "Send Keys",
+            "type": "object",
+          },
+          "snapshot": {
+            "description": "Get current interactive elements snapshot with refs",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Snapshot",
+            "type": "object",
+          },
+          "switch_tab": {
+            "description": "Switch to tab by tab id",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "tab_id": {
+                "description": "id of the tab to switch to",
+                "title": "Tab Id",
+                "type": "integer",
+              },
+            },
+            "required": [
+              "tab_id",
+            ],
+            "title": "Switch Tab",
+            "type": "object",
+          },
+          "type": {
+            "description": "Type text in an element without clearing existing content first",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "selector": {
+                "$ref": "#/definitions/NavigatorAgentOutput/properties/action/items/properties/click/properties/selector",
+                "title": "Selector",
+              },
+              "text": {
+                "description": "text to type",
+                "title": "Text",
+                "type": "string",
+              },
+            },
+            "required": [
+              "selector",
+              "text",
+            ],
+            "title": "Type",
+            "type": "object",
+          },
+          "wait": {
+            "description": "Wait for x seconds default 3, do NOT use this action unless user asks to wait explicitly",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "seconds": {
+                "default": 3,
+                "description": "amount of seconds",
+                "title": "Seconds",
+                "type": "integer",
+              },
+            },
+            "title": "Wait",
+            "type": "object",
+          },
+        },
+        "type": "object",
+      },
+      "title": "Action",
+      "type": "array",
+    },
+    "current_state": {
+      "description": "Current state of the agent",
+      "properties": {
+        "evaluation_previous_goal": {
+          "title": "Evaluation Previous Goal",
+          "type": "string",
+        },
+        "memory": {
+          "title": "Memory",
+          "type": "string",
+        },
+        "next_goal": {
+          "title": "Next Goal",
+          "type": "string",
+        },
+      },
+      "required": [
+        "evaluation_previous_goal",
+        "memory",
+        "next_goal",
+      ],
+      "title": "Current State",
+      "type": "object",
+    },
+  },
+  "required": [
+    "current_state",
+    "action",
+  ],
+  "title": "NavigatorAgentOutput",
+  "type": "object",
+}
+`;
