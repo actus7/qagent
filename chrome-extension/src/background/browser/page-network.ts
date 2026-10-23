@@ -1,4 +1,8 @@
-import type { HTTPRequest, HTTPResponse , Page as PuppeteerPage } from 'puppeteer-core/internal/puppeteer-core-browser.js';
+import type {
+  HTTPRequest,
+  HTTPResponse,
+  Page as PuppeteerPage,
+} from 'puppeteer-core/internal/puppeteer-core-browser.js';
 import type { BrowserContextConfig } from './views';
 import { createLogger } from '@src/background/log';
 

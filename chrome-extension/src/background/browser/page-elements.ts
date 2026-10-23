@@ -1,4 +1,4 @@
-import type { Page as PuppeteerPage , ElementHandle , Frame } from 'puppeteer-core/internal/puppeteer-core-browser.js';
+import type { Page as PuppeteerPage, ElementHandle, Frame } from 'puppeteer-core/internal/puppeteer-core-browser.js';
 import type { DOMElementNode } from './dom/views';
 import { createLogger } from '@src/background/log';
 import { scrollIntoViewIfNeeded } from './page-scroll';
@@ -237,7 +237,10 @@ export async function locateElementInPage(
 }
 
 /** Query a raw selector, supporting `xpath=` and `text=` prefixes besides plain CSS. */
-export async function queryElementBySelectorOnPage(page: PuppeteerPage, selector: string): Promise<ElementHandle | null> {
+export async function queryElementBySelectorOnPage(
+  page: PuppeteerPage,
+  selector: string,
+): Promise<ElementHandle | null> {
   const normalizedSelector = selector.trim();
   if (!normalizedSelector) {
     return null;

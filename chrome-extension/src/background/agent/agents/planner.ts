@@ -20,7 +20,7 @@ import { filterExternalContent } from '../messages/utils';
 const logger = createLogger('PlannerAgent');
 
 // Define Zod schema for planner output
-const plannerOutputSchema = z.object({
+export const plannerOutputSchema = z.object({
   observation: z.string(),
   challenges: z.string(),
   done: z.union([

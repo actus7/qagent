@@ -4,6 +4,7 @@ import type { AgentContext, AgentOutput } from '../types';
 import type { BasePrompt } from '../prompts/base';
 import type { BaseMessage } from '@langchain/core/messages';
 import { createLogger } from '@src/background/log';
+import { convertZodToJsonSchema } from '@src/background/utils';
 import type { Action } from '../actions/builder';
 import { convertInputMessages, extractJsonFromModelOutput, removeThinkTags } from '../messages/utils';
 import { isAbortedError, LLMTimeoutError, ResponseParseError } from './errors';
@@ -325,7 +326,10 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
         modelProvider: this.provider,
       });
 
-      const structuredLlm = this.chatLLM.withStructuredOutput(this.modelOutputSchema, {
+      // Send the input-side JSON schema and validate with zod ourselves: LangChain 1.x converts zod 4 schemas in
+      // output mode, which throws on transforms (planner's string -> boolean coercion).
+      const jsonSchema = convertZodToJsonSchema(this.modelOutputSchema, this.modelOutputToolName);
+      const structuredLlm = this.chatLLM.withStructuredOutput(jsonSchema, {
         includeRaw: true,
         name: this.modelOutputToolName,
       });
@@ -348,9 +352,10 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
           rawContent: response.raw?.content?.slice(0, 500) + (response.raw?.content?.length > 500 ? '...' : ''),
         });
 
-        if (response.parsed) {
+        const output = response.parsed ? this.validateModelOutput(response.parsed) : undefined;
+        if (output) {
           logger.debug(`[${this.modelName}] Successfully parsed structured output`);
-          return response.parsed as this['ModelOutput'];
+          return output;
         }
         logger.error('Failed to parse response', response);
         throw new Error('Could not parse response with structured output');

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { HumanMessage } from '@langchain/core/messages';
 import { ProviderTypeEnum } from '@extension/storage';
 import { convertZodToJsonSchema } from '@src/background/utils';
+import { plannerOutputSchema } from '../agents/planner';
 
 // End-to-end check of the LangChain structured-output path the agents use (withStructuredOutput + includeRaw),
 // against a local OpenAI-compatible server. Guards LangChain/zod upgrades without a real API key.
@@ -86,5 +87,14 @@ describe('structured output round trip', { timeout: 30_000 }, () => {
     const response = await llm.invoke([new HumanMessage('plan?')]);
 
     expect(response.parsed).toEqual(answer);
+  });
+
+  it('sends the planner schema (union with a transform) as input JSON schema', async () => {
+    // BaseAgent.invoke converts on our side: LangChain 1.x would throw on the transform.
+    const jsonSchema = convertZodToJsonSchema(plannerOutputSchema, 'planner_output');
+    const llm = (await model()).withStructuredOutput(jsonSchema, { includeRaw: true, name: 'planner_output' });
+    await expect(llm.invoke([new HumanMessage('plan?')])).resolves.toHaveProperty('raw');
+    expect(JSON.stringify(requests.at(-1))).toContain('next_steps');
+    expect(plannerOutputSchema.shape.done.parse('true')).toBe(true);
   });
 });

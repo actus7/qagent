@@ -1,4 +1,4 @@
-import type { Page as PuppeteerPage , ElementHandle } from 'puppeteer-core/internal/puppeteer-core-browser.js';
+import type { Page as PuppeteerPage, ElementHandle } from 'puppeteer-core/internal/puppeteer-core-browser.js';
 import { createLogger } from '@src/background/log';
 
 const logger = createLogger('Page');

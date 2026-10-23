@@ -1,10 +1,13 @@
 import 'webextension-polyfill';
-import type {
- Browser , Page as PuppeteerPage , ElementHandle ,
+import {
   connect,
   ExtensionTransport,
+  type Browser,
+  type ElementHandle,
+  type KeyInput,
+  type Page as PuppeteerPage,
   type ProtocolType,
-  type KeyInput } from 'puppeteer-core/internal/puppeteer-core-browser.js';
+} from 'puppeteer-core/internal/puppeteer-core-browser.js';
 import {
   getClickableElements as _getClickableElements,
   removeHighlights as _removeHighlights,
