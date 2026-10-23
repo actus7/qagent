@@ -1,4 +1,5 @@
 import { FiChevronDown } from 'react-icons/fi';
+import type { PermissionMode } from '@extension/shared';
 import type { AssistantWorkspace } from '../hooks/useAssistantWorkspace';
 import type { assistantCopy } from '../lib/assistant-copy';
 
@@ -37,9 +38,10 @@ export default function ModelControls({ copy, workspace, showStopButton }: Model
             aria-label={copy.permissions}
             value={workspace.permissionMode}
             disabled={showStopButton}
-            onChange={event => workspace.setPermissionMode(event.target.value as 'ask' | 'auto')}>
+            onChange={event => workspace.setPermissionMode(event.target.value as PermissionMode)}>
             <option value="ask">{copy.ask}</option>
             <option value="auto">{copy.auto}</option>
+            <option value="plan">{copy.permissionPlan}</option>
           </select>
           <FiChevronDown size={12} />
         </label>

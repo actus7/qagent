@@ -39,7 +39,7 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
     }
 
     case 'approval_result': {
-      actionApprovals.resolve(message.taskId, message.requestId, message.approved);
+      actionApprovals.resolve(message.taskId, message.requestId, message.approved, message.decision);
       break;
     }
 

@@ -4,7 +4,10 @@ import { isValidAssistantAttachments } from './assistant-attachments';
 export const SIDE_PANEL_CONNECTION_PORT_NAME = 'side-panel-connection' as const;
 
 export type AssistantMode = 'chat' | 'plan' | 'act';
-export type PermissionMode = 'ask' | 'auto';
+export type PermissionMode = 'ask' | 'auto' | 'plan';
+
+// once: allow this request only. always_site: allow this request and persist the origin. deny: refuse.
+export type ApprovalDecision = 'once' | 'always_site' | 'deny';
 
 export interface AssistantTaskOptions {
   mode?: AssistantMode;
@@ -21,6 +24,18 @@ export interface ActionApproval {
   parameters?: string;
   tabId: number | null;
   url: string;
+  // 'plan' requests approve the whole plan (domains) before the first action of a plan-mode task.
+  kind?: 'action' | 'plan';
+  // Sensitive actions always ask, and never offer "always allow this site".
+  sensitive?: boolean;
+  sensitiveReasons?: string[];
+  // Set when a navigation leaves the registrable domain of the current page.
+  transition?: { from: string; to: string };
+  // Domains covered by a plan approval request.
+  domains?: string[];
+  allowSiteOption?: boolean;
+  // Destination URL for navigation approvals; the "always allow" choice persists its origin.
+  targetUrl?: string;
 }
 
 export interface SidePanelTaskCommand {
@@ -92,7 +107,7 @@ export type SidePanelCommandMessage =
   | { type: 'cancel_task' }
   | { type: 'resume_task' }
   | { type: 'pause_task' }
-  | { type: 'approval_result'; taskId: string; requestId: string; approved: boolean }
+  | { type: 'approval_result'; taskId: string; requestId: string; approved: boolean; decision?: ApprovalDecision }
   | { type: 'screenshot'; tabId: number }
   | { type: 'capture_visible_tab'; tabId: number }
   | { type: 'state' }
@@ -159,7 +174,7 @@ function isTaskOptions(value: unknown): boolean {
   if (!isRecord(value)) return false;
   return (
     (value.mode === undefined || ['chat', 'plan', 'act'].includes(String(value.mode))) &&
-    (value.permissionMode === undefined || ['ask', 'auto'].includes(String(value.permissionMode))) &&
+    (value.permissionMode === undefined || ['ask', 'auto', 'plan'].includes(String(value.permissionMode))) &&
     (value.modelAgent === undefined || ['navigator', 'planner'].includes(String(value.modelAgent))) &&
     (value.tabIds === undefined ||
       (Array.isArray(value.tabIds) &&
@@ -197,7 +212,8 @@ export function isSidePanelCommandMessage(message: unknown): message is SidePane
       return (
         typeof message.taskId === 'string' &&
         typeof message.requestId === 'string' &&
-        typeof message.approved === 'boolean'
+        typeof message.approved === 'boolean' &&
+        (message.decision === undefined || ['once', 'always_site', 'deny'].includes(String(message.decision)))
       );
     case 'browser_input':
       return isRecord(message.input) && typeof message.input.type === 'string';

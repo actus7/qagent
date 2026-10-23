@@ -390,13 +390,14 @@ const SidePanel = () => {
             <ActionApproval
               request={pendingApproval}
               copy={copy}
-              onResolve={approved => {
+              onResolve={decision => {
                 try {
                   sendMessage({
                     type: 'approval_result',
                     taskId: pendingApproval.taskId,
                     requestId: pendingApproval.id,
-                    approved,
+                    approved: decision !== 'deny',
+                    decision,
                   });
                 } catch (error) {
                   appendMessage({
