@@ -1,5 +1,5 @@
 import type React from 'react';
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, use, useCallback, useEffect, useState } from 'react';
 import { generalSettingsStore } from '@extension/storage';
 import { defaultLocale, resolveLocale, t } from '@extension/i18n';
 
@@ -89,11 +89,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return null;
   }
 
-  return <LanguageContext.Provider value={{ language, changeLanguage, currentLocale }}>{children}</LanguageContext.Provider>;
+  return <LanguageContext value={{ language, changeLanguage, currentLocale }}>{children}</LanguageContext>;
 };
 
 export const useLanguage = () => {
-  const context = useContext(LanguageContext);
+  const context = use(LanguageContext);
   if (context === undefined) {
     throw new Error('useLanguage must be used within a LanguageProvider');
   }

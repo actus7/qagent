@@ -4,7 +4,7 @@ import { RequestCancelledError } from '../agents/errors';
 import { Actors, ExecutionState } from '../event/types';
 import { analytics } from '../../services/analytics';
 
-function createContext() {
+function createAgentContext() {
   const emitEvent = vi.fn().mockResolvedValue(undefined);
   const messageManager = {
     length: vi.fn().mockReturnValue(0),
@@ -44,7 +44,7 @@ describe('Executor planner resilience', () => {
   });
 
   it('disables planner and continues when planner request is cancelled by timeout', async () => {
-    const context = createContext();
+    const context = createAgentContext();
     const executePlanner = vi.fn().mockRejectedValue(new RequestCancelledError('planner timed out'));
 
     const executor = Object.create(Executor.prototype) as Executor;
@@ -69,7 +69,7 @@ describe('Executor planner resilience', () => {
   });
 
   it('propagates planner cancellation when task is explicitly stopped', async () => {
-    const context = createContext();
+    const context = createAgentContext();
     context.stopped = true;
     const executePlanner = vi.fn().mockRejectedValue(new RequestCancelledError('user cancelled'));
 

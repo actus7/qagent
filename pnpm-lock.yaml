@@ -257,6 +257,10 @@ importers:
         version: link:../tsconfig
 
   packages/shared:
+    dependencies:
+      '@extension/i18n':
+        specifier: workspace:^
+        version: link:../i18n
     devDependencies:
       '@extension/storage':
         specifier: workspace:*

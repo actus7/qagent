@@ -3,8 +3,8 @@ import { FiX, FiExternalLink, FiGlobe } from 'react-icons/fi';
 import { t } from '@extension/i18n';
 import { Button } from '@src/components/ui/button';
 import { Card } from '@src/components/ui/card';
-import type { Language } from '@src/context/LanguageContext';
-import { useLanguage } from '@src/context/LanguageContext';
+import type { Language } from '@extension/shared';
+import { useLanguage } from '@extension/shared';
 
 interface SettingsModalProps {
   chatDebugMode: boolean;
@@ -62,15 +62,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ chatDebugMode, onClose, o
               />
               <label
                 htmlFor="chatDebugMode"
-                className="peer h-6 w-11 rounded-full bg-muted peer-checked:bg-emerald-600 peer-focus:ring-2 peer-focus:ring-ring peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:size-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"
-              >
+                className="peer h-6 w-11 rounded-full bg-muted peer-checked:bg-emerald-600 peer-focus:ring-2 peer-focus:ring-ring peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:size-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white">
                 <span className="sr-only">{t('settings_debugMode') || 'Debug Mode'}</span>
               </label>
             </div>
           </div>
 
           <div className="border-t border-border pt-4">
-            <Button variant="outline" className="w-full justify-between" onClick={() => chrome.runtime.openOptionsPage()}>
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => chrome.runtime.openOptionsPage()}>
               {t('settings_advanced') || 'Advanced Settings'}
               <FiExternalLink className="size-4" />
             </Button>

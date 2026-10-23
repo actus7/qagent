@@ -1,9 +1,8 @@
 import { lazy, Suspense, useState } from 'react';
 import { Button } from '@extension/ui';
-import { useTheme, withErrorBoundary, withSuspense } from '@extension/shared';
+import { useTheme, withErrorBoundary, withSuspense, useLanguage  } from '@extension/shared';
 import { t } from '@extension/i18n';
 import { FiSettings, FiCpu, FiShield } from 'react-icons/fi';
-import { useLanguage } from './context/LanguageContext';
 
 type TabTypes = 'general' | 'models' | 'firewall';
 

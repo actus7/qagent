@@ -3,7 +3,7 @@ import '@extension/tailwindcss-config/tokens.css';
 import '@src/index.css';
 import SidePanel from '@src/SidePanel';
 
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider } from '@extension/shared';
 
 function init() {
   const appContainer = document.querySelector('#app-container');
@@ -14,7 +14,7 @@ function init() {
   root.render(
     <LanguageProvider>
       <SidePanel />
-    </LanguageProvider>
+    </LanguageProvider>,
   );
 }
 

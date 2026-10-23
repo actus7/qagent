@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef, useState } from 'react';
 import { Actors } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { useTheme, type AssistantMode } from '@extension/shared';
-import { useLanguage } from '@src/context/LanguageContext';
+import { useLanguage } from '@extension/shared';
 import ChatHistoryList from './components/ChatHistoryList';
 import ActionApproval from './components/ActionApproval';
 import AssistantHeader from './components/AssistantHeader';

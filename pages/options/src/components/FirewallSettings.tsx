@@ -90,19 +90,13 @@ export const FirewallSettings = () => {
 
   return (
     <section className="space-y-6">
-      <div
-        className={`rounded-lg border border-border bg-card p-6 text-left shadow-xs`}>
-        <h2 className={`mb-4 text-xl font-semibold text-foreground`}>
-          {t('options_firewall_header')}
-        </h2>
+      <div className={`rounded-lg border border-border bg-card p-6 text-left shadow-xs`}>
+        <h2 className={`mb-4 text-xl font-semibold text-foreground`}>{t('options_firewall_header')}</h2>
 
         <div className="space-y-6">
-          <div
-            className={`my-6 rounded-lg border border-border bg-card p-4`}>
+          <div className={`my-6 rounded-lg border border-border bg-card p-4`}>
             <div className="flex items-center justify-between">
-              <label
-                htmlFor="toggle-firewall"
-                className={`text-base font-medium text-foreground`}>
+              <label htmlFor="toggle-firewall" className={`text-base font-medium text-foreground`}>
                 {t('options_firewall_enableToggle')}
               </label>
               <div className="relative inline-block w-12 select-none">
@@ -115,12 +109,14 @@ export const FirewallSettings = () => {
                 />
                 <label
                   htmlFor="toggle-firewall"
-                  className={`block h-6 cursor-pointer overflow-hidden rounded-full ${isEnabled ? 'bg-primary' : 'bg-input'
-                    }`}>
+                  className={`block h-6 cursor-pointer overflow-hidden rounded-full ${
+                    isEnabled ? 'bg-primary' : 'bg-input'
+                  }`}>
                   <span className="sr-only">{t('options_firewall_toggleFirewall_a11y')}</span>
                   <span
-                    className={`block size-6 rounded-full bg-card shadow transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-0'
-                      }`}
+                    className={`block size-6 rounded-full bg-card shadow transition-transform ${
+                      isEnabled ? 'translate-x-6' : 'translate-x-0'
+                    }`}
                   />
                 </label>
               </div>
@@ -131,18 +127,16 @@ export const FirewallSettings = () => {
             <div className="flex space-x-2">
               <Button
                 onClick={() => setActiveList('allow')}
-                className={`px-4 py-2 text-base ${activeList === 'allow'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-foreground'
-                  }`}>
+                className={`px-4 py-2 text-base ${
+                  activeList === 'allow' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
+                }`}>
                 {t('options_firewall_allowList_header')}
               </Button>
               <Button
                 onClick={() => setActiveList('deny')}
-                className={`px-4 py-2 text-base ${activeList === 'deny'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-foreground'
-                  }`}>
+                className={`px-4 py-2 text-base ${
+                  activeList === 'deny' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
+                }`}>
                 {t('options_firewall_denyList_header')}
               </Button>
             </div>
@@ -174,9 +168,7 @@ export const FirewallSettings = () => {
               allowList.length > 0 ? (
                 <ul className="space-y-2">
                   {allowList.map(url => (
-                    <li
-                      key={url}
-                      className={`flex items-center justify-between rounded-md bg-muted p-2 pr-0`}>
+                    <li key={url} className={`flex items-center justify-between rounded-md bg-muted p-2 pr-0`}>
                       <span className={`text-sm text-foreground`}>{url}</span>
                       <Button
                         onClick={() => handleRemoveUrl(url, 'allow')}
@@ -187,16 +179,12 @@ export const FirewallSettings = () => {
                   ))}
                 </ul>
               ) : (
-                <p className={`text-center text-sm text-muted-foreground`}>
-                  {t('options_firewall_allowList_empty')}
-                </p>
+                <p className={`text-center text-sm text-muted-foreground`}>{t('options_firewall_allowList_empty')}</p>
               )
             ) : denyList.length > 0 ? (
               <ul className="space-y-2">
                 {denyList.map(url => (
-                  <li
-                    key={url}
-                    className={`flex items-center justify-between rounded-md bg-muted p-2 pr-0`}>
+                  <li key={url} className={`flex items-center justify-between rounded-md bg-muted p-2 pr-0`}>
                     <span className={`text-sm text-foreground`}>{url}</span>
                     <Button
                       onClick={() => handleRemoveUrl(url, 'deny')}
@@ -207,24 +195,19 @@ export const FirewallSettings = () => {
                 ))}
               </ul>
             ) : (
-              <p className={`text-center text-sm text-muted-foreground`}>
-                {t('options_firewall_denyList_empty')}
-              </p>
+              <p className={`text-center text-sm text-muted-foreground`}>{t('options_firewall_denyList_empty')}</p>
             )}
           </div>
         </div>
       </div>
 
-      <div
-        className={`rounded-lg border border-border bg-card p-6 text-left shadow-xs`}>
-        <h2 className={`mb-4 text-xl font-semibold text-foreground`}>
-          {t('options_firewall_howItWorks_header')}
-        </h2>
+      <div className={`rounded-lg border border-border bg-card p-6 text-left shadow-xs`}>
+        <h2 className={`mb-4 text-xl font-semibold text-foreground`}>{t('options_firewall_howItWorks_header')}</h2>
         <ul className={`list-disc space-y-2 pl-5 text-left text-sm text-muted-foreground`}>
           {t('options_firewall_howItWorks')
             .split('\n')
-            .map((rule, index) => (
-              <li key={index}>{rule}</li>
+            .map(rule => (
+              <li key={rule}>{rule}</li>
             ))}
         </ul>
       </div>

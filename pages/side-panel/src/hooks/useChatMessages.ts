@@ -37,7 +37,7 @@ export const useChatMessages = ({ sessionIdRef, progressMessage, setPendingAppro
       }
       return Promise.resolve();
     },
-    [progressMessage, setMessages],
+    [progressMessage, sessionIdRef, setMessages],
   );
 
   const onAssistantMessage = useCallback(
@@ -64,7 +64,7 @@ export const useChatMessages = ({ sessionIdRef, progressMessage, setPendingAppro
         });
       }
     },
-    [setMessages, progressMessage, setPendingApproval],
+    [setMessages, progressMessage, sessionIdRef, setPendingApproval],
   );
 
   return { appendMessage, onAssistantMessage };

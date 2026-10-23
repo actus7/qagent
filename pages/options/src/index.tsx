@@ -2,7 +2,7 @@ import { createRoot } from 'react-dom/client';
 import '@extension/tailwindcss-config/tokens.css';
 import '@src/index.css';
 import Options from '@src/Options';
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider } from '@extension/shared';
 
 function init() {
   const appContainer = document.querySelector('#app-container');

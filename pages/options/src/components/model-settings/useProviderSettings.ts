@@ -39,8 +39,8 @@ function scrollToProviderSoon(providerId: string): void {
 
 export function useProviderSettings() {
   const [providers, setProviders] = useState<ProviderMap>({});
-  const [modifiedProviders, setModifiedProviders] = useState<Set<string>>(new Set());
-  const [providersFromStorage, setProvidersFromStorage] = useState<Set<string>>(new Set());
+  const [modifiedProviders, setModifiedProviders] = useState<Set<string>>(() => new Set());
+  const [providersFromStorage, setProvidersFromStorage] = useState<Set<string>>(() => new Set());
   const [newModelInputs, setNewModelInputs] = useState<Record<string, string>>({});
   const [isProviderSelectorOpen, setIsProviderSelectorOpen] = useState(false);
   const [nameErrors, setNameErrors] = useState<Record<string, string>>({});

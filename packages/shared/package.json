@@ -24,5 +24,8 @@
   "devDependencies": {
     "@extension/storage": "workspace:*",
     "@extension/tsconfig": "workspace:*"
+  },
+  "dependencies": {
+    "@extension/i18n": "workspace:^"
   }
 }

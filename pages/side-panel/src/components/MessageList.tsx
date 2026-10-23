@@ -2,7 +2,7 @@ import { memo, useState, lazy, Suspense } from 'react';
 import { FiCheck, FiCopy, FiChevronRight, FiAlertCircle } from 'react-icons/fi';
 import { Actors, type Message } from '@extension/storage';
 import { t } from '@extension/i18n';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage } from '@extension/shared';
 import { assistantCopy } from '../lib/assistant-copy';
 
 const Markdown = lazy(() => import('./ResponseMarkdown'));
@@ -14,6 +14,8 @@ export default memo(function MessageList({ messages }: { messages: Message[] }) 
     if (message.kind === 'activity' && previous?.[0].kind === 'activity') previous.push(message);
     else groups.push([message]);
   }
+  // The log is append-only, so a position is a stable identity here.
+  /* eslint-disable @eslint-react/no-array-index-key */
   return (
     <div className="assistant-messages">
       {groups.map((group, index) =>
@@ -25,6 +27,7 @@ export default memo(function MessageList({ messages }: { messages: Message[] }) 
       )}
     </div>
   );
+  /* eslint-enable @eslint-react/no-array-index-key */
 });
 
 function ActivityGroup({ messages }: { messages: Message[] }) {
@@ -39,6 +42,7 @@ function ActivityGroup({ messages }: { messages: Message[] }) {
       </summary>
       <ol>
         {messages.map((message, index) => (
+          // eslint-disable-next-line @eslint-react/no-array-index-key -- append-only activity log
           <li key={index}>
             <FiCheck />
             <span>{message.content}</span>

@@ -21,6 +21,7 @@ interface ChatInputProps {
 }
 
 interface AttachedFile {
+  id: string;
   name: string;
   content: string;
   type: string;
@@ -108,8 +109,13 @@ export default function ChatInput({
         submittingRef.current = true;
         try {
           const accepted = await onSendMessage(messageContent, displayContent);
-          if (accepted !== false) { setText(''); setAttachedFiles([]); }
-        } finally { submittingRef.current = false; }
+          if (accepted !== false) {
+            setText('');
+            setAttachedFiles([]);
+          }
+        } finally {
+          submittingRef.current = false;
+        }
       }
     },
     [text, attachedFiles, onSendMessage, disabled, action.type],
@@ -158,6 +164,7 @@ export default function ChatInput({
           try {
             const content = await file.text();
             return {
+              id: crypto.randomUUID(),
               name: file.name,
               content,
               type: file.type || 'text/plain',
@@ -179,8 +186,8 @@ export default function ChatInput({
     }
   }, []);
 
-  const handleRemoveFile = useCallback((index: number) => {
-    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveFile = useCallback((id: string) => {
+    setAttachedFiles(prev => prev.filter(file => file.id !== id));
   }, []);
 
   const isVoiceRecording = voice?.type === 'recording';
@@ -197,13 +204,13 @@ export default function ChatInput({
         {/* File attachments display */}
         {attachedFiles.length > 0 && (
           <div className="flex flex-wrap gap-2 border-b border-border bg-muted p-2">
-            {attachedFiles.map((file, index) => (
-              <Badge key={index} variant="secondary" className="flex items-center gap-1 pr-1">
+            {attachedFiles.map(file => (
+              <Badge key={file.id} variant="secondary" className="flex items-center gap-1 pr-1">
                 <span className="text-xs">📎</span>
                 <span className="max-w-[150px] truncate">{file.name}</span>
                 <button
                   type="button"
-                  onClick={() => handleRemoveFile(index)}
+                  onClick={() => handleRemoveFile(file.id)}
                   className="ml-1 rounded-sm transition-colors hover:bg-muted-foreground/20"
                   aria-label={t('chat_input_removeFile', file.name)}>
                   <span className="text-xs">✕</span>
