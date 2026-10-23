@@ -22,13 +22,16 @@ export function subscribeToExecutorEvents(executor: Executor, onTerminal: (event
   executor.subscribeExecutionEvents(async event => {
     if (event.state === ExecutionState.TASK_OK && event.data.details && event.data.details !== event.data.taskId) {
       const streamId = crypto.randomUUID();
-      await chatHistoryStore.addMessage(event.data.taskId, {
-        actor: ChatActors.ASSISTANT,
-        content: event.data.details,
-        timestamp: event.timestamp,
-        streamId,
-        kind: 'answer',
-      });
+      // A failed history write must not swallow the completion: the terminal event below still has to reach the panel.
+      await chatHistoryStore
+        .addMessage(event.data.taskId, {
+          actor: ChatActors.ASSISTANT,
+          content: event.data.details,
+          timestamp: event.timestamp,
+          streamId,
+          kind: 'answer',
+        })
+        .catch(error => logger.error('Failed to save the final answer to chat history:', error));
       postToPanel({
         type: 'assistant_delta',
         taskId: event.data.taskId,
