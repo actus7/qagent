@@ -58,7 +58,7 @@ function fakeCompletion(body, state) {
 }
 
 describe('extension e2e', { timeout: 180_000 }, () => {
-  const state = { navigatorSteps: 0 };
+  const state = { navigatorSteps: 0, delayMs: 0 };
   const pageErrors = [];
   let server;
   let baseUrl;
@@ -74,8 +74,13 @@ describe('extension e2e', { timeout: 180_000 }, () => {
       let raw = '';
       req.on('data', chunk => (raw += chunk));
       req.on('end', () => {
-        res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify(fakeCompletion(JSON.parse(raw), state)));
+        const reply = () => {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify(fakeCompletion(JSON.parse(raw), state)));
+        };
+        // Optional latency so a test can pause while a model call is in flight
+        if (state.delayMs) setTimeout(reply, state.delayMs);
+        else reply();
       });
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -169,6 +174,50 @@ describe('extension e2e', { timeout: 180_000 }, () => {
 
     const seen = await events;
     assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.equal(await target.locator('#status').textContent(), 'clicked');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('pauses during a model call, resumes, and still completes the task', async () => {
+    state.navigatorSteps = 0;
+    state.delayMs = 2500;
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/page`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(async url => (await chrome.tabs.query({ url: `${url}/*` })).at(-1)?.id, baseUrl);
+    assert.ok(tabId, 'target tab not found');
+
+    // Pause lands while the first model call is in flight; resume follows once the pause is acknowledged.
+    const seen = await panel.evaluate(
+      targetTabId =>
+        new Promise(resolve => {
+          const events = [];
+          const port = chrome.runtime.connect({ name: 'side-panel-connection' });
+          const finish = () => resolve(events);
+          setTimeout(finish, 120_000);
+          port.onMessage.addListener(message => {
+            if (message.type === 'execution') {
+              events.push(`${message.actor}:${message.state}`);
+              if (message.state === 'task.pause') setTimeout(() => port.postMessage({ type: 'resume_task' }), 4000);
+              if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) finish();
+            }
+          });
+          port.postMessage({
+            type: 'new_task',
+            task: 'Click the Go button',
+            taskId: 'e2e-pause-task',
+            tabId: targetTabId,
+            options: { mode: 'act', permissionMode: 'auto', tabIds: [targetTabId] },
+          });
+          setTimeout(() => port.postMessage({ type: 'pause_task' }), 1000);
+        }),
+      tabId,
+    );
+
+    state.delayMs = 0;
+    assert.ok(seen.includes('system:task.pause'), `pause was not reported: ${seen.join(', ')}`);
+    assert.ok(seen.includes('system:task.resume'), `resume was not reported: ${seen.join(', ')}`);
+    assert.ok(seen.includes('system:task.ok'), `task did not complete after resume: ${seen.join(', ')}`);
     assert.equal(await target.locator('#status').textContent(), 'clicked');
     assert.deepEqual(pageErrors, []);
   });
