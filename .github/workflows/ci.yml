@@ -47,11 +47,12 @@ jobs:
       - name: Lint
         run: pnpm -r --if-present lint
 
-      - name: Test
-        run: pnpm -r --if-present test
-
       - name: Build
         run: pnpm build
+
+      # After build: vitest loads chrome-extension/vite.config.mts, which imports built workspace packages.
+      - name: Test
+        run: pnpm -r --if-present test
 
       - name: Install Chromium for e2e
         run: pnpm exec playwright-core install --with-deps chromium
