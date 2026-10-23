@@ -76,7 +76,7 @@ export const GeneralSettings = () => {
   return (
     <section className="space-y-6">
       <div
-        className={`rounded-lg border border-border bg-card p-6 text-left shadow-sm`}>
+        className={`rounded-lg border border-border bg-card p-6 text-left shadow-xs`}>
         <h2 className={`mb-4 text-left text-xl font-semibold text-foreground`}>
           {t('options_general_header')}
         </h2>
@@ -170,7 +170,7 @@ export const GeneralSettings = () => {
               />
               <label
                 htmlFor="useVision"
-                className={`peer h-6 w-11 rounded-full bg-input after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-card peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ring`}>
+                className={`peer h-6 w-11 rounded-full bg-input peer-checked:bg-primary peer-focus:ring-4 peer-focus:ring-ring peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-card`}>
                 <span className="sr-only">{t('options_general_enableVision')}</span>
               </label>
             </div>
@@ -195,7 +195,7 @@ export const GeneralSettings = () => {
               />
               <label
                 htmlFor="displayHighlights"
-                className={`peer h-6 w-11 rounded-full bg-input after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-card peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ring`}>
+                className={`peer h-6 w-11 rounded-full bg-input peer-checked:bg-primary peer-focus:ring-4 peer-focus:ring-ring peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-card`}>
                 <span className="sr-only">{t('options_general_displayHighlights')}</span>
               </label>
             </div>
@@ -269,7 +269,7 @@ export const GeneralSettings = () => {
               />
               <label
                 htmlFor="replayHistoricalTasks"
-                className={`peer h-6 w-11 rounded-full bg-input after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-card peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ring`}>
+                className={`peer h-6 w-11 rounded-full bg-input peer-checked:bg-primary peer-focus:ring-4 peer-focus:ring-ring peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:size-5 after:rounded-full after:border after:border-input after:bg-card after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-card`}>
                 <span className="sr-only">{t('options_general_replayHistoricalTasks')}</span>
               </label>
             </div>

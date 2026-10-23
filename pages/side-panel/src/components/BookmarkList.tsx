@@ -148,7 +148,7 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
                     e.stopPropagation();
                     handleEditClick(bookmark);
                   }}
-                  className="absolute right-[28px] top-1/2 z-10 size-7 -translate-y-1/2 text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                  className="absolute top-1/2 right-7 z-10 size-7 -translate-y-1/2 text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100"
                   aria-label={t('chat_bookmarks_edit')}
                   type="button">
                   <FaPen size={14} />
@@ -164,7 +164,7 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
                       onBookmarkDelete(bookmark.id);
                     }
                   }}
-                  className="absolute right-2 top-1/2 z-10 size-7 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity duration-200 hover:text-destructive group-hover:opacity-100"
+                  className="absolute top-1/2 right-2 z-10 size-7 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:text-destructive"
                   aria-label={t('chat_bookmarks_delete')}
                   type="button">
                   <FaTrash size={14} />

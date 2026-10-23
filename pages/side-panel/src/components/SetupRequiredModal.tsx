@@ -11,7 +11,7 @@ interface SetupRequiredModalProps {
 
 const SetupRequiredModal: React.FC<SetupRequiredModalProps> = ({ onClose, onOpenSettings }) => {
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-xs">
       <Card className="w-[90%] max-w-sm overflow-hidden border-border bg-background p-4 shadow-lg">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">{t('setup_modal_title')}</h2>

@@ -16,7 +16,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ chatDebugMode, onClose, o
   const { language, changeLanguage } = useLanguage();
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs">
       <Card className="w-[90%] max-w-sm overflow-hidden border-border bg-background shadow-lg">
         <div className="flex items-center justify-between border-b border-border p-4">
           <h2 className="text-lg font-semibold">{t('settings_title') || 'Settings'}</h2>
@@ -34,7 +34,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ chatDebugMode, onClose, o
             </label>
             <select
               id="sidepanelLanguage"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden"
               value={language}
               onChange={e => changeLanguage(e.target.value as Language)}>
               <option value="auto">{t('settings_language_auto') || 'Auto (Browser Default)'}</option>
@@ -62,7 +62,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ chatDebugMode, onClose, o
               />
               <label
                 htmlFor="chatDebugMode"
-                className="peer h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-emerald-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring"
+                className="peer h-6 w-11 rounded-full bg-muted peer-checked:bg-emerald-600 peer-focus:ring-2 peer-focus:ring-ring peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:size-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"
               >
                 <span className="sr-only">{t('settings_debugMode') || 'Debug Mode'}</span>
               </label>

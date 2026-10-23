@@ -77,7 +77,7 @@ const MessageBlock = memo(function MessageBlock({ message }: { message: Message 
       ) : null}
       <div className="assistant-message-body">
         {isUser || isNotice ? (
-          <div className="whitespace-pre-wrap break-words">{message.content}</div>
+          <div className="wrap-break-word whitespace-pre-wrap">{message.content}</div>
         ) : (
           <Suspense fallback={<div className="whitespace-pre-wrap">{message.content}</div>}>
             <Markdown content={message.content} />

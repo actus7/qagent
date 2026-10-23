@@ -204,7 +204,7 @@ export default function ChatInput({
                 <button
                   type="button"
                   onClick={() => handleRemoveFile(index)}
-                  className="hover:bg-muted-foreground/20 ml-1 rounded-sm transition-colors"
+                  className="ml-1 rounded-sm transition-colors hover:bg-muted-foreground/20"
                   aria-label={t('chat_input_removeFile', file.name)}>
                   <span className="text-xs">✕</span>
                 </button>
@@ -284,7 +284,7 @@ export default function ChatInput({
               type="button"
               size="sm"
               onClick={() => action.onReplay(action.historicalSessionId)}
-              className="hover:bg-primary/90 bg-primary text-primary-foreground">
+              className="bg-primary text-primary-foreground hover:bg-primary/90">
               {t('chat_buttons_replay')}
             </Button>
           ) : (
@@ -295,7 +295,7 @@ export default function ChatInput({
               aria-disabled={isSendButtonDisabled}
               aria-label={t('chat_buttons_send')}
               title={t('chat_buttons_send')}
-              className="hover:bg-primary/90 bg-primary text-primary-foreground">
+              className="bg-primary text-primary-foreground hover:bg-primary/90">
               <FiArrowUp size={18} />
             </Button>
           )}

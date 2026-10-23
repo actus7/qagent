@@ -30,12 +30,13 @@
     "@extension/tailwindcss-config": "workspace:*",
     "@extension/tsconfig": "workspace:*",
     "@extension/vite-config": "workspace:*",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "tailwindcss": "^4.3.3",
+    "@tailwindcss/postcss": "^4.3.3"
   },
   "postcss": {
     "plugins": {
-      "tailwindcss": {},
-      "autoprefixer": {}
+      "@tailwindcss/postcss": {}
     }
   }
 }

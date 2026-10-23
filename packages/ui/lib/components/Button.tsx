@@ -19,7 +19,7 @@ export function Button({ variant = 'primary', className, disabled, children, ...
   return (
     <button
       className={cn(
-        'py-1 px-4 rounded shadow transition-all',
+        'rounded px-4 py-1 shadow-sm transition-all',
         disabled ? 'cursor-not-allowed bg-muted text-muted-foreground' : cn(variantClasses[variant], 'hover:scale-105'),
         className,
       )}

@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import '@extension/tailwindcss-config/theme.css';
 
 /* Tokens and base element styles live in @extension/tailwindcss-config/tokens.css */
 @layer base {

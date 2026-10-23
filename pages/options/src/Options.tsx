@@ -51,7 +51,7 @@ const Options = () => {
   };
 
   return (
-    <div data-locale={currentLocale} className="flex min-h-screen min-w-[768px] bg-background text-foreground">
+    <div data-locale={currentLocale} className="flex min-h-screen min-w-3xl bg-background text-foreground">
       {/* Vertical Navigation Bar */}
       <nav className="w-48 border-r border-border bg-card">
         <div className="p-4">
@@ -78,7 +78,7 @@ const Options = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 p-8">
-        <div className="mx-auto min-w-[512px] max-w-screen-lg">
+        <div className="mx-auto max-w-(--breakpoint-lg) min-w-lg">
           <Suspense fallback={<div>{t('options_common_loading')}</div>}>{renderTabContent()}</Suspense>
         </div>
       </main>

@@ -68,7 +68,7 @@ export function ApiKeyField({
           {isNewProvider && (
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={onToggleVisibility}
               aria-label={
                 isKeyVisible ? t('options_models_providers_apiKey_hide') : t('options_models_providers_apiKey_show')
@@ -80,8 +80,8 @@ export function ApiKeyField({
       </div>
 
       {isNewProvider && isKeyVisible && config.apiKey && (
-        <div className="ml-20 mt-1">
-          <p className="break-words font-mono text-sm text-primary">{config.apiKey}</p>
+        <div className="mt-1 ml-20">
+          <p className="font-mono text-sm wrap-break-word text-primary">{config.apiKey}</p>
         </div>
       )}
     </>

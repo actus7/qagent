@@ -42,13 +42,13 @@ function CustomNameField({
             error
               ? 'border-border bg-muted focus:border-border focus:ring-2 focus:ring-destructive'
               : 'border-border bg-muted focus:border-border focus:ring-2 focus:ring-ring'
-          } outline-none`}
+          } outline-hidden`}
         />
       </div>
       {error ? (
-        <p className="ml-20 mt-1 text-xs text-destructive">{error}</p>
+        <p className="mt-1 ml-20 text-xs text-destructive">{error}</p>
       ) : (
-        <p className="ml-20 mt-1 text-xs text-muted-foreground">{t('options_models_providers_custom_name_desc')}</p>
+        <p className="mt-1 ml-20 text-xs text-muted-foreground">{t('options_models_providers_custom_name_desc')}</p>
       )}
     </div>
   );

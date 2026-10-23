@@ -91,7 +91,7 @@ export const FirewallSettings = () => {
   return (
     <section className="space-y-6">
       <div
-        className={`rounded-lg border border-border bg-card p-6 text-left shadow-sm`}>
+        className={`rounded-lg border border-border bg-card p-6 text-left shadow-xs`}>
         <h2 className={`mb-4 text-xl font-semibold text-foreground`}>
           {t('options_firewall_header')}
         </h2>
@@ -127,7 +127,7 @@ export const FirewallSettings = () => {
             </div>
           </div>
 
-          <div className="mb-6 mt-10 flex items-center justify-between">
+          <div className="mt-10 mb-6 flex items-center justify-between">
             <div className="flex space-x-2">
               <Button
                 onClick={() => setActiveList('allow')}
@@ -216,7 +216,7 @@ export const FirewallSettings = () => {
       </div>
 
       <div
-        className={`rounded-lg border border-border bg-card p-6 text-left shadow-sm`}>
+        className={`rounded-lg border border-border bg-card p-6 text-left shadow-xs`}>
         <h2 className={`mb-4 text-xl font-semibold text-foreground`}>
           {t('options_firewall_howItWorks_header')}
         </h2>

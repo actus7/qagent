@@ -1,6 +1,6 @@
 /*
  * QAgent design tokens — single source of truth for every extension page.
- * Mapped to Tailwind classes (bg-background, text-primary, border-border, ...) in tailwind.config.ts.
+ * Mapped to Tailwind utilities (bg-background, text-primary, border-border, ...) in theme.css.
  * Plain CSS (no @layer): it is imported from JS, outside the @tailwind entry file.
  * Dark mode is driven by the `.dark` class that useTheme() toggles on <html>.
  */

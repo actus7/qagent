@@ -179,7 +179,7 @@ export default function BrowserPreview({ frame, status, sessionId, disabled = fa
             ref={imageRef}
             src={`data:image/jpeg;base64,${frame.data}`}
             alt="Browser preview stream"
-            className="aspect-video w-full select-none object-contain"
+            className="aspect-video w-full object-contain select-none"
             draggable={false}
           />
         ) : (

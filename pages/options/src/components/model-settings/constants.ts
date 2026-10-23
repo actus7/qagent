@@ -14,16 +14,16 @@ export const BASE_URL_PROVIDER_TYPES: readonly ProviderTypeEnum[] = [
   ProviderTypeEnum.Llama,
 ];
 
-export const SECTION_CARD_CLASS = 'rounded-lg border border-border bg-card p-6 text-left shadow-sm';
+export const SECTION_CARD_CLASS = 'rounded-lg border border-border bg-card p-6 text-left shadow-xs';
 export const PANEL_CLASS = 'rounded-lg border border-border bg-muted p-4';
 export const FIELD_LABEL_CLASS = 'w-20 text-sm font-medium text-foreground';
 export const SELECT_CLASS = 'flex-1 rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground';
 export const TEXT_INPUT_CLASS =
-  'rounded-md border border-input bg-card p-2 text-sm text-foreground outline-none focus:border-border focus:ring-2 focus:ring-ring';
+  'rounded-md border border-input bg-card p-2 text-sm text-foreground outline-hidden focus:border-border focus:ring-2 focus:ring-ring';
 export const TAG_CONTAINER_CLASS =
   'flex min-h-[42px] flex-wrap items-center gap-2 rounded-md border border-input bg-card p-2 text-foreground';
 export const TAG_CHIP_CLASS = 'flex items-center rounded-full bg-muted px-2 py-1 text-sm text-primary';
 export const TAG_INPUT_CLASS =
-  'min-w-[150px] flex-1 border-none bg-transparent p-1 text-sm text-foreground outline-none';
+  'min-w-[150px] flex-1 border-none bg-transparent p-1 text-sm text-foreground outline-hidden';
 export const NUMBER_INPUT_CLASS =
   'w-20 rounded-md border border-input bg-card px-2 py-1 text-sm text-foreground focus:border-border focus:ring-2 focus:ring-ring';
