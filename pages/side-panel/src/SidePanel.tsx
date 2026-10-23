@@ -140,36 +140,36 @@ const SidePanel = () => {
   }, [showStopButton]);
 
   // Clear the plan answer when the open session changes (new chat, history load, first task of a chat)
-  useEffect(() => {
-    setPlanStreamId(null);
-  }, [currentSessionId]);
+  // or the run fails/cancels — adjusted during render rather than in effects.
+  const [planScope, setPlanScope] = useState({ sessionId: currentSessionId, event: lastEvent });
+  if (planScope.sessionId !== currentSessionId || planScope.event !== lastEvent) {
+    const failed = lastEvent?.state === ExecutionState.TASK_FAIL || lastEvent?.state === ExecutionState.TASK_CANCEL;
+    if (planScope.sessionId !== currentSessionId || (planScope.event !== lastEvent && failed)) setPlanStreamId(null);
+    setPlanScope({ sessionId: currentSessionId, event: lastEvent });
+  }
 
   // A past session can be replayed only when replay is enabled and it has recorded agent steps
-  const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
+  const [replayableSessionId, setReplayableSessionId] = useState<string | null>(null);
+  const replaySessionId =
+    replayEnabled && isHistoricalSession && currentSessionId && replayableSessionId === currentSessionId
+      ? currentSessionId
+      : null;
   useEffect(() => {
-    if (!replayEnabled || !isHistoricalSession || !currentSessionId) {
-      setReplaySessionId(null);
-      return;
-    }
+    if (!replayEnabled || !isHistoricalSession || !currentSessionId) return;
     let active = true;
     chatHistoryStore
       .loadAgentStepHistory(currentSessionId)
       .then(history => {
-        if (active) setReplaySessionId(history ? currentSessionId : null);
+        if (active) setReplayableSessionId(history ? currentSessionId : null);
       })
       .catch(() => {
-        if (active) setReplaySessionId(null);
+        if (active) setReplayableSessionId(null);
       });
     return () => {
       active = false;
     };
   }, [currentSessionId, isHistoricalSession, replayEnabled]);
 
-  useEffect(() => {
-    if (lastEvent?.state === ExecutionState.TASK_FAIL || lastEvent?.state === ExecutionState.TASK_CANCEL) {
-      setPlanStreamId(null);
-    }
-  }, [lastEvent]);
 
   // Remembers which streamed answer came from a plan-mode run; stable identity so the port listener never goes stale
   const handleAssistantMessage = useCallback(

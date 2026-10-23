@@ -19,10 +19,12 @@ interface ClampedIntegerInputProps {
 /** Number input that edits a local draft and clamps only on blur or Enter, so the user can type freely. */
 const ClampedIntegerInput = ({ id, label, value, min, max, step, onCommit }: ClampedIntegerInputProps) => {
   const [draft, setDraft] = useState(String(value));
-
-  useEffect(() => {
+  // Adopt external changes (e.g. settings reloaded) during render instead of in an effect.
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (value !== syncedValue) {
+    setSyncedValue(value);
     setDraft(String(value));
-  }, [value]);
+  }
 
   const commit = () => {
     const parsed = Number.parseInt(draft, 10);
