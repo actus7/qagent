@@ -38,7 +38,7 @@ describe('browser action approval', () => {
     const manager = new ActionApprovalManager(message => messages.push(message));
     const controller = new AbortController();
     const pending = manager.authorize('task', 'fill', {}, 'ask', browser, controller.signal);
-    const rejection = expect(pending).rejects.toThrow('interrompida');
+    const rejection = expect(pending).rejects.toThrow('bg_approval_declined');
     await vi.waitFor(() => expect(messages.length).toBe(1));
     controller.abort();
     await rejection;
@@ -49,7 +49,7 @@ describe('browser action approval', () => {
     const messages: SidePanelResponseMessage[] = [];
     const manager = new ActionApprovalManager(message => messages.push(message));
     const pending = manager.authorize('task', 'click', {}, 'ask', browser, new AbortController().signal);
-    const rejection = expect(pending).rejects.toThrow('página mudou');
+    const rejection = expect(pending).rejects.toThrow('bg_approval_pageChanged');
     await vi.waitFor(() => expect(messages.length).toBe(1));
     vi.mocked(chrome.tabs.get as (tabId: number) => Promise<chrome.tabs.Tab>).mockResolvedValue({ ...tab, url: 'https://example.com/other' } as chrome.tabs.Tab);
     const message = messages[0];

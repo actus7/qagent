@@ -1079,5 +1079,35 @@
   },
   "options_common_errorOccurred": {
     "message": "Error Occurred"
+  },
+  "bg_task_selectTab": {
+    "message": "Select at least one tab to run the task."
+  },
+  "bg_approval_declined": {
+    "message": "Action declined or task interrupted."
+  },
+  "bg_task_interrupted": {
+    "message": "Task interrupted."
+  },
+  "bg_assistant_emptyResponse": {
+    "message": "The provider returned an empty response."
+  },
+  "bg_task_noModel": {
+    "message": "Configure a model in settings to continue."
+  },
+  "bg_task_providerMissing": {
+    "message": "The selected model provider is not configured."
+  },
+  "bg_approval_pageChanged": {
+    "message": "The page changed while the action was waiting for approval. Observe the page again."
+  },
+  "exec_task_resume": {
+    "message": "Task resumed."
+  },
+  "bg_approval_busy": {
+    "message": "Another action is already waiting for approval."
+  },
+  "bg_task_busy": {
+    "message": "Wait for the current task to finish or stop the run."
   }
 }
