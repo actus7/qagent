@@ -136,7 +136,7 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
     });
     const currentTask = [message.task, buildFileAttachmentNote(message.attachments)].filter(Boolean).join('\n\n');
     const task = composeFollowUpTask({ memory, history: conversation, currentTask });
-    executor = await setupExecutor(message.taskId, task, browserContext, options, message.attachments);
+    executor = await setupExecutor(message.taskId, task, browserContext, options, message.attachments, message.task);
     if (controller.signal.aborted) {
       emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
       return;
@@ -174,8 +174,7 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
       const tabId = tabIds.includes(message.tabId) ? message.tabId : tabIds[0];
       await rememberTask(message.taskId, message.task, executor, terminalEvent, tabId);
       await executor.cleanup();
-    }
-    else if (mode === 'act') await browserContext.cleanup();
+    } else if (mode === 'act') await browserContext.cleanup();
     if (isAgentBrowserContext(browserContext)) await stopAgentBrowserStream(message.taskId);
     runtimeStore.getState().setExecutor(null);
     runtimeStore.getState().resetOverlay();

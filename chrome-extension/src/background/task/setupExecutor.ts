@@ -23,6 +23,8 @@ export async function setupExecutor(
   browserContext: BrowserContextLike,
   options: AssistantTaskOptions = {},
   attachments?: AssistantAttachment[],
+  // The user's own words: plan-mode domains come from here, never from memory or page-derived history.
+  userRequest: string = task,
 ) {
   const usingAgentBrowser = isAgentBrowserContext(browserContext);
   if (usingAgentBrowser) {
@@ -94,7 +96,7 @@ export async function setupExecutor(
     displayHighlights,
   });
 
-  actionApprovals.startTask(taskId, task);
+  actionApprovals.startTask(taskId, userRequest);
   const executor = new Executor(task, taskId, browserContext, navigatorLLM, {
     authorizeAction: (action, input, signal) =>
       actionApprovals.authorize(taskId, action, input, options.permissionMode ?? 'ask', browserContext, signal),
