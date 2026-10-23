@@ -211,7 +211,7 @@ export default class BrowserContext implements BrowserContextLike {
         let hasTitle = false;
         let isComplete = false;
 
-        const onUpdatedHandler = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+        const onUpdatedHandler = (updatedTabId: number, changeInfo: chrome.tabs.OnUpdatedInfo) => {
           if (updatedTabId !== tabId) return;
 
           if (changeInfo.url) hasUrl = true;
@@ -243,7 +243,7 @@ export default class BrowserContext implements BrowserContextLike {
 
     if (waitForActivation) {
       const activatedPromise = new Promise<void>(resolve => {
-        const onActivatedHandler = (activeInfo: chrome.tabs.TabActiveInfo) => {
+        const onActivatedHandler = (activeInfo: chrome.tabs.OnActivatedInfo) => {
           if (activeInfo.tabId === tabId) {
             chrome.tabs.onActivated.removeListener(onActivatedHandler);
             resolve();

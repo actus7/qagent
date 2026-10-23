@@ -51,7 +51,7 @@ describe('browser action approval', () => {
     const pending = manager.authorize('task', 'click', {}, 'ask', browser, new AbortController().signal);
     const rejection = expect(pending).rejects.toThrow('página mudou');
     await vi.waitFor(() => expect(messages.length).toBe(1));
-    vi.mocked(chrome.tabs.get).mockResolvedValue({ ...tab, url: 'https://example.com/other' } as chrome.tabs.Tab);
+    vi.mocked(chrome.tabs.get as (tabId: number) => Promise<chrome.tabs.Tab>).mockResolvedValue({ ...tab, url: 'https://example.com/other' } as chrome.tabs.Tab);
     const message = messages[0];
     if (message.type === 'approval_required') manager.resolve('task', message.request.id, true);
     await rejection;

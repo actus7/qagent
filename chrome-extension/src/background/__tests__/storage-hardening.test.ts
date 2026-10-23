@@ -59,7 +59,7 @@ describe('chat messages across extension contexts', () => {
     const session = await store.createSession('Conversation');
     await store.addMessage(session.id, { actor: Actors.USER, content: 'First question', timestamp: 1 });
     const key = `chat_messages_${session.id}`;
-    const existing = (await chrome.storage.local.get(key))[key];
+    const existing = (await chrome.storage.local.get(key))[key] as unknown[];
     await chrome.storage.local.set({
       [key]: [
         ...existing,

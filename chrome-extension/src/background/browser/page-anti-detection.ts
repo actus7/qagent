@@ -1,4 +1,4 @@
-import type { Page as PuppeteerPage } from 'puppeteer-core/lib/esm/puppeteer/api/Page.js';
+import type { Page as PuppeteerPage } from 'puppeteer-core/internal/puppeteer-core-browser.js';
 
 // Injected before any page script runs (via evaluateOnNewDocument).
 // NOTE: the navigator.webdriver override is intentionally kept as-is; whether it should stay is pending a user decision.

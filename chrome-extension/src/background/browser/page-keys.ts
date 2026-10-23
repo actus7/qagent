@@ -1,4 +1,4 @@
-import type { KeyInput } from 'puppeteer-core/lib/esm/puppeteer/puppeteer-core-browser.js';
+import type { KeyInput } from 'puppeteer-core/internal/puppeteer-core-browser.js';
 import { createLogger } from '@src/background/log';
 
 const logger = createLogger('Page');

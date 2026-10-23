@@ -1,5 +1,4 @@
-import type { HTTPRequest, HTTPResponse } from 'puppeteer-core/lib/esm/puppeteer/puppeteer-core-browser.js';
-import type { Page as PuppeteerPage } from 'puppeteer-core/lib/esm/puppeteer/api/Page.js';
+import type { HTTPRequest, HTTPResponse , Page as PuppeteerPage } from 'puppeteer-core/internal/puppeteer-core-browser.js';
 import type { BrowserContextConfig } from './views';
 import { createLogger } from '@src/background/log';
 

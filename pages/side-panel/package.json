@@ -39,7 +39,7 @@
     "@extension/tsconfig": "workspace:*",
     "@extension/vite-config": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
-    "cross-env": "^7.0.3",
+    "cross-env": "^10.1.0",
     "postcss": "^8.5.31",
     "tailwindcss": "^4.3.3"
   },

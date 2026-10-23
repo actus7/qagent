@@ -1,6 +1,4 @@
-import type { Page as PuppeteerPage } from 'puppeteer-core/lib/esm/puppeteer/api/Page.js';
-import type { ElementHandle } from 'puppeteer-core/lib/esm/puppeteer/api/ElementHandle.js';
-import type { Frame } from 'puppeteer-core/lib/esm/puppeteer/api/Frame.js';
+import type { Page as PuppeteerPage , ElementHandle , Frame } from 'puppeteer-core/internal/puppeteer-core-browser.js';
 import type { DOMElementNode } from './dom/views';
 import { createLogger } from '@src/background/log';
 import { scrollIntoViewIfNeeded } from './page-scroll';
