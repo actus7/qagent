@@ -15,7 +15,7 @@
     "zip": "pnpm build && pnpm -F zipper zip",
     "dev": "bash scripts/dev.sh",
     "dev:watch": "turbo ready && cross-env __DEV__=true turbo watch dev --concurrency 20",
-    "e2e": "pnpm build && pnpm zip && turbo e2e",
+    "e2e": "pnpm build && node --test e2e/extension.test.mjs",
     "smoke": "bash scripts/smoke.sh",
     "smoke:quick": "bash scripts/smoke.sh --quick",
     "smoke:zip": "bash scripts/smoke.sh --zip",
@@ -24,7 +24,8 @@
     "lint": "turbo lint --continue -- --fix --cache --cache-location node_modules/.cache/.eslintcache",
     "lint:fix": "turbo lint:fix --continue -- --fix --cache --cache-location node_modules/.cache/.eslintcache",
     "prettier": "turbo prettier --continue -- --cache --cache-location node_modules/.cache/.prettiercache",
-    "update-version": "bash update_version.sh"
+    "update-version": "bash update_version.sh",
+    "e2e:setup": "playwright-core install chromium"
   },
   "dependencies": {
     "eslint-plugin-tailwindcss": "^4.4.0",
@@ -46,6 +47,7 @@
     "eslint-plugin-jsx-a11y-x": "^0.2.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "^17.13.0",
+    "playwright-core": "^1.64.1",
     "postcss": "^8.5.31",
     "prettier": "^3.9.10",
     "rimraf": "^6.1.3",

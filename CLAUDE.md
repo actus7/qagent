@@ -21,7 +21,7 @@ AQgent is a browser extension that operates as an automated QA (Quality Assuranc
 
 **Testing**:
 
-- `pnpm e2e` - Run end-to-end tests (builds and zips first)
+- `pnpm e2e` - Build, then run the extension in headless Chromium against a fake LLM (`e2e/`); first time: `pnpm e2e:setup`
 - `pnpm zip` - Create extension zip for distribution
 - `pnpm -F chrome-extension test` - Run unit tests (Vitest) for core extension
   - Targeted example: `pnpm -F chrome-extension test -- -t "Sanitizer"`
