@@ -160,7 +160,8 @@ export type SidePanelResponseMessage =
 type BackgroundRuntimeMessage =
   | { type: 'qagent:cancel' }
   | { type: 'qagent:overlay:state' }
-  | { type: 'qagent:test-provider'; providerId: string };
+  | { type: 'qagent:test-provider'; providerId: string }
+  | { type: 'qagent:schedule:run-now'; id: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -316,6 +317,9 @@ export function isBackgroundRuntimeMessage(message: unknown): message is Backgro
   }
   if (message.type === 'qagent:test-provider') {
     return typeof message.providerId === 'string' && message.providerId.length > 0 && message.providerId.length <= 200;
+  }
+  if (message.type === 'qagent:schedule:run-now') {
+    return typeof message.id === 'string' && message.id.length > 0 && message.id.length <= 100;
   }
   return message.type === 'qagent:cancel' || message.type === 'qagent:overlay:state';
 }

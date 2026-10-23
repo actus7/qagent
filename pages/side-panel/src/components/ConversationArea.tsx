@@ -14,6 +14,8 @@ interface ConversationAreaProps {
   /** Content of the latest plan answer when the "execute plan" action should be offered. */
   planAnswer: string | null;
   onExecutePlan: (planAnswer: string) => void;
+  /** Resumes a task that the service worker restart interrupted. */
+  onContinue: () => void;
 }
 
 export default function ConversationArea({
@@ -23,6 +25,7 @@ export default function ConversationArea({
   welcome,
   planAnswer,
   onExecutePlan,
+  onContinue,
 }: ConversationAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +43,7 @@ export default function ConversationArea({
       </div>
     );
   } else if (messages.length > 0) {
-    content = <MessageList messages={messages} />;
+    content = <MessageList messages={messages} onContinue={onContinue} />;
   } else {
     content = welcome;
   }

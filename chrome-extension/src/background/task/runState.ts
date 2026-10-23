@@ -64,7 +64,9 @@ function defaultRecoveryDeps(): RecoveryDeps {
   return {
     saveMemory: (sessionId, memory) => chatHistoryStore.setTaskMemory(sessionId, memory),
     addNotice: (sessionId, content) =>
-      chatHistoryStore.addMessage(sessionId, { actor: Actors.SYSTEM, content, timestamp: Date.now() }).then(() => {}),
+      chatHistoryStore
+        .addMessage(sessionId, { actor: Actors.SYSTEM, content, timestamp: Date.now(), kind: 'interrupted' })
+        .then(() => {}),
   };
 }
 

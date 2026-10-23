@@ -65,7 +65,20 @@ export async function cancelActiveTask(): Promise<void> {
   await runtimeStore.getState().currentExecutor?.cancel();
 }
 
-export async function runAssistantTask(message: SidePanelTaskCommand, replaySessionId?: string): Promise<void> {
+export function isAssistantTaskRunning(): boolean {
+  return activeTask !== null;
+}
+
+export interface AssistantTaskHooks {
+  /** Called once the task has ended, with its terminal state (null when no terminal state was emitted). */
+  onFinished?: (state: string | null) => void;
+}
+
+export async function runAssistantTask(
+  message: SidePanelTaskCommand,
+  replaySessionId?: string,
+  hooks: AssistantTaskHooks = {},
+): Promise<void> {
   if (activeTask) throw new Error(t('bg_task_busy'));
   const controller = new AbortController();
   activeTask = controller;
@@ -182,6 +195,7 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
     if (activeTask === controller) activeTask = null;
     // Assigned from the event callback, which TypeScript cannot see here; the cast restores the declared type.
     const finalEvent = terminalEvent as ExecutionPortEventMessage | null;
+    hooks.onFinished?.(finalEvent?.state ?? null);
     if (finalEvent) {
       const attention = attentionEventForState(finalEvent.state);
       if (attention) void notifyTaskAttention(attention, finalEvent.data.details);

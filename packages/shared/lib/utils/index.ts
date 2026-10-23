@@ -5,3 +5,4 @@ export * from './context-prefill';
 export * from './assistant-attachments';
 export * from './composer-triggers';
 export * from './session-report';
+export * from './workflow-recording';
