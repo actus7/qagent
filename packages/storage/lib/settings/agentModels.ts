@@ -1,6 +1,7 @@
 import { StorageEnum } from '../base/enums';
 import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
+import { llmProviderStore } from './llmProviders';
 import { AgentNameEnum, getDefaultModelRequestsPerMinute, llmProviderParameters } from './types';
 
 export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
@@ -42,6 +43,8 @@ type AgentModelStorage = BaseStorage<AgentModelRecord> & {
   hasAgentModel: (agent: AgentNameEnum) => Promise<boolean>;
   getConfiguredAgents: () => Promise<AgentNameEnum[]>;
   getAllAgentModels: () => Promise<Record<AgentNameEnum, ModelConfig>>;
+  /** Resets every agent using `providerId` whose model is not in `keepModelNames`. Returns the reset agents. */
+  resetAgentModelsForProvider: (providerId: string, keepModelNames: string[]) => Promise<AgentNameEnum[]>;
   cleanupLegacyValidatorSettings: () => Promise<void>;
 };
 
@@ -134,10 +137,32 @@ export const agentModelStore: AgentModelStorage = {
   },
   getConfiguredAgents: async () => {
     const data = await storage.get();
-    // Filter out any legacy validator entries for backward compatibility
+    const providerIds = new Set(Object.keys(await llmProviderStore.getAllProviders()));
+    // Filter out legacy validator entries and agents whose provider was deleted
     return Object.keys(data.agents).filter(
-      agentKey => agentKey !== 'validator' && Object.values(AgentNameEnum).includes(agentKey as AgentNameEnum),
+      agentKey =>
+        agentKey !== 'validator' &&
+        Object.values(AgentNameEnum).includes(agentKey as AgentNameEnum) &&
+        providerIds.has(data.agents[agentKey as AgentNameEnum].provider),
     ) as AgentNameEnum[];
+  },
+  resetAgentModelsForProvider: async (providerId: string, keepModelNames: string[]) => {
+    const data = await storage.get();
+    const resetAgents = (Object.keys(data.agents) as AgentNameEnum[]).filter(agent => {
+      const config = data.agents[agent];
+      return config.provider === providerId && !keepModelNames.includes(config.modelName);
+    });
+    if (resetAgents.length === 0) {
+      return [];
+    }
+    await storage.set(current => {
+      const newAgents = { ...current.agents };
+      for (const agent of resetAgents) {
+        delete newAgents[agent];
+      }
+      return { agents: newAgents };
+    });
+    return resetAgents;
   },
   getAllAgentModels: async () => {
     const data = await storage.get();
