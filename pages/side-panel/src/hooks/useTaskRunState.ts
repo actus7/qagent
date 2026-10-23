@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { ActionApproval as Approval } from '@extension/shared';
 import type { AgentEvent } from '@src/types/event';
 
@@ -9,6 +9,13 @@ export const useTaskRunState = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
 
+  const resetRunState = useCallback(() => {
+    setPendingApproval(null);
+    setLastEvent(null);
+    setIsPaused(false);
+    setIsStopping(false);
+  }, []);
+
   return {
     pendingApproval,
     setPendingApproval,
@@ -18,6 +25,7 @@ export const useTaskRunState = () => {
     setIsPaused,
     isStopping,
     setIsStopping,
+    resetRunState,
   };
 };
 

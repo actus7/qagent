@@ -25,7 +25,7 @@ const useSystemStateEffects = () => {
     useSidePanelActions();
 
   return useCallback(
-    (state: ExecutionState, setIsPaused: (value: boolean) => void) => {
+    (state: ExecutionState) => {
       switch (state) {
         case ExecutionState.TASK_START:
           // Reset historical session flag when a new task starts
@@ -45,11 +45,7 @@ const useSystemStateEffects = () => {
           setIsReplaying(false);
           break;
         case ExecutionState.TASK_PAUSE:
-          setIsPaused(true);
           setIsReplaying(false);
-          break;
-        case ExecutionState.TASK_RESUME:
-          setIsPaused(false);
           break;
         default:
           break;
@@ -82,6 +78,9 @@ export const useTaskEventHandler = ({
         setIsPaused(false);
         setMessages(previous => previous.filter(item => item.content !== progressMessage));
       }
+      // The background is the source of truth for pause state; the local toggle is only optimistic
+      if (state === ExecutionState.TASK_PAUSE) setIsPaused(true);
+      if (state === ExecutionState.TASK_RESUME) setIsPaused(false);
 
       const content = data?.details;
       const plan = planTaskDisplay(actor, state, content);
@@ -89,7 +88,7 @@ export const useTaskEventHandler = ({
         console.error(plan.error, plan.detail);
         return;
       }
-      if (actor === Actors.SYSTEM) applySystemState(state, setIsPaused);
+      if (actor === Actors.SYSTEM) applySystemState(state);
 
       if (!plan.skip) {
         appendMessage({

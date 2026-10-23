@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { Actors } from '@extension/storage';
+import { Actors, chatHistoryStore } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { useTheme, type AssistantMode } from '@extension/shared';
 import { useLanguage } from '@extension/shared';
@@ -28,8 +28,13 @@ import { useTaskSubmission } from './hooks/useTaskSubmission';
 import { useVoiceInput } from './hooks/useVoiceInput';
 import { assistantCopy } from './lib/assistant-copy';
 import { toAgentEvent } from './lib/sidepanel-events';
-import type { AgentEvent } from './types/event';
-import type { BrowserFramePayload, BrowserInputPayload, BrowserStatusPayload } from './types/port';
+import { ExecutionState, type AgentEvent } from './types/event';
+import type {
+  BrowserFramePayload,
+  BrowserInputPayload,
+  BrowserStatusPayload,
+  SidePanelResponseMessage,
+} from './types/port';
 
 const openOptionsPage = () => chrome.runtime.openOptionsPage();
 
@@ -81,6 +86,10 @@ const SidePanel = () => {
   const [browserStatus, setBrowserStatus] = useState<BrowserStatusPayload | null>(null);
   const runState = useTaskRunState();
   const { pendingApproval, setPendingApproval, lastEvent, setLastEvent, isPaused, setIsPaused, isStopping } = runState;
+  const isTaskRunningRef = useRef(false);
+  // Stream id of the plan-mode answer produced by the current run, used for "Execute this plan"
+  const [planStreamId, setPlanStreamId] = useState<string | null>(null);
+  const modeRef = useRef(workspace.mode);
 
   const { theme, cycleTheme } = useTheme();
 
@@ -122,18 +131,71 @@ const SidePanel = () => {
     setPendingApproval,
   });
 
+  useEffect(() => {
+    modeRef.current = workspace.mode;
+  }, [workspace.mode]);
+
+  useEffect(() => {
+    isTaskRunningRef.current = showStopButton;
+  }, [showStopButton]);
+
+  // Clear the plan answer when the open session changes (new chat, history load, first task of a chat)
+  useEffect(() => {
+    setPlanStreamId(null);
+  }, [currentSessionId]);
+
+  // A past session can be replayed only when replay is enabled and it has recorded agent steps
+  const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!replayEnabled || !isHistoricalSession || !currentSessionId) {
+      setReplaySessionId(null);
+      return;
+    }
+    let active = true;
+    chatHistoryStore
+      .loadAgentStepHistory(currentSessionId)
+      .then(history => {
+        if (active) setReplaySessionId(history ? currentSessionId : null);
+      })
+      .catch(() => {
+        if (active) setReplaySessionId(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentSessionId, isHistoricalSession, replayEnabled]);
+
+  useEffect(() => {
+    if (lastEvent?.state === ExecutionState.TASK_FAIL || lastEvent?.state === ExecutionState.TASK_CANCEL) {
+      setPlanStreamId(null);
+    }
+  }, [lastEvent]);
+
+  // Remembers which streamed answer came from a plan-mode run; stable identity so the port listener never goes stale
+  const handleAssistantMessage = useCallback(
+    (message: SidePanelResponseMessage) => {
+      if (message.type === 'assistant_delta' && modeRef.current === 'plan') {
+        setPlanStreamId(message.streamId);
+      }
+      onAssistantMessage(message);
+    },
+    [onAssistantMessage],
+  );
+
   const connection = useSidePanelConnection({
     appendMessage,
     handleTaskStateRef,
     toAgentEvent,
     chatDebugModeRef,
+    isTaskRunningRef,
     setInputEnabled,
     setShowStopButton,
     setIsProcessingSpeech,
     setInputText,
     setBrowserFrame,
     setBrowserStatus,
-    onAssistantMessage,
+    onAssistantMessage: handleAssistantMessage,
+    resetRunState: runState.resetRunState,
   });
   const { ensureConnection, stopConnection, sendMessage } = connection;
 
@@ -213,6 +275,7 @@ const SidePanel = () => {
     setBrowserFrame(null);
     setBrowserStatus(null);
     setLastEvent(null);
+    setPlanStreamId(null);
   };
 
   const handleTogglePause = () => {
@@ -237,8 +300,11 @@ const SidePanel = () => {
     };
   }, [stopConnection]);
 
-  const lastAnswer = messages.filter(message => message.actor === Actors.ASSISTANT).at(-1);
-  const planAnswer = workspace.mode === 'plan' && lastAnswer && !showStopButton ? lastAnswer.content : null;
+  const planAnswerMessage = planStreamId
+    ? messages.filter(message => message.streamId === planStreamId).at(-1)
+    : undefined;
+  const planAnswer =
+    workspace.mode === 'plan' && planAnswerMessage && !showStopButton ? planAnswerMessage.content : null;
 
   return (
     <div data-locale={currentLocale} className="assistant-shell">
@@ -300,13 +366,22 @@ const SidePanel = () => {
               request={pendingApproval}
               copy={copy}
               onResolve={approved => {
-                sendMessage({
-                  type: 'approval_result',
-                  taskId: pendingApproval.taskId,
-                  requestId: pendingApproval.id,
-                  approved,
-                });
-                setPendingApproval(null);
+                try {
+                  sendMessage({
+                    type: 'approval_result',
+                    taskId: pendingApproval.taskId,
+                    requestId: pendingApproval.id,
+                    approved,
+                  });
+                } catch (error) {
+                  appendMessage({
+                    actor: Actors.SYSTEM,
+                    content: error instanceof Error ? error.message : String(error),
+                    timestamp: Date.now(),
+                  });
+                } finally {
+                  setPendingApproval(null);
+                }
               }}
             />
           ) : null}
@@ -335,6 +410,7 @@ const SidePanel = () => {
             onRegisterInputSetter={setter => {
               setInputTextRef.current = setter;
             }}
+            replaySessionId={replaySessionId}
           />
         </>
       )}

@@ -3,7 +3,9 @@ import { Actors, chatHistoryStore } from '@extension/storage';
 import type { assistantCopy } from '../lib/assistant-copy';
 import type { AppendMessage } from '../lib/sidepanel-events';
 import type { AssistantWorkspace } from './useAssistantWorkspace';
+import { t } from '@extension/i18n';
 import type { SidePanelConnection } from './useSidePanelConnection';
+import { isChatCommand } from './useChatCommands';
 import type { TaskRunState } from './useTaskRunState';
 import { useSidePanelActions } from './useSidePanelSelectors';
 
@@ -75,7 +77,7 @@ export const useTaskSubmission = ({
       return false;
     }
 
-    if (trimmedText.startsWith('/')) {
+    if (isChatCommand(trimmedText)) {
       const wasHandled = await handleCommand(trimmedText);
       if (wasHandled) return true;
     }
@@ -84,7 +86,7 @@ export const useTaskSubmission = ({
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const tabId = tabs[0]?.id;
       if (!tabId) {
-        throw new Error('No active tab found');
+        throw new Error(t('errors_noActiveTab'));
       }
       if (workspace.mode === 'act' && workspace.selectedTabs.length === 0) throw new Error(copy.noActive);
 

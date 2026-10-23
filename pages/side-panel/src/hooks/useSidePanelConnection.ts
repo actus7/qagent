@@ -17,6 +17,7 @@ interface UseSidePanelConnectionArgs {
   handleTaskStateRef: MutableRefObject<(event: AgentEvent) => void>;
   toAgentEvent: (message: ExecutionPortEventMessage) => AgentEvent | null;
   chatDebugModeRef: MutableRefObject<boolean>;
+  isTaskRunningRef: MutableRefObject<boolean>;
   setInputEnabled: (value: boolean) => void;
   setShowStopButton: (value: boolean) => void;
   setIsProcessingSpeech: (value: boolean) => void;
@@ -24,6 +25,7 @@ interface UseSidePanelConnectionArgs {
   setBrowserFrame: (frame: BrowserFramePayload | null) => void;
   setBrowserStatus: (status: BrowserStatusPayload) => void;
   onAssistantMessage: (message: SidePanelResponseMessage) => void;
+  resetRunState: () => void;
 }
 
 const formatDebugPayload = (label: string, payload: unknown) => {
@@ -35,6 +37,7 @@ export const useSidePanelConnection = ({
   handleTaskStateRef,
   toAgentEvent,
   chatDebugModeRef,
+  isTaskRunningRef,
   setInputEnabled,
   setShowStopButton,
   setIsProcessingSpeech,
@@ -42,6 +45,7 @@ export const useSidePanelConnection = ({
   setBrowserFrame,
   setBrowserStatus,
   onAssistantMessage,
+  resetRunState,
 }: UseSidePanelConnectionArgs) => {
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const heartbeatIntervalRef = useRef<number | null>(null);
@@ -127,8 +131,19 @@ export const useSidePanelConnection = ({
             content: message.error || t('errors_unknown'),
             timestamp: Date.now(),
           });
-          setInputEnabled(true);
-          setShowStopButton(false);
+          // An error does not end a running task; its TASK_OK/TASK_FAIL/TASK_CANCEL event does
+          if (!isTaskRunningRef.current) {
+            setInputEnabled(true);
+            setShowStopButton(false);
+          }
+        } else if (message.type === 'success') {
+          if (message.msg) {
+            appendMessage({
+              actor: Actors.SYSTEM,
+              content: message.msg,
+              timestamp: Date.now(),
+            });
+          }
         } else if (message.type === 'speech_to_text_result') {
           if (message.text) {
             setInputText(message.text);
@@ -160,6 +175,7 @@ export const useSidePanelConnection = ({
         }
         setBrowserStatus({ connected: false, authenticated: false, message: 'Port disconnected' });
         setBrowserFrame(null);
+        resetRunState();
         setInputEnabled(true);
         setShowStopButton(false);
       });
@@ -209,6 +225,8 @@ export const useSidePanelConnection = ({
     stopConnection,
     toAgentEvent,
     onAssistantMessage,
+    resetRunState,
+    isTaskRunningRef,
   ]);
 
   const sendMessage = useCallback(
