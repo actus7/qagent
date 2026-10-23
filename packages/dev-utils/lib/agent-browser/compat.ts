@@ -2,7 +2,7 @@ import {
   BrowserManager as InternalBrowserManager,
   type ScreencastFrame,
   type ScreencastOptions,
-} from 'agent-browser/dist/browser.js';
+} from 'agent-browser';
 
 export type BrowserLaunchOptions = Omit<Parameters<InternalBrowserManager['launch']>[0], 'id' | 'action'>;
 

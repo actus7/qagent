@@ -1,4 +1,4 @@
-import { BrowserManager, type ScreencastFrame, type ScreencastOptions } from 'agent-browser/dist/browser.js';
+import { BrowserManager, type ScreencastFrame, type ScreencastOptions } from 'agent-browser';
 
 export type BrowserManagerLaunchOptions = Omit<Parameters<BrowserManager['launch']>[0], 'id' | 'action'>;
 

@@ -29,13 +29,13 @@
     "@langchain/ollama": "0.2.4",
     "@langchain/openai": "0.6.16",
     "@langchain/xai": "^0.1.0",
-    "jsonrepair": "^3.13.1",
-    "posthog-js": "^1.345.2",
-    "puppeteer-core": "^24.31.0",
+    "jsonrepair": "^3.15.0",
+    "posthog-js": "^1.438.20",
+    "puppeteer-core": "^24.43.1",
     "webextension-polyfill": "^0.12.0",
     "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.24.6",
-    "zustand": "^5.0.8"
+    "zod-to-json-schema": "^3.25.2",
+    "zustand": "^5.0.16"
   },
   "overrides": {
     "@langchain/core": "^0.3.80",
@@ -47,12 +47,9 @@
     "@extension/tsconfig": "workspace:*",
     "@extension/vite-config": "workspace:*",
     "@laynezh/vite-plugin-lib-assets": "^0.6.1",
-    "@types/ws": "^8.5.13",
+    "@types/ws": "^8.18.2",
     "cross-env": "^7.0.3",
     "deepmerge": "^4.3.1",
-    "magic-string": "^0.30.10",
-    "ts-loader": "^9.5.1",
-    "vitest": "2.1.9",
-    "webpack": "^5.104.1"
+    "vitest": "2.1.9"
   }
 }

@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
         '@src': srcDir,
         '@assets': resolve(srcDir, 'assets'),
         crypto: resolve(srcDir, 'shims/crypto.ts'),
+        '@puppeteer/browsers': resolve(srcDir, 'shims/puppeteer-browsers.ts'),
       },
       conditions: ['browser', 'module', 'import', 'default'],
       mainFields: ['browser', 'module', 'main'],

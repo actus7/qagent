@@ -26,10 +26,10 @@
   "devDependencies": {
     "@extension/tsconfig": "workspace:*",
     "deepmerge": "^4.3.1",
-    "tsc-alias": "^1.8.10"
+    "tsc-alias": "^1.9.9"
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.4.0"
+    "tailwind-merge": "^2.6.1"
   }
 }
