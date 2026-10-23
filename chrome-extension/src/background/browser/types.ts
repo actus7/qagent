@@ -32,6 +32,7 @@ export interface BrowserPageLike {
   url(): string;
   takeScreenshot(fullPage?: boolean): Promise<string | null>;
   removeHighlight(): Promise<void>;
+  takeDialogNotices?(): string[];
   getReadabilityContent?(): Promise<{ title?: string; content: string }>;
   scrollToPercent(yPercent: number, elementNode?: DOMElementNode): Promise<void>;
   getElementScrollInfo(elementNode: DOMElementNode): Promise<[number, number, number]>;

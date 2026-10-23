@@ -357,6 +357,13 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
           logger.debug(`[${this.modelName}] Successfully parsed structured output`);
           return output;
         }
+        // parsed is null on parse failure; the raw text may still contain a valid JSON answer
+        const rawContent = response.raw?.content;
+        const manuallyParsed =
+          typeof rawContent === 'string' && rawContent.length > 0 ? this.manuallyParseResponse(rawContent) : undefined;
+        if (manuallyParsed) {
+          return manuallyParsed;
+        }
         logger.error('Failed to parse response', response);
         throw new Error('Could not parse response with structured output');
       } catch (error) {

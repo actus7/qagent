@@ -33,8 +33,25 @@ export default class ScopedBrowserContext extends BrowserContext {
 
   override async getCurrentPage(): Promise<BrowserPageLike> {
     if (this.currentTabId === null) throw new Error('Selecione uma aba para executar a tarefa.');
-    await this.assertTabAllowed(this.currentTabId);
+    try {
+      await this.assertTabAllowed(this.currentTabId);
+    } catch {
+      // The current tab was closed or blocked: continue on another tab in scope instead of failing every step
+      await this.switchToFirstUsableTab();
+    }
     return super.getCurrentPage();
+  }
+
+  private async switchToFirstUsableTab(): Promise<void> {
+    for (const tabId of this.allowedTabs) {
+      try {
+        await this.switchTab(tabId);
+        return;
+      } catch {
+        // closed or not allowed anymore, try the next one
+      }
+    }
+    throw new Error('Nenhuma aba disponível para continuar a tarefa.');
   }
 
   override async switchTab(tabId: number): Promise<BrowserPageLike> {

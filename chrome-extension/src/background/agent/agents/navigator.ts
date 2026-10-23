@@ -136,6 +136,13 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         if (response.parsed) {
           return response.parsed as this['ModelOutput'];
         }
+        // parsing failed but the raw text may still hold a valid JSON answer
+        const rawContent = response.raw?.content;
+        const manuallyParsed =
+          typeof rawContent === 'string' && rawContent.length > 0 ? this.manuallyParseResponse(rawContent) : undefined;
+        if (manuallyParsed) {
+          return manuallyParsed;
+        }
       } catch (error) {
         if (error instanceof LLMTimeoutError) {
           if (this.isGeminiModel()) {
@@ -169,7 +176,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
       const rawResponse = response.raw as BaseMessage & {
         tool_calls?: Array<{
           args: {
-            currentState: z.infer<typeof agentBrainSchema>;
+            current_state: z.infer<typeof agentBrainSchema>;
             action: Array<z.infer<ReturnType<typeof buildDynamicActionSchema>>>;
           };
         }>;
@@ -181,7 +188,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         // only use the first tool call
         const toolCall = rawResponse.tool_calls[0];
         return {
-          current_state: toolCall.args.currentState,
+          current_state: toolCall.args.current_state,
           action: [...toolCall.args.action],
         };
       }
@@ -269,6 +276,8 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
       // take the actions
       actionResults = await this.doMultiAction(actions);
       logger.debug('Navigator action execution results', actionResults);
+      // prepended so the last result still decides whether the task is done
+      actionResults.unshift(...(await this.collectDialogNotices()));
 
       this.context.actionResults = actionResults;
 
@@ -301,7 +310,8 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         throw new ChatModelAuthError(errorMessage, error);
       } else if (isBadRequestError(error)) {
         throw new ChatModelBadRequestError(errorMessage, error);
-      } else if (isAbortedError(error) || error instanceof LLMTimeoutError) {
+      } else if (isAbortedError(error)) {
+        // Real user aborts only; an LLM timeout is a counted, retryable step failure
         throw new RequestCancelledError(errorMessage);
       } else if (isExtensionConflictError(error)) {
         throw new ExtensionConflictError(EXTENSION_CONFLICT_ERROR_MESSAGE, error);
@@ -441,6 +451,38 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
     return actions;
   }
 
+  /**
+   * Lets a user cancel stop waiting on a page call that never returns (e.g. a hung puppeteer call).
+   */
+  private async raceWithCancel<T>(pending: Promise<T>): Promise<T> {
+    const signal = this.context.controller.signal;
+    const cancelled = () => new RequestCancelledError('Tarefa interrompida.');
+    if (signal.aborted) throw cancelled();
+    let onAbort: (() => void) | undefined;
+    const abortPromise = new Promise<never>((_, reject) => {
+      onAbort = () => reject(cancelled());
+      signal.addEventListener('abort', onAbort, { once: true });
+    });
+    try {
+      return await Promise.race([pending, abortPromise]);
+    } finally {
+      if (onAbort) signal.removeEventListener('abort', onAbort);
+    }
+  }
+
+  /** JS dialogs handled by the page since the last step, reported to the model as action results. */
+  private async collectDialogNotices(): Promise<ActionResult[]> {
+    try {
+      const page = await this.context.browserContext.getCurrentPage();
+      return (page.takeDialogNotices?.() ?? []).map(
+        notice => new ActionResult({ extractedContent: notice, includeInMemory: true }),
+      );
+    } catch (error) {
+      logger.warning('Could not collect JS dialog notices', error);
+      return [];
+    }
+  }
+
   private async doMultiAction(actions: Record<string, unknown>[]): Promise<ActionResult[]> {
     const results: ActionResult[] = [];
     let errCount = 0;
@@ -484,7 +526,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
           }
         }
 
-        const result = await actionInstance.call(actionArgs);
+        const result = await this.raceWithCancel(actionInstance.call(actionArgs));
         if (result === undefined) {
           throw new Error(`Action ${actionName} returned undefined`);
         }

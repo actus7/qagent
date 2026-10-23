@@ -30,6 +30,7 @@ import { createLoopDetectionState, evaluateLoopDetection, type LoopDetectionStat
 
 const logger = createLogger('Executor');
 const MAX_TASK_CHAIN_LENGTH = 50;
+const PAUSE_POLL_INTERVAL_MS = 200;
 
 interface ExecutorExtraArgs {
   authorizeAction?: (action: string, input: unknown, signal: AbortSignal) => Promise<void>;
@@ -223,6 +224,8 @@ export class Executor {
         // If navigator indicates completion, the next periodic planner run will validate it
         if (navigatorDone) {
           logger.info('🔄 Navigator indicates completion - will be validated by next planner run');
+          // ponytail: without a planner there is no validation cycle, so the navigator's done is final
+          if (this.plannerDisabledForTask) break;
         }
       }
 
@@ -284,7 +287,12 @@ export class Executor {
       if (this.generalSettings?.replayHistoricalTasks) {
         const historyString = JSON.stringify(this.context.history);
         logger.info(`Executor history size: ${historyString.length}`);
-        await chatHistoryStore.storeAgentStepHistory(this.context.taskId, this.tasks[0], historyString);
+        try {
+          await chatHistoryStore.storeAgentStepHistory(this.context.taskId, this.tasks[0], historyString);
+        } catch (error) {
+          // A failed history write must not turn a finished task into a failure
+          logger.error(`Failed to store agent step history: ${error}`);
+        }
       } else {
         logger.info('Replay historical tasks is disabled, skipping history storage');
       }
@@ -426,7 +434,7 @@ export class Executor {
     }
 
     while (this.context.paused) {
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, PAUSE_POLL_INTERVAL_MS));
       if (this.context.stopped) {
         return true;
       }
@@ -446,10 +454,12 @@ export class Executor {
 
   async resume(): Promise<void> {
     this.context.resume();
+    await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_RESUME, t('exec_task_resume'));
   }
 
   async pause(): Promise<void> {
     this.context.pause();
+    await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_PAUSE, t('exec_task_pause'));
   }
 
   async cleanup(): Promise<void> {
@@ -507,6 +517,11 @@ export class Executor {
         }
 
         // Execute the history step with enhanced method that handles all the logic
+        // Hold the replay while paused; stop() still breaks out of the wait
+        while (this.context.paused && !this.context.stopped) {
+          await new Promise(resolve => setTimeout(resolve, PAUSE_POLL_INTERVAL_MS));
+        }
+
         const stepResults = await this.navigator.executeHistoryStep(
           historyItem,
           i,

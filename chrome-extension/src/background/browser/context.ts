@@ -204,6 +204,8 @@ export default class BrowserContext implements BrowserContextLike {
     const { waitForUpdate = true, waitForActivation = true, timeoutMs = 5000 } = options;
 
     const promises: Promise<void>[] = [];
+    // Listener removals run on every exit path, including the timeout
+    const cleanups: Array<() => void> = [];
 
     if (waitForUpdate) {
       const updatePromise = new Promise<void>(resolve => {
@@ -225,18 +227,23 @@ export default class BrowserContext implements BrowserContextLike {
           }
         };
         chrome.tabs.onUpdated.addListener(onUpdatedHandler);
+        cleanups.push(() => chrome.tabs.onUpdated.removeListener(onUpdatedHandler));
 
         // Check current state
-        chrome.tabs.get(tabId).then(tab => {
-          if (tab.url) hasUrl = true;
-          if (tab.title) hasTitle = true;
-          if (tab.status === 'complete') isComplete = true;
+        chrome.tabs
+          .get(tabId)
+          .then(tab => {
+            if (tab.url) hasUrl = true;
+            if (tab.title) hasTitle = true;
+            if (tab.status === 'complete') isComplete = true;
 
-          if (hasUrl && hasTitle && isComplete) {
-            chrome.tabs.onUpdated.removeListener(onUpdatedHandler);
-            resolve();
-          }
-        });
+            if (hasUrl && hasTitle && isComplete) {
+              chrome.tabs.onUpdated.removeListener(onUpdatedHandler);
+              resolve();
+            }
+          })
+          // A tab that vanished is handled by the timeout instead of an unhandled rejection
+          .catch(error => logger.warning('Could not read tab state', tabId, error));
       });
       promises.push(updatePromise);
     }
@@ -250,23 +257,33 @@ export default class BrowserContext implements BrowserContextLike {
           }
         };
         chrome.tabs.onActivated.addListener(onActivatedHandler);
+        cleanups.push(() => chrome.tabs.onActivated.removeListener(onActivatedHandler));
 
         // Check current state
-        chrome.tabs.get(tabId).then(tab => {
-          if (tab.active) {
-            chrome.tabs.onActivated.removeListener(onActivatedHandler);
-            resolve();
-          }
-        });
+        chrome.tabs
+          .get(tabId)
+          .then(tab => {
+            if (tab.active) {
+              chrome.tabs.onActivated.removeListener(onActivatedHandler);
+              resolve();
+            }
+          })
+          .catch(error => logger.warning('Could not read tab state', tabId, error));
       });
       promises.push(activatedPromise);
     }
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Tab operation timed out after ${timeoutMs} ms`)), timeoutMs),
-    );
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(`Tab operation timed out after ${timeoutMs} ms`)), timeoutMs);
+    });
 
-    await Promise.race([Promise.all(promises), timeoutPromise]);
+    try {
+      await Promise.race([Promise.all(promises), timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId);
+      cleanups.forEach(cleanup => cleanup());
+    }
   }
 
   public async switchTab(tabId: number): Promise<BrowserPageLike> {
