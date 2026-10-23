@@ -93,6 +93,7 @@ export async function setupExecutor(
     displayHighlights,
   });
 
+  actionApprovals.startTask(taskId, task);
   const executor = new Executor(task, taskId, browserContext, navigatorLLM, {
     authorizeAction: (action, input, signal) =>
       actionApprovals.authorize(taskId, action, input, options.permissionMode ?? 'ask', browserContext, signal),

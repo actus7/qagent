@@ -88,7 +88,8 @@ describe('browser tool approval classification', () => {
     const post = vi.fn();
     const manager = new ActionApprovalManager(post);
     const pending = manager.authorize('task', action, {}, 'ask', browser, new AbortController().signal);
-    expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'approval_required' }));
+    // Sensitivity and policy checks await before the request is posted.
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'approval_required' })));
     manager.cancel();
     await expect(pending).rejects.toThrow();
   });

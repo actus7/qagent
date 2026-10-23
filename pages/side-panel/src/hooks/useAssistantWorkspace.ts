@@ -21,7 +21,7 @@ function preference<T extends string>(key: string, values: readonly T[], fallbac
 export function useAssistantWorkspace(frozen = false) {
   const [mode, setMode] = useState<AssistantMode>(() => preference('qagent-mode', ['chat', 'plan', 'act'], 'chat'));
   const [permissionMode, setPermissionMode] = useState<PermissionMode>(() =>
-    preference('qagent-permission', ['ask', 'auto'], 'ask'),
+    preference('qagent-permission', ['ask', 'auto', 'plan'], 'ask'),
   );
   const [modelAgent, setModelAgent] = useState<'navigator' | 'planner'>(() =>
     preference('qagent-model-agent', ['navigator', 'planner'], 'navigator'),

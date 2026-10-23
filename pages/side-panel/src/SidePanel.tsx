@@ -186,7 +186,6 @@ const SidePanel = () => {
     };
   }, [currentSessionId, isHistoricalSession, replayEnabled]);
 
-
   // Remembers which streamed answer came from a plan-mode run; stable identity so the port listener never goes stale
   const handleAssistantMessage = useCallback(
     (message: SidePanelResponseMessage) => {
@@ -381,13 +380,14 @@ const SidePanel = () => {
             <ActionApproval
               request={pendingApproval}
               copy={copy}
-              onResolve={approved => {
+              onResolve={decision => {
                 try {
                   sendMessage({
                     type: 'approval_result',
                     taskId: pendingApproval.taskId,
                     requestId: pendingApproval.id,
-                    approved,
+                    approved: decision !== 'deny',
+                    decision,
                   });
                 } catch (error) {
                   appendMessage({

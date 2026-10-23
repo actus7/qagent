@@ -282,6 +282,17 @@ describe('extension e2e', { timeout: 180_000 }, () => {
           const port = chrome.runtime.connect({ name: 'side-panel-connection' });
           setTimeout(() => resolve(events), 120_000);
           port.onMessage.addListener(message => {
+            // upload_file is sensitive: it asks even in auto mode, so approve it once.
+            if (message.type === 'approval_required') {
+              port.postMessage({
+                type: 'approval_result',
+                taskId: message.request.taskId,
+                requestId: message.request.id,
+                approved: true,
+                decision: 'once',
+              });
+              return;
+            }
             if (message.type !== 'execution') return;
             events.push(`${message.actor}:${message.state}`);
             if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) resolve(events);
