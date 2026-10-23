@@ -43,16 +43,15 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
     }
 
     case 'resume_task': {
+      // No executor means chat/plan mode or a finished task: answer success so the panel keeps its state
       const { currentExecutor } = runtimeStore.getState();
-      if (!currentExecutor) return post({ type: 'error', error: t('bg_cmd_resumeTask_noTask') });
-      await currentExecutor.resume();
+      await currentExecutor?.resume();
       return post({ type: 'success' });
     }
 
     case 'pause_task': {
       const { currentExecutor } = runtimeStore.getState();
-      if (!currentExecutor) return post({ type: 'error', error: t('bg_errors_noRunningTask') });
-      await currentExecutor.pause();
+      await currentExecutor?.pause();
       return post({ type: 'success' });
     }
 

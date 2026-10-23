@@ -1163,5 +1163,35 @@
   },
   "options_common_errorOccurred": {
     "message": "Ocorreu um erro"
+  },
+  "bg_task_selectTab": {
+    "message": "Selecione pelo menos uma aba para executar a tarefa."
+  },
+  "bg_approval_declined": {
+    "message": "Ação recusada ou tarefa interrompida."
+  },
+  "bg_task_interrupted": {
+    "message": "Tarefa interrompida."
+  },
+  "bg_assistant_emptyResponse": {
+    "message": "O provedor retornou uma resposta vazia."
+  },
+  "bg_task_noModel": {
+    "message": "Configure um modelo nas configurações para continuar."
+  },
+  "bg_task_providerMissing": {
+    "message": "O provedor do modelo selecionado não está configurado."
+  },
+  "bg_approval_pageChanged": {
+    "message": "A página mudou enquanto a ação aguardava aprovação. Observe a página novamente."
+  },
+  "exec_task_resume": {
+    "message": "Tarefa retomada."
+  },
+  "bg_approval_busy": {
+    "message": "Já existe uma ação aguardando aprovação."
+  },
+  "bg_task_busy": {
+    "message": "Aguarde a tarefa atual terminar ou interrompa a execução."
   }
 }

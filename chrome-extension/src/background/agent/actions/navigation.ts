@@ -42,7 +42,7 @@ export function createSearchGoogleAction(context: AgentContext) {
     const intent = input.intent || t('act_searchGoogle_start', [input.query]);
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
 
-    await context.browserContext.navigateTo(`https://www.google.com/search?q=${input.query}`);
+    await context.browserContext.navigateTo(`https://www.google.com/search?q=${encodeURIComponent(input.query)}`);
 
     const msg2 = t('act_searchGoogle_ok', [input.query]);
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg2);

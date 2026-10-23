@@ -1,3 +1,4 @@
+import { t } from '@extension/i18n';
 import type { ActionApproval, PermissionMode, SidePanelResponseMessage } from '@extension/shared';
 import type { BrowserContextLike } from '../browser/types';
 import { RequestCancelledError } from '../agent/agents/errors';
@@ -34,9 +35,9 @@ export class ActionApprovalManager {
     browser: BrowserContextLike,
     signal: AbortSignal,
   ): Promise<void> {
-    if (signal.aborted) throw new Error('Tarefa interrompida.');
+    if (signal.aborted) throw new Error(t('bg_task_interrupted'));
     if (mode === 'auto' || READ_ACTIONS.has(action)) return;
-    if (this.pending) throw new Error('Já existe uma ação aguardando aprovação.');
+    if (this.pending) throw new Error(t('bg_approval_busy'));
     const args = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
     const tabId = browser.currentTabId;
     const tab = tabId === null ? null : await chrome.tabs.get(tabId);
@@ -69,10 +70,10 @@ export class ActionApprovalManager {
       if (signal.aborted) finish(false);
     });
     this.post({ type: 'approval_resolved', requestId: request.id });
-    if (!approved || signal.aborted) throw new RequestCancelledError('Ação recusada ou tarefa interrompida.');
+    if (!approved || signal.aborted) throw new RequestCancelledError(t('bg_approval_declined'));
     // An approval applies to the exact page displayed to the user, not a page reached meanwhile.
     if (tabId !== browser.currentTabId || (tabId !== null && (await chrome.tabs.get(tabId)).url !== request.url)) {
-      throw new Error('A página mudou enquanto a ação aguardava aprovação. Observe a página novamente.');
+      throw new Error(t('bg_approval_pageChanged'));
     }
   }
 

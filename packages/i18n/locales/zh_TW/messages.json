@@ -1163,5 +1163,35 @@
   },
   "options_common_errorOccurred": {
     "message": "發生錯誤"
+  },
+  "bg_task_selectTab": {
+    "message": "請至少選擇一個分頁來執行任務。"
+  },
+  "bg_approval_declined": {
+    "message": "操作已被拒絕或任務已中斷。"
+  },
+  "bg_task_interrupted": {
+    "message": "任務已中斷。"
+  },
+  "bg_assistant_emptyResponse": {
+    "message": "提供者回傳了空白回應。"
+  },
+  "bg_task_noModel": {
+    "message": "請先在設定中配置模型。"
+  },
+  "bg_task_providerMissing": {
+    "message": "所選模型的提供者尚未配置。"
+  },
+  "bg_approval_pageChanged": {
+    "message": "操作等待批准期間頁面已變更，請重新查看頁面。"
+  },
+  "exec_task_resume": {
+    "message": "任務已繼續。"
+  },
+  "bg_approval_busy": {
+    "message": "已有另一個操作正在等待批准。"
+  },
+  "bg_task_busy": {
+    "message": "請等待目前任務完成，或先停止執行。"
   }
 }

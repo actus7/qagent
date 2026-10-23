@@ -3,9 +3,13 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { Actors, chatHistoryStore, firewallStore } from '@extension/storage';
 import type { AssistantMode, SidePanelResponseMessage } from '@extension/shared';
 import { isUrlAllowed } from '../browser/util';
+import { t } from '@extension/i18n';
 import { wrapUntrustedContent } from '../agent/messages/utils';
+import { createLogger } from '../log';
 
 const MAX_PAGE_CHARS = 18000;
+const STREAM_IDLE_TIMEOUT_MS = 120000;
+const logger = createLogger('BrowserAssistant');
 
 /** Read context without attaching a debugger or exposing browser interaction tools. */
 export async function readSelectedTabs(tabIds: number[]): Promise<string> {
@@ -90,11 +94,14 @@ export async function streamBrowserAnswer(args: {
   const timeout = new AbortController();
   const abort = () => timeout.abort();
   signal.addEventListener('abort', abort, { once: true });
-  const timer = setTimeout(abort, 120000);
+  // Idle timeout: the clock restarts on every chunk, so a long answer that keeps streaming is not cut off
+  let timer = setTimeout(abort, STREAM_IDLE_TIMEOUT_MS);
   try {
     const stream = await model.stream(messages, { signal: timeout.signal });
     for await (const chunk of stream) {
       if (signal.aborted) return;
+      clearTimeout(timer);
+      timer = setTimeout(abort, STREAM_IDLE_TIMEOUT_MS);
       content +=
         typeof chunk.content === 'string'
           ? chunk.content
@@ -107,16 +114,21 @@ export async function streamBrowserAnswer(args: {
         lastPost = Date.now();
       }
     }
-    if (!content.trim()) throw new Error('O provedor retornou uma resposta vazia.');
+    if (!content.trim()) throw new Error(t('bg_assistant_emptyResponse'));
     if (signal.aborted) return;
-    await chatHistoryStore.addMessage(taskId, {
-      actor: Actors.ASSISTANT,
-      content,
-      timestamp: Date.now(),
-      streamId,
-      kind: 'answer',
-    });
+    // Finish the stream for the panel first; persisting the answer must not turn it into a failure
     post({ type: 'assistant_delta', taskId, streamId, content, finished: true });
+    try {
+      await chatHistoryStore.addMessage(taskId, {
+        actor: Actors.ASSISTANT,
+        content,
+        timestamp: Date.now(),
+        streamId,
+        kind: 'answer',
+      });
+    } catch (error) {
+      logger.error('Failed to persist assistant answer', error);
+    }
   } finally {
     clearTimeout(timer);
     signal.removeEventListener('abort', abort);

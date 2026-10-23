@@ -3,6 +3,7 @@ import {
   connect,
   ExtensionTransport,
   type Browser,
+  type Dialog,
   type ElementHandle,
   type KeyInput,
   type Page as PuppeteerPage,
@@ -48,6 +49,7 @@ export default class Page {
   private _puppeteerPage: PuppeteerPage | null = null;
   private _config: BrowserContextConfig;
   private _state: PageState;
+  private _dialogNotices: string[] = [];
   private _validWebPage = false;
   private _cachedState: PageState | null = null;
   private _cachedStateClickableElementsHashes: CachedStateClickableElementsHashes | null = null;
@@ -110,13 +112,39 @@ export default class Page {
     });
     this._browser = browser;
 
-    const [page] = await browser.pages();
-    this._puppeteerPage = page;
+    try {
+      const [page] = await browser.pages();
+      this._puppeteerPage = page;
+      page.on('dialog', dialog => this._handleDialog(dialog));
 
-    // Add anti-detection scripts
-    await this._addAntiDetectionScripts();
+      // Add anti-detection scripts
+      await this._addAntiDetectionScripts();
+    } catch (error) {
+      // Release the debugger if setup fails half-way, otherwise it stays attached
+      await this.detachPuppeteer();
+      throw error;
+    }
 
     return true;
+  }
+
+  /**
+   * Blocking JS dialogs would hang the page and the task. alert/beforeunload are accepted,
+   * confirm/prompt are dismissed; each one is recorded so the next step can report it.
+   */
+  private _handleDialog(dialog: Dialog): void {
+    const type = dialog.type();
+    const accept = type === 'alert' || type === 'beforeunload';
+    this._dialogNotices.push(
+      `JavaScript ${type} dialog "${dialog.message()}" was ${accept ? 'accepted' : 'dismissed'} automatically.`,
+    );
+    const handled = accept ? dialog.accept() : dialog.dismiss();
+    handled.catch(error => logger.warning('Failed to handle JS dialog:', error));
+  }
+
+  /** Returns and clears the notices about JS dialogs handled since the last call. */
+  takeDialogNotices(): string[] {
+    return this._dialogNotices.splice(0);
   }
 
   private async _addAntiDetectionScripts(): Promise<void> {
@@ -759,6 +787,7 @@ export default class Page {
       await this._scrollIntoViewIfNeeded(element);
       await clickWithFallback(element, () => this._checkAndHandleNavigation(), 'Failed to click element');
     } catch (error) {
+      if (error instanceof URLNotAllowedError) throw error;
       throw new Error(
         `Failed to click element: ${elementNode}. Error: ${error instanceof Error ? error.message : String(error)}`,
         { cause: error },
@@ -992,8 +1021,8 @@ export default class Page {
       const errorMessage = `URL: ${currentUrl} is not allowed`;
       logger.error(errorMessage);
 
-      // Navigate to home page or about:blank
-      const safeUrl = this._config.homePageUrl || 'about:blank';
+      // about:blank is never blocked by the URL policy, unlike the configured home page
+      const safeUrl = 'about:blank';
       logger.info(`Redirecting to safe URL: ${safeUrl}`);
 
       try {

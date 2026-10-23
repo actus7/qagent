@@ -1,3 +1,4 @@
+import { t } from '@extension/i18n';
 import { agentModelStore, AgentNameEnum, llmProviderStore } from '@extension/storage';
 import type { ExecutionPortEventMessage, SidePanelTaskCommand } from '@extension/shared';
 import type { Executor } from '../agent/executor';
@@ -23,7 +24,7 @@ export async function cancelActiveTask(): Promise<void> {
 }
 
 export async function runAssistantTask(message: SidePanelTaskCommand, replaySessionId?: string): Promise<void> {
-  if (activeTask) throw new Error('Aguarde a tarefa atual terminar ou interrompa a execução.');
+  if (activeTask) throw new Error(t('bg_task_busy'));
   const controller = new AbortController();
   activeTask = controller;
   const options = message.options ?? {};
@@ -47,9 +48,9 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
       emit(ExecutionState.TASK_START);
       const models = await agentModelStore.getAllAgentModels();
       const config = models[options.modelAgent === 'planner' ? AgentNameEnum.Planner : AgentNameEnum.Navigator];
-      if (!config) throw new Error('Configure um modelo nas configurações para continuar.');
+      if (!config) throw new Error(t('bg_task_noModel'));
       const providers = await llmProviderStore.getAllProviders();
-      if (!providers[config.provider]) throw new Error('O provedor do modelo selecionado não está configurado.');
+      if (!providers[config.provider]) throw new Error(t('bg_task_providerMissing'));
       await streamBrowserAnswer({
         taskId: message.taskId,
         task: message.task,
@@ -62,7 +63,7 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
       emit(controller.signal.aborted ? ExecutionState.TASK_CANCEL : ExecutionState.TASK_OK);
       return;
     }
-    if (tabIds.length === 0) throw new Error('Selecione pelo menos uma aba para o modo Executar.');
+    if (tabIds.length === 0) throw new Error(t('bg_task_selectTab'));
     if (browserContext instanceof ScopedBrowserContext) browserContext.setAllowedTabs(tabIds);
     const history = await getConversationContext(message.taskId);
     const conversation = history
@@ -74,13 +75,13 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
       : message.task;
     executor = await setupExecutor(message.taskId, task, browserContext, options);
     if (controller.signal.aborted) {
-      emit(ExecutionState.TASK_CANCEL, 'Tarefa interrompida.');
+      emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
       return;
     }
     runtimeStore.getState().setExecutor(executor);
     await browserContext.switchTab(tabIds.includes(message.tabId) ? message.tabId : tabIds[0]);
     if (controller.signal.aborted) {
-      emit(ExecutionState.TASK_CANCEL, 'Tarefa interrompida.');
+      emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
       return;
     }
     if (isAgentBrowserContext(browserContext)) {
@@ -93,7 +94,7 @@ export async function runAssistantTask(message: SidePanelTaskCommand, replaySess
     if (replaySessionId) await executor.replayHistory(replaySessionId);
     else await executor.execute();
   } catch (error) {
-    if (controller.signal.aborted) emit(ExecutionState.TASK_CANCEL, 'Tarefa interrompida.');
+    if (controller.signal.aborted) emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
     else emit(ExecutionState.TASK_FAIL, error instanceof Error ? error.message : String(error));
   } finally {
     actionApprovals.cancel();
