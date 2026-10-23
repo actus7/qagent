@@ -7,8 +7,16 @@ export interface McpBridgeConfig {
   enabled: boolean;
   host: string;
   port: number;
-  // Shared secret sent in the WebSocket hello. Stays local: it is never returned to MCP clients.
+  // Shared secret for the HMAC handshake. Stays local: it is never sent raw nor returned to MCP clients.
   token: string;
+  // When false, permission 'auto' requested by an MCP client is coerced to 'ask'.
+  allowAutoPermission: boolean;
+}
+
+export const MCP_BRIDGE_MIN_TOKEN_LENGTH = 32;
+
+export function isValidMcpBridgeToken(token: string): boolean {
+  return token.length >= MCP_BRIDGE_MIN_TOKEN_LENGTH;
 }
 
 type McpBridgeStorage = BaseStorage<McpBridgeConfig> & {
@@ -21,6 +29,7 @@ export const DEFAULT_MCP_BRIDGE_CONFIG: McpBridgeConfig = {
   host: '127.0.0.1',
   port: 9224,
   token: '',
+  allowAutoPermission: false,
 };
 
 // The bridge only ever talks to the loopback interface.
@@ -29,12 +38,14 @@ const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost']);
 export function sanitizeMcpBridgeConfig(value: Partial<McpBridgeConfig>): McpBridgeConfig {
   const host = typeof value.host === 'string' ? value.host.trim() : '';
   const port = typeof value.port === 'number' && Number.isInteger(value.port) ? value.port : NaN;
-  const token = typeof value.token === 'string' ? value.token.trim() : '';
+  const token = typeof value.token === 'string' ? value.token.trim().slice(0, 256) : '';
+  // The bridge cannot be enabled without a token strong enough for the handshake.
   return {
-    enabled: value.enabled === true,
+    enabled: value.enabled === true && isValidMcpBridgeToken(token),
     host: LOOPBACK_HOSTS.has(host) ? host : DEFAULT_MCP_BRIDGE_CONFIG.host,
     port: port >= 1024 && port <= 65535 ? port : DEFAULT_MCP_BRIDGE_CONFIG.port,
-    token: token.slice(0, 256),
+    token,
+    allowAutoPermission: value.allowAutoPermission === true,
   };
 }
 

@@ -1,7 +1,8 @@
-import type { McpBridgeHelloFrame } from '@extension/shared';
-import { mcpBridgeStore, type McpBridgeConfig } from '@extension/storage';
+import { MCP_BRIDGE_HANDSHAKE_TIMEOUT_MS } from '@extension/shared';
+import { isValidMcpBridgeToken, mcpBridgeStore, type McpBridgeConfig } from '@extension/storage';
 import { createLogger } from '../../log';
 import { handleBridgeRequest, toBridgeResponse } from './handlers';
+import { BridgeHandshake } from './handshake';
 import { extractRequestId, parseBridgeRequest } from './protocol';
 
 const logger = createLogger('background');
@@ -14,7 +15,8 @@ function endpointKey(config: McpBridgeConfig): string {
 
 /**
  * Keeps one WebSocket to the local MCP bridge while the setting is on. The bridge is the server;
- * the extension dials out, so no port is opened in the browser.
+ * the extension dials out, so no port is opened in the browser. The socket is used only after the
+ * mutual HMAC handshake completes (see handshake.ts).
  */
 export class McpBridgeClient {
   private socket: WebSocket | null = null;
@@ -30,6 +32,10 @@ export class McpBridgeClient {
     }
     if (this.config && this.key === endpointKey(config)) return;
     this.stop();
+    if (!isValidMcpBridgeToken(config.token)) {
+      logger.warning('MCP bridge not started: the token is missing or shorter than 32 characters');
+      return;
+    }
     this.config = config;
     this.key = endpointKey(config);
     this.connect();
@@ -50,22 +56,23 @@ export class McpBridgeClient {
     const config = this.config;
     if (!config) return;
     const socket = new WebSocket(`ws://${config.host}:${config.port}`);
+    const handshake = new BridgeHandshake(config.token);
+    let handshakeTimer: ReturnType<typeof setTimeout> | null = null;
     this.socket = socket;
 
     socket.onopen = () => {
-      this.attempts = 0;
-      const hello: McpBridgeHelloFrame = {
-        type: 'hello',
-        token: config.token || undefined,
-        extensionVersion: chrome.runtime.getManifest().version,
-      };
-      socket.send(JSON.stringify(hello));
-      logger.info('MCP bridge connected');
+      socket.send(JSON.stringify(handshake.helloFrame(chrome.runtime.getManifest().version)));
+      handshakeTimer = setTimeout(() => {
+        if (handshake.isReady()) return;
+        logger.warning('MCP bridge handshake timed out');
+        socket.close();
+      }, MCP_BRIDGE_HANDSHAKE_TIMEOUT_MS);
     };
     socket.onmessage = event => {
-      void this.handleFrame(socket, event.data);
+      void this.handleFrame(socket, handshake, event.data);
     };
     socket.onclose = () => {
+      if (handshakeTimer !== null) clearTimeout(handshakeTimer);
       if (this.socket !== socket) return;
       this.socket = null;
       this.scheduleRetry();
@@ -83,8 +90,36 @@ export class McpBridgeClient {
     }, delay);
   }
 
-  private async handleFrame(socket: WebSocket, data: unknown): Promise<void> {
-    if (typeof data !== 'string') return;
+  private async handleFrame(socket: WebSocket, handshake: BridgeHandshake, data: unknown): Promise<void> {
+    if (typeof data !== 'string') {
+      socket.close();
+      return;
+    }
+    const outcome = await handshake.handle(safeJson(data));
+    switch (outcome.kind) {
+      case 'reply':
+        socket.send(JSON.stringify(outcome.frame));
+        return;
+      case 'ready':
+        this.attempts = 0;
+        logger.info('MCP bridge connected');
+        return;
+      case 'dispatch':
+        await this.execute(socket, data);
+        return;
+      case 'drop':
+        logger.warning('MCP bridge request dropped: the handshake is not complete');
+        return;
+      case 'ignore':
+        return;
+      case 'fail':
+        logger.warning(`MCP bridge handshake failed: ${outcome.reason}`);
+        socket.close();
+        return;
+    }
+  }
+
+  private async execute(socket: WebSocket, data: string): Promise<void> {
     let response;
     try {
       const request = parseBridgeRequest(data);
