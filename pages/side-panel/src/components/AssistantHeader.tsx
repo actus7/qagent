@@ -69,8 +69,8 @@ export default function AssistantHeader({
           variant="ghost"
           size="icon"
           onClick={onCycleTheme}
-          aria-label={'Theme: ' + theme}
-          title={'Theme: ' + theme}>
+          aria-label={t('nav_theme_a11y', [theme])}
+          title={t('nav_theme_a11y', [theme])}>
           <ThemeIcon theme={theme} />
         </Button>
         <Button

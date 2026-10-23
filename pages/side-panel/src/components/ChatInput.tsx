@@ -146,12 +146,12 @@ export default function ChatInput({
         const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`;
 
         if (!ALLOWED_ATTACHMENT_TYPES.has(extension)) {
-          setFileError(`${file.name}: use TXT, Markdown, JSON, CSV, LOG, XML ou YAML.`);
+          setFileError(t('chat_input_fileUnsupported', [file.name]));
           return false;
         }
 
         if (file.size > 1024 * 1024) {
-          setFileError(`${file.name}: tamanho máximo de 1 MB.`);
+          setFileError(t('chat_input_fileTooLarge', [file.name]));
           return false;
         }
 

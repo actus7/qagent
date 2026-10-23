@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { t } from '@extension/i18n';
 import type { BrowserFramePayload, BrowserInputPayload, BrowserStatusPayload } from '@src/types/port';
 
 interface BrowserPreviewProps {
@@ -19,14 +20,14 @@ export default function BrowserPreview({ frame, status, sessionId, disabled = fa
   const imageRef = useRef<HTMLImageElement | null>(null);
 
   const statusText = !status
-    ? 'Loading companion status...'
+    ? t('chat_browser_statusLoading')
     : !status.connected
-      ? 'Companion offline'
+      ? t('chat_browser_statusOffline')
       : !status.authenticated
-        ? 'Companion authentication required'
+        ? t('chat_browser_statusAuthRequired')
         : status.screencasting
-          ? 'Pair browsing active'
-          : 'Companion connected';
+          ? t('chat_browser_statusPairActive')
+          : t('chat_browser_statusConnected');
 
   const toViewportCoords = useCallback(
     (clientX: number, clientY: number) => {
@@ -183,7 +184,9 @@ export default function BrowserPreview({ frame, status, sessionId, disabled = fa
             draggable={false}
           />
         ) : (
-          <div className="flex aspect-video items-center justify-center text-xs text-white/70">Waiting for frames...</div>
+          <div className="flex aspect-video items-center justify-center text-xs text-white/70">
+            Waiting for frames...
+          </div>
         )}
       </button>
     </div>
