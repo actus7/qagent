@@ -31,26 +31,16 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = ({
 
   return (
     <ScrollArea className="h-full p-4">
-      <h2 className="mb-4 text-lg font-semibold text-foreground">
-        {t('chat_history_title')}
-      </h2>
+      <h2 className="mb-4 text-lg font-semibold text-foreground">{t('chat_history_title')}</h2>
       {sessions.length === 0 ? (
-        <Card className="p-4 text-center text-muted-foreground">
-          {t('chat_history_empty')}
-        </Card>
+        <Card className="p-4 text-center text-muted-foreground">{t('chat_history_empty')}</Card>
       ) : (
         <div className="space-y-2">
           {sessions.map(session => (
-            <Card
-              key={session.id}
-              className="group relative cursor-pointer p-3 transition-colors hover:bg-accent">
+            <Card key={session.id} className="group relative cursor-pointer p-3 transition-colors hover:bg-accent">
               <button onClick={() => onSessionSelect(session.id)} className="w-full text-left" type="button">
-                <h3 className="text-sm font-medium text-foreground">
-                  {session.title}
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {formatDate(session.createdAt)}
-                </p>
+                <h3 className="text-sm font-medium text-foreground">{session.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">{formatDate(session.createdAt)}</p>
               </button>
 
               {/* Bookmark button - top right */}
@@ -62,7 +52,7 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = ({
                     e.stopPropagation();
                     onSessionBookmark(session.id);
                   }}
-                  className="absolute top-2 right-2 size-7 opacity-0 transition-opacity group-hover:opacity-100"
+                  className="absolute top-2 right-2 size-7 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
                   aria-label={t('chat_history_bookmark')}
                   type="button">
                   <BsBookmark size={14} />
@@ -75,9 +65,11 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = ({
                 size="icon"
                 onClick={e => {
                   e.stopPropagation();
-                  onSessionDelete(session.id);
+                  if (window.confirm(t('chat_history_deleteConfirm', [session.title]))) {
+                    onSessionDelete(session.id);
+                  }
                 }}
-                className="absolute right-2 bottom-2 size-7 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                className="absolute right-2 bottom-2 size-7 text-muted-foreground opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:text-destructive"
                 aria-label={t('chat_history_delete')}
                 type="button">
                 <FaTrash size={14} />

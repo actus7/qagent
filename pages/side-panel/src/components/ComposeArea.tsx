@@ -16,6 +16,8 @@ interface ComposeAreaProps {
   onStopTask: () => void;
   onMicToggle: () => void;
   onRegisterInputSetter: (setter: (text: string) => void) => void;
+  /** Set when the open past session can be replayed; the replay runs through the /replay command. */
+  replaySessionId: string | null;
 }
 
 export default function ComposeArea({
@@ -30,8 +32,17 @@ export default function ComposeArea({
   onStopTask,
   onMicToggle,
   onRegisterInputSetter,
+  replaySessionId,
 }: ComposeAreaProps) {
-  const chatInputAction = showStopButton ? { type: 'stop' as const, onStopTask } : { type: 'send' as const };
+  const chatInputAction = showStopButton
+    ? { type: 'stop' as const, onStopTask }
+    : replaySessionId
+      ? {
+          type: 'replay' as const,
+          historicalSessionId: replaySessionId,
+          onReplay: (sessionId: string) => void onSendMessage(`/replay ${sessionId}`),
+        }
+      : { type: 'send' as const };
 
   const chatInputVoice = isProcessingSpeech
     ? ({ type: 'processing' } as const)
