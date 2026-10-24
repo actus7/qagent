@@ -79,6 +79,9 @@ const ACTION_VERBS = [
 const ACTION_START = new RegExp(String.raw`^\s*${POLITE}(?:${ACTION_VERBS.join('|')})(?![\p{L}])`, 'iu');
 const PLAN_START =
   /^\s*(?:por favor,?\s+)?(?:crie|faça|monte|elabore|make|create|write|draft)\s+(?:um|a)\s+(?:plano|plan)(?![\p{L}])/iu;
+// "Quantas aulas…, use meu navegador": an explicit request to drive the browser wins anywhere in the message.
+const BROWSER_REQUEST =
+  /(?<![\p{L}])(?:use|usa|usando|usar|pelo|no|com o|use o|use my|use the|using the|in the|with the)\s+(?:(?:o|meu|my|the)\s+)?(?:navegador|browser)(?![\p{L}])/iu;
 const SHORT_REPLY_WORDS = 3;
 
 const MODES: readonly AssistantMode[] = ['chat', 'plan', 'act'];
@@ -91,7 +94,7 @@ const isMode = (value: string): value is AssistantMode => (MODES as readonly str
  */
 export function inferMode(text: string, previous: AssistantMode = 'chat'): AssistantMode {
   if (PLAN_START.test(text)) return 'plan';
-  if (ACTION_START.test(text)) return 'act';
+  if (ACTION_START.test(text) || BROWSER_REQUEST.test(text)) return 'act';
   const words = text.trim().split(/\s+/).length;
   return words <= SHORT_REPLY_WORDS ? previous : 'chat';
 }

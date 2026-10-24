@@ -14,7 +14,10 @@ const routerPrompt = (previous: AssistantMode) =>
   'act: the user wants something done in the browser (go to a page or section, open, click, fill, submit, ' +
   'search, buy, download, log in, record or test a flow).\n' +
   'plan: the user wants a plan or a list of steps written down, not executed.\n' +
-  'chat: a question, explanation, summary, comparison or opinion about the open pages, or small talk.\n' +
+  'A question whose answer needs another page, section or item opened first (e.g. "how many lessons are in the ' +
+  'last module?" asked from a dashboard) is act.\n' +
+  'chat: a question, explanation, summary, comparison or opinion about what the open pages already show, or small ' +
+  'talk.\n' +
   `The previous message used "${previous}"; a short follow-up such as "yes" or "continue" keeps it.`;
 
 /**

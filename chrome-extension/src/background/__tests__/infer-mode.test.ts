@@ -22,6 +22,9 @@ describe('inferMode (verb heuristic)', () => {
     ['Executar este plano:\n\n1.', 'act'],
     ['Open the settings page', 'act'],
     ['clicker games are fun', 'chat'],
+    ['Quantas aulas tem o ultimo módulo, use meu navegador', 'act'],
+    ['How many lessons are left? Use the browser', 'act'],
+    ['Qual o melhor navegador para estudar?', 'chat'],
   ])('%s → %s', (text, expected) => {
     expect(inferMode(text)).toBe(expected);
   });
