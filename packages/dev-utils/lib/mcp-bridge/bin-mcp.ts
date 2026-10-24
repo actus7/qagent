@@ -9,7 +9,7 @@ const SERVER_INFO = {
   name: 'qagent',
   version: '0.1.0',
   instructions:
-    'Drive the QAgent browser extension. qagent_run_task runs a task and waits for the answer; ask permission needs the QAgent side panel open.',
+    'Drive the QAgent browser extension. qagent_run_task runs a task and waits for the answer.',
 };
 
 function log(message: string): void {

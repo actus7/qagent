@@ -8,7 +8,7 @@ const logger = createLogger('background');
 const NOTIFICATION_ICON = 'icon-128.png';
 const MAX_BODY_CHARS = 160;
 
-export type TaskAttentionEvent = 'completed' | 'failed' | 'approval_required';
+export type TaskAttentionEvent = 'completed' | 'failed';
 
 export interface NotificationDecision {
   enabled: boolean;
@@ -34,7 +34,6 @@ export function attentionEventForState(state: string): TaskAttentionEvent | null
 const TITLE_KEYS = {
   completed: 'bg_notify_completedTitle',
   failed: 'bg_notify_failedTitle',
-  approval_required: 'bg_notify_approvalTitle',
 } as const satisfies Record<TaskAttentionEvent, string>;
 
 export async function notifyTaskAttention(event: TaskAttentionEvent, details: string): Promise<void> {
@@ -43,10 +42,7 @@ export async function notifyTaskAttention(event: TaskAttentionEvent, details: st
     const panelConnected = Boolean(runtimeStore.getState().currentPort);
     if (!shouldNotify({ enabled: notifyOnCompletion, panelConnected, event })) return;
 
-    const body =
-      event === 'approval_required'
-        ? t('bg_notify_approvalBody')
-        : details.trim().slice(0, MAX_BODY_CHARS) || t('bg_notify_fallbackBody');
+    const body = details.trim().slice(0, MAX_BODY_CHARS) || t('bg_notify_fallbackBody');
     chrome.notifications.create(`qagent-task-${Date.now()}`, {
       type: 'basic',
       iconUrl: chrome.runtime.getURL(NOTIFICATION_ICON),

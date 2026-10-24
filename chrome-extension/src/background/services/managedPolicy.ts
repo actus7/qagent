@@ -1,7 +1,6 @@
 import { t } from '@extension/i18n';
 import { agentModelStore, llmProviderStore } from '@extension/storage';
 import {
-  applyManagedTaskOptions,
   EMPTY_MANAGED_POLICY,
   isManagedProviderAllowed,
   parseManagedPolicy,
@@ -48,11 +47,11 @@ export async function assertManagedProvidersAllowed(policy: ManagedPolicy): Prom
 }
 
 /**
- * Enforces the managed policy on a task before it starts: permission mode coercion and provider checks.
+ * Enforces the managed policy on a task before it starts: provider checks.
  * Used by every entry point (side panel and MCP bridge), so both follow the same rules.
  */
 export async function prepareManagedTask(message: SidePanelTaskCommand): Promise<SidePanelTaskCommand> {
   const policy = await loadManagedPolicy();
   await assertManagedProvidersAllowed(policy);
-  return { ...message, options: applyManagedTaskOptions(message.options, policy) };
+  return message;
 }

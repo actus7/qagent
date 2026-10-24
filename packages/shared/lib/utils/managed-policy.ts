@@ -1,5 +1,3 @@
-import type { AssistantTaskOptions, PermissionMode } from './agent-port-messages';
-
 /**
  * Enterprise policy read from chrome.storage.managed (schema: chrome-extension/public/managed-schema.json).
  * Every key is optional; an unmanaged browser yields EMPTY_MANAGED_POLICY (no restrictions).
@@ -7,7 +5,6 @@ import type { AssistantTaskOptions, PermissionMode } from './agent-port-messages
 export interface ManagedPolicy {
   blockedUrlPatterns: string[];
   allowedUrlPatterns: string[];
-  disableAutoMode: boolean;
   disableJavascriptTool: boolean;
   disableFileUpload: boolean;
   allowedProviders: string[];
@@ -21,7 +18,6 @@ const MAX_PATTERN_LENGTH = 300;
 export const EMPTY_MANAGED_POLICY: ManagedPolicy = {
   blockedUrlPatterns: [],
   allowedUrlPatterns: [],
-  disableAutoMode: false,
   disableJavascriptTool: false,
   disableFileUpload: false,
   allowedProviders: [],
@@ -43,7 +39,6 @@ export function parseManagedPolicy(raw: unknown): ManagedPolicy {
   return {
     blockedUrlPatterns: sanitizeStringList(record.blockedUrlPatterns),
     allowedUrlPatterns: sanitizeStringList(record.allowedUrlPatterns),
-    disableAutoMode: record.disableAutoMode === true,
     disableJavascriptTool: record.disableJavascriptTool === true,
     disableFileUpload: record.disableFileUpload === true,
     allowedProviders: sanitizeStringList(record.allowedProviders).map(id => id.toLowerCase()),
@@ -54,7 +49,6 @@ export function hasManagedRestrictions(policy: ManagedPolicy): boolean {
   return (
     policy.blockedUrlPatterns.length > 0 ||
     policy.allowedUrlPatterns.length > 0 ||
-    policy.disableAutoMode ||
     policy.disableJavascriptTool ||
     policy.disableFileUpload ||
     policy.allowedProviders.length > 0
@@ -135,12 +129,6 @@ export function evaluateManagedUrl(url: string, policy: ManagedPolicy): ManagedU
   return { allowed: true };
 }
 
-/** Auto and plan-follow modes are forbidden when disableAutoMode is set; they fall back to asking. */
-export function coercePermissionMode(mode: PermissionMode | undefined, policy: ManagedPolicy): PermissionMode | undefined {
-  if (!policy.disableAutoMode) return mode;
-  return 'ask';
-}
-
 const JAVASCRIPT_ACTIONS = new Set(['execute_javascript']);
 const UPLOAD_ACTIONS = new Set(['upload_file', 'upload']);
 
@@ -155,13 +143,4 @@ export function isManagedProviderAllowed(provider: { id: string; type?: string }
   if (policy.allowedProviders.length === 0) return true;
   const candidates = [provider.id, provider.type].filter((value): value is string => !!value).map(v => v.toLowerCase());
   return candidates.some(candidate => policy.allowedProviders.includes(candidate));
-}
-
-/** Applies permission coercion to the task options that the panel or MCP client sent. */
-export function applyManagedTaskOptions(
-  options: AssistantTaskOptions | undefined,
-  policy: ManagedPolicy,
-): AssistantTaskOptions | undefined {
-  if (!policy.disableAutoMode) return options;
-  return { ...(options ?? {}), permissionMode: coercePermissionMode(options?.permissionMode, policy) };
 }

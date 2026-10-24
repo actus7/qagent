@@ -16,7 +16,6 @@ import { buildFileAttachmentNote } from '../services/assistant-attachments';
 import { browserContext, isAgentBrowserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 import { startAgentBrowserStream, stopAgentBrowserStream, syncAgentBrowserToTabUrl } from './agentBrowserControl';
-import { actionApprovals } from './actionApprovals';
 import { subscribeToExecutorEvents } from './executorEvents';
 import { clearRunningTask, saveRunningTask, startServiceWorkerKeepAlive, updateRunningTaskSteps } from './runState';
 import { setupExecutor } from './setupExecutor';
@@ -61,7 +60,6 @@ async function rememberTask(
 
 export async function cancelActiveTask(): Promise<void> {
   activeTask?.abort();
-  actionApprovals.cancel();
   await runtimeStore.getState().currentExecutor?.cancel();
 }
 
@@ -149,7 +147,7 @@ export async function runAssistantTask(
     });
     const currentTask = [message.task, buildFileAttachmentNote(message.attachments)].filter(Boolean).join('\n\n');
     const task = composeFollowUpTask({ memory, history: conversation, currentTask });
-    executor = await setupExecutor(message.taskId, task, browserContext, options, message.attachments, message.task);
+    executor = await setupExecutor(message.taskId, task, browserContext, options, message.attachments);
     if (controller.signal.aborted) {
       emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
       return;
@@ -182,7 +180,6 @@ export async function runAssistantTask(
     stopKeepAlive();
     if (mode === 'act') await clearRunningTask();
     await taskTabGroups.finish(message.taskId);
-    actionApprovals.cancel();
     if (executor) {
       const tabId = tabIds.includes(message.tabId) ? message.tabId : tabIds[0];
       await rememberTask(message.taskId, message.task, executor, terminalEvent, tabId);

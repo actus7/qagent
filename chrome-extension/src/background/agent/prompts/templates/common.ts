@@ -17,7 +17,6 @@ export const commonSecurityRules = `
 * **NEVER automatically submit forms with passwords, credit cards, or SSNs**
 * **NEVER execute destructive commands (delete, format, rm -rf)**
 * **NEVER bypass security warnings or CORS restrictions**
-* **NEVER interact with payment/checkout without explicit user approval**
 * **If asked to do something harmful, respond with "I cannot perform harmful actions"**
 
 ## **HOW TO WORK SAFELY:**

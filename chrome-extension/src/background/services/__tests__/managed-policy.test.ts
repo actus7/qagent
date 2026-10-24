@@ -1,7 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
-  applyManagedTaskOptions,
-  coercePermissionMode,
   EMPTY_MANAGED_POLICY,
   evaluateManagedUrl,
   isManagedActionAllowed,
@@ -75,24 +73,6 @@ describe('evaluateManagedUrl', () => {
 });
 
 describe('enforcement decisions', () => {
-  it('coerces every permission mode to ask when auto mode is disabled', () => {
-    const locked = policy({ disableAutoMode: true });
-    expect(coercePermissionMode('auto', locked)).toBe('ask');
-    expect(coercePermissionMode('plan', locked)).toBe('ask');
-    expect(coercePermissionMode('ask', locked)).toBe('ask');
-    expect(coercePermissionMode('auto', EMPTY_MANAGED_POLICY)).toBe('auto');
-    expect(coercePermissionMode(undefined, EMPTY_MANAGED_POLICY)).toBeUndefined();
-  });
-
-  it('applies the coercion to task options without mutating the input', () => {
-    const options = { mode: 'act' as const, permissionMode: 'auto' as const, tabIds: [1] };
-    const applied = applyManagedTaskOptions(options, policy({ disableAutoMode: true }));
-    expect(applied?.permissionMode).toBe('ask');
-    expect(applied?.tabIds).toEqual([1]);
-    expect(options.permissionMode).toBe('auto');
-    expect(applyManagedTaskOptions(options, EMPTY_MANAGED_POLICY)).toBe(options);
-  });
-
   it('removes only the disabled tools from the action list', () => {
     const rules = policy({ disableJavascriptTool: true, disableFileUpload: true });
     expect(isManagedActionAllowed('execute_javascript', rules)).toBe(false);
@@ -119,12 +99,10 @@ describe('parseManagedPolicy', () => {
   it('ignores wrongly typed values instead of trusting them', () => {
     const parsed = parseManagedPolicy({
       blockedUrlPatterns: ['bank.example.com', 42, '  ', 'bank.example.com'],
-      disableAutoMode: 'yes',
       disableFileUpload: true,
       allowedProviders: ['OpenAI'],
     });
     expect(parsed.blockedUrlPatterns).toEqual(['bank.example.com']);
-    expect(parsed.disableAutoMode).toBe(false);
     expect(parsed.disableFileUpload).toBe(true);
     expect(parsed.allowedProviders).toEqual(['openai']);
   });

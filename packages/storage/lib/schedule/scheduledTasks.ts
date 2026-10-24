@@ -21,8 +21,6 @@ export interface ScheduledTask extends ScheduleTiming {
   mode: ScheduleMode;
   /** Page opened in a background tab before the run. Required for act mode. */
   startUrl: string | null;
-  /** 'auto' only when the user opted in; older schedules without the field run in 'ask'. */
-  permissionMode?: 'ask' | 'auto';
   enabled: boolean;
   nextRunAt: number | null;
   createdAt: number;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { agentModelStore, AgentNameEnum } from '@extension/storage';
-import type { AssistantMode, PermissionMode } from '@extension/shared';
+import type { AssistantMode } from '@extension/shared';
 
 export interface WorkspaceTab {
   id: number;
@@ -22,9 +22,6 @@ function preference<T extends string>(key: string, values: readonly T[], fallbac
 export function useAssistantWorkspace(frozen = false) {
   // ponytail: mode is not user-selectable; useTaskSubmission infers it from each message
   const [mode, setMode] = useState<AssistantMode>('chat');
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>(() =>
-    preference('qagent-permission', ['ask', 'auto', 'plan'], 'ask'),
-  );
   const [modelAgent, setModelAgent] = useState<'navigator' | 'planner'>(() =>
     preference('qagent-model-agent', ['navigator', 'planner'], 'navigator'),
   );
@@ -34,9 +31,6 @@ export function useAssistantWorkspace(frozen = false) {
   const [followActive, setFollowActive] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('qagent-permission', permissionMode);
-  }, [permissionMode]);
   useEffect(() => {
     localStorage.setItem('qagent-model-agent', modelAgent);
   }, [modelAgent]);
@@ -140,8 +134,6 @@ export function useAssistantWorkspace(frozen = false) {
     mode,
     setMode,
     selectOnlyTab,
-    permissionMode,
-    setPermissionMode,
     modelAgent,
     setModelAgent,
     models,

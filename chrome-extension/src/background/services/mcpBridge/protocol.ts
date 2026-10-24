@@ -19,8 +19,6 @@ export const runTaskParamsSchema = z
   .object({
     task: z.string().trim().min(1).max(MAX_TASK_CHARS),
     mode: z.enum(['chat', 'plan', 'act']).default('act'),
-    // "plan" permission is a panel-only flow; MCP clients get the two modes the spec allows.
-    permission: z.enum(['ask', 'auto']).default('ask'),
     url: z
       .string()
       .trim()
@@ -42,11 +40,6 @@ const requestFrameSchema = z
   .strict();
 
 export type RunTaskParams = z.infer<typeof runTaskParamsSchema>;
-
-/** 'auto' from an MCP client only takes effect when the user allowed it in the MCP settings; otherwise 'ask'. */
-export function resolveBridgePermission(requested: 'ask' | 'auto', allowAutoPermission: boolean): 'ask' | 'auto' {
-  return requested === 'auto' && allowAutoPermission ? 'auto' : 'ask';
-}
 
 export type ParsedBridgeRequest =
   | { id: string; method: 'run_task'; params: RunTaskParams }

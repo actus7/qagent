@@ -65,7 +65,7 @@ export const useTaskEventHandler = ({
 }: UseTaskEventHandlerArgs) => {
   const { setMessages } = useSidePanelActions();
   const applySystemState = useSystemStateEffects();
-  const { setLastEvent, setPendingApproval, setIsStopping, setIsPaused, setTakeover } = runState;
+  const { setLastEvent, setIsStopping, setIsPaused, setTakeover } = runState;
 
   return useCallback(
     (event: AgentEvent) => {
@@ -73,7 +73,6 @@ export const useTaskEventHandler = ({
       if (data?.taskId !== sessionIdRef.current) return;
       setLastEvent(event);
       if (TERMINAL_TASK_STATES.includes(state)) {
-        setPendingApproval(null);
         setIsStopping(false);
         setIsPaused(false);
         setTakeover(null);
@@ -130,7 +129,6 @@ export const useTaskEventHandler = ({
       setIsStopping,
       setLastEvent,
       setMessages,
-      setPendingApproval,
       setTakeover,
     ],
   );

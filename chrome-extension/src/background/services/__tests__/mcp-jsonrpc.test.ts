@@ -118,7 +118,6 @@ describe('tools', () => {
     expect(validateRunTaskArgs({ task: 'Compre um livro' })).toEqual({
       task: 'Compre um livro',
       mode: 'act',
-      permission: 'ask',
     });
     expect(() => validateRunTaskArgs({ task: '' })).toThrow('task');
     expect(() => validateRunTaskArgs({ task: 'x', mode: 'shell' })).toThrow('mode');

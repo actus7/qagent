@@ -60,7 +60,7 @@ export const useTaskSubmission = ({
 }: UseTaskSubmissionArgs) => {
   const { setShowSetupRequiredModal, setInputEnabled, setShowStopButton, setCurrentSessionId, setIsHistoricalSession } =
     useSidePanelActions();
-  const { setLastEvent, setIsPaused, setIsStopping, setPendingApproval } = runState;
+  const { setLastEvent, setIsPaused, setIsStopping } = runState;
   const { ensureConnection, sendMessage, stopConnection } = connection;
 
   const lastModeRef = useRef<AssistantMode>('chat');
@@ -82,7 +82,6 @@ export const useTaskSubmission = ({
   ) => {
     const options = {
       mode,
-      permissionMode: workspace.permissionMode,
       tabIds: workspace.selectedTabs.map(tab => tab.id),
       modelAgent: workspace.modelAgent,
     };
@@ -180,7 +179,6 @@ export const useTaskSubmission = ({
         timestamp: Date.now(),
       });
     }
-    setPendingApproval(null);
   };
 
   return { handleSendMessage, handleStopTask };

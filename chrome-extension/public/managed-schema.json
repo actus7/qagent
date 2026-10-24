@@ -13,10 +13,6 @@
       "description": "When set, QAgent may only act on URLs matching one of these patterns.",
       "items": { "type": "string" }
     },
-    "disableAutoMode": {
-      "type": "boolean",
-      "description": "Forbids the \"Agir automaticamente\" permission mode and plan-follow auto approval. Tasks always ask."
-    },
     "disableJavascriptTool": {
       "type": "boolean",
       "description": "Disables the execute_javascript action."

@@ -18,7 +18,7 @@ const REASON_LABEL_KEYS = {
 
 /**
  * Pauses the task through the normal pause path; the executor holds until the user resumes it.
- * Changes nothing on the page, so it needs no approval.
+ * Changes nothing on the page.
  */
 export function createRequestUserTakeoverAction(context: AgentContext) {
   return new Action(async (input: z.infer<typeof requestUserTakeoverActionSchema.schema>) => {

@@ -1,6 +1,5 @@
 import type { SidePanelResponseMessage } from '@extension/shared';
 import { runtimeStore } from '../state/runtimeStore';
-import { notifyTaskAttention } from '../services/task-notifications';
 
 type PanelMessageListener = (message: SidePanelResponseMessage) => void;
 
@@ -16,8 +15,6 @@ export function addPanelMessageListener(listener: PanelMessageListener): () => v
 
 // Sends to the currently connected side panel. Drops silently when no panel is connected.
 export function postToPanel(message: SidePanelResponseMessage): void {
-  // An approval that nobody can see would stall the task; notify when no panel is connected (the check is inside).
-  if (message.type === 'approval_required') void notifyTaskAttention('approval_required', '');
   for (const listener of listeners) {
     try {
       listener(message);

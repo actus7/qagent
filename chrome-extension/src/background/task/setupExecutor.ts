@@ -12,7 +12,6 @@ import { type ChatModel, createChatModel } from '../agent/helper';
 import { createLogger } from '../log';
 import type { BrowserContextLike } from '../browser/types';
 import { isAgentBrowserContext } from '../state/browserSession';
-import { actionApprovals } from './actionApprovals';
 
 const logger = createLogger('background');
 
@@ -22,8 +21,6 @@ export async function setupExecutor(
   browserContext: BrowserContextLike,
   options: AssistantTaskOptions = {},
   attachments?: AssistantAttachment[],
-  // The user's own words: plan-mode domains come from here, never from memory or page-derived history.
-  userRequest: string = task,
 ) {
   const usingAgentBrowser = isAgentBrowserContext(browserContext);
   if (usingAgentBrowser) {
@@ -95,18 +92,7 @@ export async function setupExecutor(
     displayHighlights,
   });
 
-  actionApprovals.startTask(taskId, userRequest);
   const executor = new Executor(task, taskId, browserContext, navigatorLLM, {
-    authorizeAction: (action, input, signal, planNextSteps) =>
-      actionApprovals.authorize(
-        taskId,
-        action,
-        input,
-        options.permissionMode ?? 'ask',
-        browserContext,
-        signal,
-        planNextSteps,
-      ),
     plannerLLM: plannerLLM ?? navigatorLLM,
     navigatorProvider: navigatorModel.provider,
     plannerProvider: plannerModel?.provider ?? navigatorModel.provider,

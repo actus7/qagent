@@ -62,7 +62,7 @@ export async function runScheduledTaskWith(id: string, deps: ScheduleRunDeps): P
       task: task.prompt,
       taskId: sessionId,
       tabId,
-      options: { mode: task.mode, permissionMode: task.permissionMode ?? 'ask', tabIds },
+      options: { mode: task.mode, tabIds },
     });
     const { outcome, detail } = outcomeForState(state);
     await finishRun(task, { at: deps.now(), outcome, sessionId, detail }, deps);
@@ -126,7 +126,7 @@ export function defaultScheduleRunDeps(): ScheduleRunDeps {
     },
     startTask: async command => {
       let finalState: string | null = null;
-      // Same managed-policy gate as the side panel and MCP entry points (permission coercion, providers).
+      // Same managed-policy gate as the side panel and MCP entry points (provider checks).
       await runAssistantTask(await prepareManagedTask(command), undefined, {
         onFinished: state => {
           finalState = state;

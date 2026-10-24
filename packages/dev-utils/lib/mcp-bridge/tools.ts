@@ -7,14 +7,12 @@ export interface BridgeRequester {
 
 const MAX_TASK_CHARS = 8000;
 const MODES = ['chat', 'plan', 'act'] as const;
-const PERMISSIONS = ['ask', 'auto'] as const;
 
 export const QAGENT_TOOLS: McpToolDefinition[] = [
   {
     name: 'qagent_run_task',
     description:
-      'Run a task in QAgent in the browser and wait for it to finish. Returns the final answer and a step summary. ' +
-      'Ask permission sends each sensitive or page-changing action to the side panel for approval, so the panel must be open.',
+      'Run a task in QAgent in the browser and wait for it to finish. Returns the final answer and a step summary.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -24,12 +22,6 @@ export const QAGENT_TOOLS: McpToolDefinition[] = [
           enum: [...MODES],
           default: 'act',
           description: 'chat answers from the selected page; plan proposes steps; act performs them in the browser.',
-        },
-        permission: {
-          type: 'string',
-          enum: [...PERMISSIONS],
-          default: 'ask',
-          description: 'ask: approve each action in the side panel. auto: run without asking (may be forbidden by policy).',
         },
         url: {
           type: 'string',
@@ -77,7 +69,6 @@ export function validateRunTaskArgs(args: Record<string, unknown>): Record<strin
   const params: Record<string, unknown> = {
     task,
     mode: pickEnum(args.mode, MODES, 'act', 'mode'),
-    permission: pickEnum(args.permission, PERMISSIONS, 'ask', 'permission'),
   };
   if (args.url !== undefined) {
     const url = requireString(args.url, 'url').trim();

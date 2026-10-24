@@ -12,7 +12,7 @@ describe('shouldNotify', () => {
   });
 
   it('stays silent while the side panel is connected to show the result', () => {
-    expect(shouldNotify({ enabled: true, panelConnected: true, event: 'approval_required' })).toBe(false);
+    expect(shouldNotify({ enabled: true, panelConnected: true, event: 'completed' })).toBe(false);
   });
 
   it('stays silent when there is no event that needs the user', () => {

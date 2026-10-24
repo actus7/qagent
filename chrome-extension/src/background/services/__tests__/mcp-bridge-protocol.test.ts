@@ -10,7 +10,7 @@ describe('parseBridgeRequest', () => {
     expect(parsed).toEqual({
       id: 'req-1',
       method: 'run_task',
-      params: { task: 'Abrir o carrinho', mode: 'act', permission: 'ask' },
+      params: { task: 'Abrir o carrinho', mode: 'act' },
     });
   });
 
@@ -29,16 +29,16 @@ describe('parseBridgeRequest', () => {
     expect(() => parseBridgeRequest(withAction)).toThrow();
   });
 
-  it('validates task length, mode, permission and url scheme', () => {
+  it('validates task length, mode and url scheme', () => {
     expect(() => parseBridgeRequest(frame({ params: { task: '   ' } }))).toThrow();
     expect(() => parseBridgeRequest(frame({ params: { task: 'x'.repeat(8001) } }))).toThrow();
     expect(() => parseBridgeRequest(frame({ params: { task: 'x', mode: 'plan-everything' } }))).toThrow();
-    // Plan permission is panel-only; MCP clients get ask or auto.
-    expect(() => parseBridgeRequest(frame({ params: { task: 'x', permission: 'plan' } }))).toThrow();
+    // The permission choice is gone: the agent always runs as auto, so the field is rejected.
+    expect(() => parseBridgeRequest(frame({ params: { task: 'x', permission: 'auto' } }))).toThrow();
     expect(() => parseBridgeRequest(frame({ params: { task: 'x', url: 'javascript:alert(1)' } }))).toThrow();
     expect(() => parseBridgeRequest(frame({ params: { task: 'x', url: 'file:///etc/passwd' } }))).toThrow();
-    expect(parseBridgeRequest(frame({ params: { task: 'x', url: 'https://example.com', permission: 'auto' } })))
-      .toMatchObject({ params: { url: 'https://example.com', permission: 'auto' } });
+    expect(parseBridgeRequest(frame({ params: { task: 'x', url: 'https://example.com' } })))
+      .toMatchObject({ params: { url: 'https://example.com' } });
   });
 
   it('accepts list, status and cancel requests only with empty params', () => {

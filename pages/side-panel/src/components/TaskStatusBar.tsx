@@ -8,7 +8,6 @@ interface TaskStatusBarProps {
   mode: AssistantMode;
   isPaused: boolean;
   isStopping: boolean;
-  hasPendingApproval: boolean;
   lastEvent: AgentEvent | null;
   onTogglePause: () => void;
   onTakeOver: () => void;
@@ -19,7 +18,6 @@ export default function TaskStatusBar({
   mode,
   isPaused,
   isStopping,
-  hasPendingApproval,
   lastEvent,
   onTogglePause,
   onTakeOver,
@@ -28,7 +26,7 @@ export default function TaskStatusBar({
     lastEvent && lastEvent.data.maxSteps > 0
       ? `${Math.min(lastEvent.data.step + 1, lastEvent.data.maxSteps)}/${lastEvent.data.maxSteps}`
       : null;
-  const canPause = mode === 'act' && !isStopping && !hasPendingApproval;
+  const canPause = mode === 'act' && !isStopping;
   const canTakeOver = canPause && !isPaused;
 
   return (

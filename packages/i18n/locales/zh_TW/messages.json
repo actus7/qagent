@@ -409,27 +409,6 @@
   "options_tabs_firewall": {
     "message": "防火牆"
   },
-  "options_tabs_sitePermissions": {
-    "message": "允許的網站"
-  },
-  "options_sitePermissions_header": {
-    "message": "允許的網站"
-  },
-  "options_sitePermissions_description": {
-    "message": "代理在這些網站上執行動作時不再逐一詢問。敏感動作仍需確認。"
-  },
-  "options_sitePermissions_empty": {
-    "message": "尚未允許任何網站。在核准請求中選擇「一律允許此網站」即可新增。"
-  },
-  "options_sitePermissions_btnRemove": {
-    "message": "移除"
-  },
-  "options_sitePermissions_btnRemoveAll": {
-    "message": "全部移除"
-  },
-  "options_sitePermissions_confirmRemoveAll": {
-    "message": "要移除所有允許的網站嗎？"
-  },
   "options_tabs_help": {
     "message": "說明"
   },
@@ -1305,9 +1284,6 @@
   "bg_task_selectTab": {
     "message": "請至少選擇一個分頁來執行任務。"
   },
-  "bg_approval_declined": {
-    "message": "操作已被拒絕或任務已中斷。"
-  },
   "bg_task_interrupted": {
     "message": "任務已中斷。"
   },
@@ -1372,14 +1348,12 @@
   "options_test_noModel": { "message": "測試前請至少新增一個模型。" },
   "options_test_timeout": { "message": "提供者未在時限內回應。" },
   "options_general_notifyOnCompletion": { "message": "任務完成或需要我時通知" },
-  "options_general_notifyOnCompletion_desc": { "message": "側邊面板關閉時，任務完成、失敗或等待核准時顯示 Chrome 通知。" },
+  "options_general_notifyOnCompletion_desc": { "message": "側邊面板關閉時，任務完成或失敗時顯示 Chrome 通知。" },
   "options_general_testNotification": { "message": "測試通知" },
   "options_general_testNotification_title": { "message": "QAgent" },
   "options_general_testNotification_body": { "message": "通知運作正常。" },
   "bg_notify_completedTitle": { "message": "任務已完成" },
   "bg_notify_failedTitle": { "message": "任務失敗" },
-  "bg_notify_approvalTitle": { "message": "等待你的核准" },
-  "bg_notify_approvalBody": { "message": "請開啟 QAgent 側邊面板以核准或拒絕此操作。" },
   "bg_notify_fallbackBody": { "message": "請開啟 QAgent 側邊面板查看詳情。" },
   "bg_assistant_emptyResponse": {
     "message": "提供者回傳了空白回應。"
@@ -1390,14 +1364,8 @@
   "bg_task_providerMissing": {
     "message": "所選模型的提供者尚未配置。"
   },
-  "bg_approval_pageChanged": {
-    "message": "操作等待批准期間頁面已變更，請重新查看頁面。"
-  },
   "exec_task_resume": {
     "message": "任務已繼續。"
-  },
-  "bg_approval_busy": {
-    "message": "已有另一個操作正在等待批准。"
   },
   "bg_task_busy": {
     "message": "請等待目前任務完成，或先停止執行。"
@@ -1763,20 +1731,11 @@
   "options_mcp_enable_needs_token": {
     "message": "啟用前請設定至少 32 個字元的權杖。"
   },
-  "options_mcp_allow_auto": {
-    "message": "允許 MCP 用戶端使用「自動執行」"
-  },
-  "options_mcp_allow_auto_desc": {
-    "message": "關閉時，要求自動模式的 MCP 用戶端任務會在側邊面板中經確認後執行。"
-  },
   "bg_mcp_urlBlocked": {
     "message": "URL 被 QAgent 政策或防火牆封鎖。"
   },
   "bg_mcp_noActiveTab": {
     "message": "沒有可用於任務的使用中分頁。"
-  },
-  "bg_mcp_panelRequired": {
-    "message": "「詢問」權限模式需要先在瀏覽器中開啟 QAgent 側邊面板。"
   },
   "bg_mcp_internalError": {
     "message": "QAgent 處理請求時發生內部錯誤。"
@@ -1807,8 +1766,6 @@
   "options_schedule_lastRuns": {"message":"最近執行"},
   "options_schedule_noRuns": {"message":"尚未執行。"},
   "options_schedule_runStarted": {"message":"已開始執行，結果會顯示在最近執行中。"},
-  "options_schedule_autoNote": {"message":"關閉：每個會變更頁面的動作都會等待您核准（您會收到通知）。開啟：自動執行，但敏感動作（購買、登入、刪除）仍需確認。"},
-  "options_schedule_field_autoApprove": {"message":"不詢問直接執行"},
   "options_schedule_formNew": {"message":"新增排程任務"},
   "options_schedule_formEdit": {"message":"編輯排程任務"},
   "options_schedule_freqDesc_once": {"message":"僅執行一次：$DATE$ $TIME$","placeholders":{"date":{"content":"$1","example":"date"},"time":{"content":"$2","example":"time"}}},

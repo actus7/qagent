@@ -18,7 +18,7 @@ class TestPrompt extends BasePrompt {
 }
 
 describe('navigator action cancellation', () => {
-  it('never executes a queued completion action after an approval is refused', async () => {
+  it('never executes a queued completion action after the task is cancelled', async () => {
     const declined = new Action(
       async () => {
         throw new RequestCancelledError('Ação recusada.');

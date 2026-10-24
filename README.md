@@ -14,7 +14,7 @@ O painel oferece três modos:
 - **Planejar**: lê o contexto e propõe um plano. O botão de execução transfere esse plano para o compositor no modo Executar.
 - **Executar**: interage com as abas do próprio navegador usando `chrome.debugger`. O acesso fica limitado às abas selecionadas e às abas criadas pela tarefa.
 
-Escolha as páginas no seletor de abas, configure um provedor em Configurações e selecione um dos modelos configurados no compositor. O modo Executar pergunta antes de ações por padrão; a opção **Agir automaticamente** permite executá-las sem essa pausa. Recusar uma ação ou interromper a tarefa cancela a execução.
+Escolha as páginas no seletor de abas, configure um provedor em Configurações e selecione um dos modelos configurados no compositor. O agente executa as ações sem pedir confirmação, inclusive compras e ações sensíveis. Interromper a tarefa cancela a execução.
 
 O histórico permanece local e permite continuar conversas anteriores. Anexos de texto, ditado, prompts salvos, firewall e replay continuam disponíveis. O atalho `Ctrl+Shift+.` abre o painel, caso não esteja atribuído a outra extensão; ele pode ser alterado em `chrome://extensions/shortcuts`.
 
@@ -75,7 +75,6 @@ Administradores podem restringir o AQgent pela política gerenciada do Chrome (`
 |---|---|---|
 | `blockedUrlPatterns` | `string[]` | URLs que o AQgent nunca acessa. Vale também sem firewall ativo. |
 | `allowedUrlPatterns` | `string[]` | Se definida, só essas URLs podem ser acessadas. |
-| `disableAutoMode` | `boolean` | Remove o modo "Agir automaticamente" e força perguntar em todas as ações. |
 | `disableJavascriptTool` | `boolean` | Desativa a ação `execute_javascript`. |
 | `disableFileUpload` | `boolean` | Desativa as ações de envio de arquivo. |
 | `allowedProviders` | `string[]` | Provedores permitidos (id ou tipo, ex.: `openai`, `anthropic`, `ollama`). Outros são recusados. |
@@ -88,7 +87,6 @@ Exemplo (`managed-policy.json`, para publicação via gerenciamento de política
 {
   "blockedUrlPatterns": ["bank.example.com", "*.payments.example.com/*"],
   "allowedUrlPatterns": [],
-  "disableAutoMode": true,
   "disableJavascriptTool": true,
   "disableFileUpload": false,
   "allowedProviders": ["anthropic", "ollama"]
@@ -103,7 +101,7 @@ O AQgent pode ser controlado por clientes MCP locais. A opção fica desligada p
 
 Ferramentas expostas:
 
-- `qagent_run_task`: executa uma tarefa (`task`, `mode` = `chat` | `plan` | `act`, `permission` = `ask` | `auto`, `url` opcional) e aguarda a conclusão. Retorna a resposta final e o resumo dos passos.
+- `qagent_run_task`: executa uma tarefa (`task`, `mode` = `chat` | `plan` | `act`, `url` opcional) e aguarda a conclusão. Retorna a resposta final e o resumo dos passos.
 - `qagent_list_tabs`: lista as abas http(s), com URL sem query e se o AQgent pode usá-las.
 - `qagent_get_status`: mostra se há conexão, tarefa em andamento e painel aberto.
 - `qagent_cancel_task`: cancela a tarefa em andamento.

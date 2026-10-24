@@ -167,25 +167,6 @@ export const McpBridgeSettings = () => {
             </p>
           )}
         </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-medium text-foreground">{t('options_mcp_allow_auto')}</h3>
-            <p className="text-sm font-normal text-muted-foreground">{t('options_mcp_allow_auto_desc')}</p>
-          </div>
-          <div className="relative inline-flex cursor-pointer items-center">
-            <input
-              id="mcpBridgeAllowAuto"
-              type="checkbox"
-              checked={config.allowAutoPermission}
-              onChange={e => void save({ allowAutoPermission: e.target.checked })}
-              className="peer sr-only"
-            />
-            <label htmlFor="mcpBridgeAllowAuto" className={toggleClass}>
-              <span className="sr-only">{t('options_mcp_allow_auto')}</span>
-            </label>
-          </div>
-        </div>
       </div>
     </div>
   );

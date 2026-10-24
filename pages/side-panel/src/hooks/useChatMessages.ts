@@ -2,17 +2,15 @@ import { useCallback, type MutableRefObject } from 'react';
 import { Actors, chatHistoryStore, type Message } from '@extension/storage';
 import { t } from '@extension/i18n';
 import type { SidePanelResponseMessage } from '../types/port';
-import type { ActionApproval as Approval } from '@extension/shared';
 import { useSidePanelActions } from './useSidePanelSelectors';
 
 interface UseChatMessagesArgs {
   sessionIdRef: MutableRefObject<string | null>;
   progressMessage: string;
-  setPendingApproval: (value: Approval | null | ((current: Approval | null) => Approval | null)) => void;
 }
 
-/** Appends chat messages (persisting them when a session exists) and applies assistant stream/approval events. */
-export const useChatMessages = ({ sessionIdRef, progressMessage, setPendingApproval }: UseChatMessagesArgs) => {
+/** Appends chat messages (persisting them when a session exists) and applies assistant stream events. */
+export const useChatMessages = ({ sessionIdRef, progressMessage }: UseChatMessagesArgs) => {
   const { setMessages } = useSidePanelActions();
 
   const appendMessage = useCallback(
@@ -56,10 +54,6 @@ export const useChatMessages = ({ sessionIdRef, progressMessage, setPendingAppro
         void chatHistoryStore.getSession(message.taskId).then(session => {
           if (session && message.taskId === sessionIdRef.current) setMessages(session.messages);
         });
-      } else if (message.type === 'approval_required') {
-        if (message.request.taskId === sessionIdRef.current) setPendingApproval(message.request);
-      } else if (message.type === 'approval_resolved') {
-        setPendingApproval(current => (current?.id === message.requestId ? null : current));
       } else if (message.type === 'assistant_delta' && message.taskId === sessionIdRef.current) {
         // The background persists the finished answer. Streaming updates are display-only.
         setMessages(previous => {
@@ -78,7 +72,7 @@ export const useChatMessages = ({ sessionIdRef, progressMessage, setPendingAppro
         });
       }
     },
-    [setMessages, progressMessage, sessionIdRef, setPendingApproval],
+    [setMessages, progressMessage, sessionIdRef],
   );
 
   return { appendMessage, onAssistantMessage };

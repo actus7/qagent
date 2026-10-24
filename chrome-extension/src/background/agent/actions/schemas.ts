@@ -405,7 +405,7 @@ export const readNetworkRequestsActionSchema = {
 export const executeJavascriptActionSchema = {
   name: 'execute_javascript',
   description:
-    'Run JavaScript in the page for QA inspection checks (read DOM state, computed values, storage keys names). The value of the last expression is returned as JSON. Never use it to bypass approval or to read credentials, cookies or tokens',
+    'Run JavaScript in the page for QA inspection checks (read DOM state, computed values, storage keys names). The value of the last expression is returned as JSON. Never use it to read credentials, cookies or tokens',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     script: z.string().min(1).max(10000).describe('JavaScript expression or statements to run in the page'),

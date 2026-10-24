@@ -33,7 +33,6 @@ function parseRefToIndex(selector: unknown): number | null {
  */
 // `never` default: any Action<X> is assignable to the bare `Action` used by registries and arrays.
 export class Action<TInput = never> {
-  beforeCall?: (action: string, input: unknown) => Promise<void>;
   constructor(
     private readonly handler: (input: TInput) => Promise<ActionResult>,
     public readonly schema: ActionSchema,
@@ -50,7 +49,6 @@ export class Action<TInput = never> {
     const isEmptySchema = schemaShape !== null && Object.keys(schemaShape).length === 0;
 
     if (isEmptySchema) {
-      await this.beforeCall?.(this.name(), {});
       return await this.handler({} as TInput);
     }
 
@@ -59,7 +57,6 @@ export class Action<TInput = never> {
       const errorMessage = parsedArgs.error.message;
       throw new InvalidInputError(errorMessage);
     }
-    await this.beforeCall?.(this.name(), parsedArgs.data);
     return await this.handler(parsedArgs.data as TInput);
   }
 

@@ -137,15 +137,8 @@ export class ActionBuilder {
     const permittedActions = actions.filter(action => isManagedActionAllowed(action.name(), policy));
 
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
-      return permittedActions
-        .filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()))
-        .map(action => {
-          action.beforeCall = this.context.authorizeAction;
-          return action;
-        });
+      return permittedActions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));
     }
-
-    for (const action of permittedActions) action.beforeCall = this.context.authorizeAction;
     return permittedActions;
   }
 }

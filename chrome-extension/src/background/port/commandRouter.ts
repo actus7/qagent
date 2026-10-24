@@ -11,7 +11,6 @@ import { workflowRecorder } from '../services/workflowRecording';
 import { captureVisibleTab } from '../services/tabCapture';
 import { browserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
-import { actionApprovals } from '../task/actionApprovals';
 import { forwardBrowserInput } from '../task/agentBrowserControl';
 import { cancelActiveTask, runAssistantTask } from '../task/taskRunner';
 
@@ -46,11 +45,6 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
       const model = await loadAssistantModel(message.modelAgent);
       const compacted = await compactChatConversation(message.taskId, model);
       return post({ type: 'conversation_compacted', taskId: message.taskId, compacted });
-    }
-
-    case 'approval_result': {
-      actionApprovals.resolve(message.taskId, message.requestId, message.approved, message.decision);
-      break;
     }
 
     case 'resume_task': {

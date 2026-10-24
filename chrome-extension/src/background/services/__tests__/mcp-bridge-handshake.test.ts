@@ -6,7 +6,6 @@ import {
   MCP_BRIDGE_SERVER_PROOF_LABEL as SERVER_SERVER_LABEL,
 } from '../../../../../packages/dev-utils/lib/mcp-bridge/bridge';
 import { BridgeHandshake, computeBridgeProof, constantTimeEqual } from '../mcpBridge/handshake';
-import { resolveBridgePermission } from '../mcpBridge/protocol';
 
 const TOKEN = 'test-token-0123456789-abcdefghijklmnop';
 const OTHER_TOKEN = 'another-token-0123456789-abcdefghijk';
@@ -143,17 +142,5 @@ describe('BridgeHandshake (extension side)', () => {
     await handshake.handle(challengeFor(extNonce));
     await handshake.handle({ type: 'ready' });
     expect(await handshake.handle({ type: 'ping' })).toEqual({ kind: 'ignore' });
-  });
-});
-
-describe('auto permission coercion', () => {
-  it('coerces auto to ask unless the user allowed automatic mode', () => {
-    expect(resolveBridgePermission('auto', false)).toBe('ask');
-    expect(resolveBridgePermission('auto', true)).toBe('auto');
-  });
-
-  it('keeps ask as ask', () => {
-    expect(resolveBridgePermission('ask', false)).toBe('ask');
-    expect(resolveBridgePermission('ask', true)).toBe('ask');
   });
 });

@@ -193,7 +193,7 @@ Common action sequences:
 
 13. Inspection and pointer tools:
 - read_console_messages / read_network_requests: check for JavaScript errors and failed requests (4xx/5xx, network failures).
-- execute_javascript: only for QA inspection checks (DOM state, computed values). Never use it to bypass approval or to read credentials, cookies or tokens.
+- execute_javascript: only for QA inspection checks (DOM state, computed values). Never use it to read credentials, cookies or tokens.
 - click_at / hover / drag: pixel coordinates from the latest screenshot when vision is on, otherwise CSS pixels. Use them only when the target has no index (canvas, maps, sliders).
 - resize_viewport: responsive checks; call it with reset when finished.
 </system_instructions>

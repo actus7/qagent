@@ -4,7 +4,6 @@ import { t } from '@extension/i18n';
 import { formatContextPrefill, useTheme, type AssistantMode } from '@extension/shared';
 import { useLanguage } from '@extension/shared';
 import ChatHistoryList from './components/ChatHistoryList';
-import ActionApproval from './components/ActionApproval';
 import AssistantHeader from './components/AssistantHeader';
 import BrowserPreview from './components/BrowserPreview';
 import ComposeArea from './components/ComposeArea';
@@ -93,8 +92,6 @@ const SidePanel = () => {
   const [schedulePrompt, setSchedulePrompt] = useState<string | null>(null);
   const runState = useTaskRunState();
   const {
-    pendingApproval,
-    setPendingApproval,
     lastEvent,
     setLastEvent,
     isPaused,
@@ -160,7 +157,6 @@ const SidePanel = () => {
   const { appendMessage, onAssistantMessage } = useChatMessages({
     sessionIdRef,
     progressMessage,
-    setPendingApproval,
   });
 
   useEffect(() => {
@@ -429,31 +425,6 @@ const SidePanel = () => {
               />
             }
           />
-          {pendingApproval ? (
-            <ActionApproval
-              request={pendingApproval}
-              copy={copy}
-              onResolve={decision => {
-                try {
-                  sendMessage({
-                    type: 'approval_result',
-                    taskId: pendingApproval.taskId,
-                    requestId: pendingApproval.id,
-                    approved: decision !== 'deny',
-                    decision,
-                  });
-                } catch (error) {
-                  appendMessage({
-                    actor: Actors.SYSTEM,
-                    content: error instanceof Error ? error.message : String(error),
-                    timestamp: Date.now(),
-                  });
-                } finally {
-                  setPendingApproval(null);
-                }
-              }}
-            />
-          ) : null}
           {showStopButton && takeover ? (
             <TakeoverBanner copy={copy} takeover={takeover} onReturnToAgent={handleReturnToAgent} />
           ) : null}
@@ -463,7 +434,6 @@ const SidePanel = () => {
               mode={workspace.mode}
               isPaused={isPaused}
               isStopping={isStopping}
-              hasPendingApproval={pendingApproval !== null}
               lastEvent={lastEvent}
               onTogglePause={handleTogglePause}
               onTakeOver={handleTakeOver}

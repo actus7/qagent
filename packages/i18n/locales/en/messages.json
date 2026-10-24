@@ -412,27 +412,6 @@
   "options_tabs_firewall": {
     "message": "Firewall"
   },
-  "options_tabs_sitePermissions": {
-    "message": "Allowed sites"
-  },
-  "options_sitePermissions_header": {
-    "message": "Allowed sites"
-  },
-  "options_sitePermissions_description": {
-    "message": "Sites where the agent acts without asking for each action. Sensitive actions still ask for confirmation."
-  },
-  "options_sitePermissions_empty": {
-    "message": "No sites allowed yet. Choose \"Always allow this site\" in an approval request to add one."
-  },
-  "options_sitePermissions_btnRemove": {
-    "message": "Remove"
-  },
-  "options_sitePermissions_btnRemoveAll": {
-    "message": "Remove all"
-  },
-  "options_sitePermissions_confirmRemoveAll": {
-    "message": "Remove all allowed sites?"
-  },
   "options_tabs_help": {
     "message": "Help"
   },
@@ -1305,9 +1284,6 @@
   "bg_task_selectTab": {
     "message": "Select at least one tab to run the task."
   },
-  "bg_approval_declined": {
-    "message": "Action declined or task interrupted."
-  },
   "bg_task_interrupted": {
     "message": "Task interrupted."
   },
@@ -1372,14 +1348,12 @@
   "options_test_noModel": { "message": "Add at least one model before testing." },
   "options_test_timeout": { "message": "The provider did not answer in time." },
   "options_general_notifyOnCompletion": { "message": "Notify when a task finishes or needs me" },
-  "options_general_notifyOnCompletion_desc": { "message": "Shows a Chrome notification when a task completes, fails, or waits for approval while the side panel is closed." },
+  "options_general_notifyOnCompletion_desc": { "message": "Shows a Chrome notification when a task completes or fails while the side panel is closed." },
   "options_general_testNotification": { "message": "Test notification" },
   "options_general_testNotification_title": { "message": "QAgent" },
   "options_general_testNotification_body": { "message": "Notifications are working." },
   "bg_notify_completedTitle": { "message": "Task finished" },
   "bg_notify_failedTitle": { "message": "Task failed" },
-  "bg_notify_approvalTitle": { "message": "Waiting for your approval" },
-  "bg_notify_approvalBody": { "message": "Open the QAgent side panel to approve or deny the action." },
   "bg_notify_fallbackBody": { "message": "Open the QAgent side panel for details." },
   "bg_assistant_emptyResponse": {
     "message": "The provider returned an empty response."
@@ -1390,14 +1364,8 @@
   "bg_task_providerMissing": {
     "message": "The selected model provider is not configured."
   },
-  "bg_approval_pageChanged": {
-    "message": "The page changed while the action was waiting for approval. Observe the page again."
-  },
   "exec_task_resume": {
     "message": "Task resumed."
-  },
-  "bg_approval_busy": {
-    "message": "Another action is already waiting for approval."
   },
   "bg_task_busy": {
     "message": "Wait for the current task to finish or stop the run."
@@ -1731,7 +1699,7 @@
     "message": "Allow control by local MCP clients"
   },
   "options_mcp_enable_desc": {
-    "message": "When on, QAgent connects to the local MCP server. Actions that ask for permission still appear in the side panel."
+    "message": "When on, QAgent connects to the local MCP server so MCP clients can run tasks."
   },
   "options_mcp_address": {
     "message": "Address"
@@ -1763,20 +1731,11 @@
   "options_mcp_enable_needs_token": {
     "message": "Set a token of at least 32 characters before enabling."
   },
-  "options_mcp_allow_auto": {
-    "message": "Allow MCP clients to use 'Act automatically'"
-  },
-  "options_mcp_allow_auto_desc": {
-    "message": "When off, tasks from MCP clients that ask for automatic mode run with approval in the side panel."
-  },
   "bg_mcp_urlBlocked": {
     "message": "URL blocked by the QAgent policy or the firewall."
   },
   "bg_mcp_noActiveTab": {
     "message": "No active tab available for the task."
-  },
-  "bg_mcp_panelRequired": {
-    "message": "Permission mode 'ask' requires the QAgent side panel to be open in the browser."
   },
   "bg_mcp_internalError": {
     "message": "Internal QAgent error while handling the request."
@@ -1807,8 +1766,6 @@
   "options_schedule_lastRuns": {"message":"Recent runs"},
   "options_schedule_noRuns": {"message":"No runs yet."},
   "options_schedule_runStarted": {"message":"Run started. The result appears in the recent runs."},
-  "options_schedule_autoNote": {"message":"Off: every page-changing action waits for your approval (you get a notification). On: the run acts automatically, but sensitive actions (purchases, logins, deletions) still ask for confirmation."},
-  "options_schedule_field_autoApprove": {"message":"Act without asking"},
   "options_schedule_formNew": {"message":"New scheduled task"},
   "options_schedule_formEdit": {"message":"Edit scheduled task"},
   "options_schedule_freqDesc_once": {"message":"Once on $DATE$ at $TIME$","placeholders":{"date":{"content":"$1","example":"date"},"time":{"content":"$2","example":"time"}}},

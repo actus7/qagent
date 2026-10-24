@@ -13,8 +13,6 @@ export interface ScheduleDraft {
   prompt: string;
   mode: ScheduleMode;
   startUrl: string;
-  /** Opt-in to act without asking; sensitive actions still need confirmation. */
-  autoApprove: boolean;
   enabled: boolean;
   frequency: ScheduleFrequency;
   /** Local wall-clock time, HH:mm. */
@@ -55,7 +53,6 @@ export function createScheduleDraft(now: Date, overrides: Partial<ScheduleDraft>
     prompt: '',
     mode: 'act',
     startUrl: '',
-    autoApprove: false,
     enabled: true,
     frequency: 'daily',
     time: toLocalTimeInput(nextHour),
@@ -71,7 +68,6 @@ export function draftFromTask(task: ScheduledTask): ScheduleDraft {
     prompt: task.prompt,
     mode: task.mode,
     startUrl: task.startUrl ?? '',
-    autoApprove: task.permissionMode === 'auto',
     enabled: task.enabled,
     frequency: task.frequency,
     time: task.time,
@@ -141,7 +137,6 @@ export function scheduleFromDraft(
     prompt: draft.prompt.trim(),
     mode: draft.mode,
     startUrl: normalizeStartUrl(draft.startUrl),
-    permissionMode: draft.autoApprove ? 'auto' : 'ask',
     enabled: draft.enabled,
     frequency: timing.frequency,
     time: timing.time,

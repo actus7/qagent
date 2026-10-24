@@ -1,4 +1,4 @@
-import { firewallStore, mcpBridgeStore } from '@extension/storage';
+import { firewallStore } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { hasManagedRestrictions, type McpBridgeResponseFrame } from '@extension/shared';
 import { isUrlAllowed, sleep } from '../../browser/util';
@@ -10,7 +10,7 @@ import { getManagedPolicy } from '../../state/managedPolicyState';
 import { cancelActiveTask } from '../../task/taskRunner';
 import { loadManagedPolicy } from '../managedPolicy';
 import { createTaskCollector, type TaskRunOutcome } from './taskCollector';
-import { McpBridgeError, resolveBridgePermission, type ParsedBridgeRequest, type RunTaskParams } from './protocol';
+import { McpBridgeError, type ParsedBridgeRequest, type RunTaskParams } from './protocol';
 
 const TAB_LOAD_TIMEOUT_MS = 15000;
 const TAB_POLL_MS = 250;
@@ -58,14 +58,6 @@ async function runTask(params: RunTaskParams): Promise<TaskRunOutcome & { taskId
   if (bridgeTaskId || runtimeStore.getState().currentExecutor) {
     throw new McpBridgeError('TASK_BUSY', t('bg_task_busy'));
   }
-  // Defense in depth: 'auto' from a client needs the user's explicit opt-in. Managed policy still applies later.
-  const { allowAutoPermission } = await mcpBridgeStore.getConfig();
-  const permission = resolveBridgePermission(params.permission, allowAutoPermission);
-  // Ask mode needs someone to answer approvals, and only a user gesture can open the side panel.
-  if (permission === 'ask' && !runtimeStore.getState().currentPort) {
-    throw new McpBridgeError('SIDE_PANEL_REQUIRED', t('bg_mcp_panelRequired'));
-  }
-
   const tabId = await resolveTaskTab(params.url);
   const taskId = crypto.randomUUID();
   const collector = createTaskCollector(taskId);
@@ -81,7 +73,6 @@ async function runTask(params: RunTaskParams): Promise<TaskRunOutcome & { taskId
         tabId,
         options: {
           mode: params.mode,
-          permissionMode: permission,
           tabIds: [tabId],
           modelAgent: 'navigator',
         },

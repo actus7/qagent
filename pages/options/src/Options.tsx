@@ -2,9 +2,9 @@ import { lazy, Suspense, useState } from 'react';
 import { Button } from '@extension/ui';
 import { useTheme, withErrorBoundary, withSuspense, useLanguage } from '@extension/shared';
 import { t } from '@extension/i18n';
-import { FiSettings, FiCpu, FiShield, FiGlobe, FiClock } from 'react-icons/fi';
+import { FiSettings, FiCpu, FiShield, FiClock } from 'react-icons/fi';
 
-type TabTypes = 'general' | 'models' | 'firewall' | 'sitePermissions' | 'schedules';
+type TabTypes = 'general' | 'models' | 'firewall' | 'schedules';
 
 const GeneralSettingsTab = lazy(async () => {
   const module = await import('./components/GeneralSettings');
@@ -21,11 +21,6 @@ const FirewallSettingsTab = lazy(async () => {
   return { default: module.FirewallSettings };
 });
 
-const SitePermissionsSettingsTab = lazy(async () => {
-  const module = await import('./components/SitePermissionsSettings');
-  return { default: module.SitePermissionsSettings };
-});
-
 const ScheduledTasksTab = lazy(async () => {
   const module = await import('./components/ScheduledTasksSettings');
   return { default: module.ScheduledTasksSettings };
@@ -40,7 +35,6 @@ const Options = () => {
     { id: 'general', icon: FiSettings, label: t('options_tabs_general') },
     { id: 'models', icon: FiCpu, label: t('options_tabs_models') },
     { id: 'firewall', icon: FiShield, label: t('options_tabs_firewall') },
-    { id: 'sitePermissions', icon: FiGlobe, label: t('options_tabs_sitePermissions') },
     { id: 'schedules', icon: FiClock, label: t('options_tabs_schedules') },
   ];
 
@@ -56,8 +50,6 @@ const Options = () => {
         return <ModelSettingsTab />;
       case 'firewall':
         return <FirewallSettingsTab />;
-      case 'sitePermissions':
-        return <SitePermissionsSettingsTab />;
       case 'schedules':
         return <ScheduledTasksTab />;
       default:

@@ -52,13 +52,10 @@ export class AgentContext {
   stateMessageAdded: boolean;
   history: AgentStepHistory;
   finalAnswer: string | null;
-  authorizeAction?: (action: string, input: unknown) => Promise<void>;
   /** Binary files the user attached to this task, keyed by file name; read by upload_file. */
   taskFiles: Map<string, { mimeType: string; base64: string }>;
   /** Set on resume so the next navigator step refreshes the browser state instead of reusing the cached one. */
   pageStale: boolean;
-  /** next_steps of the latest planner output; shown with the plan approval request. */
-  latestPlanNextSteps: string | null;
 
   constructor(
     taskId: string,
@@ -86,7 +83,6 @@ export class AgentContext {
     this.finalAnswer = null;
     this.taskFiles = new Map();
     this.pageStale = false;
-    this.latestPlanNextSteps = null;
   }
 
   async emitEvent(actor: Actors, state: ExecutionState, eventDetails: string, takeover?: EventData['takeover']) {

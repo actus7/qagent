@@ -37,12 +37,6 @@ const MAX_TASK_CHAIN_LENGTH = 50;
 const PAUSE_POLL_INTERVAL_MS = 200;
 
 interface ExecutorExtraArgs {
-  authorizeAction?: (
-    action: string,
-    input: unknown,
-    signal: AbortSignal,
-    planNextSteps: string | null,
-  ) => Promise<void>;
   plannerLLM?: ChatModel;
   navigatorProvider?: string;
   plannerProvider?: string;
@@ -90,20 +84,6 @@ export class Executor {
 
     this.generalSettings = extraArgs?.generalSettings;
     context.taskFiles = indexFileAttachments(extraArgs?.attachments);
-    if (extraArgs?.authorizeAction) {
-      context.authorizeAction = async (action, input) => {
-        if (context.stopped || context.controller.signal.aborted)
-          throw new RequestCancelledError('Tarefa interrompida.');
-        try {
-          await extraArgs.authorizeAction!(action, input, context.controller.signal, context.latestPlanNextSteps);
-        } catch (error) {
-          if (error instanceof RequestCancelledError) await context.stop();
-          throw error;
-        }
-        if (context.stopped || context.controller.signal.aborted)
-          throw new RequestCancelledError('Tarefa interrompida.');
-      };
-    }
     this.tasks.push(task);
     this.navigatorPrompt = new NavigatorPrompt(context.options.maxActionsPerStep);
     this.plannerPrompt = new PlannerPrompt();

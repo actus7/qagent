@@ -3,7 +3,6 @@ export * from './llmProviders';
 export * from './agentModels';
 export * from './generalSettings';
 export * from './firewall';
-export * from './sitePermissions';
 export * from './speechToText';
 export * from './analyticsSettings';
 export * from './mcpBridge';
