@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BaseAgent, STRUCTURED_OUTPUT_METHOD, type BaseAgentOptions, type ExtraAgentOptions } from './base';
+import { normalizeActions } from './normalize-actions';
 import { createLogger } from '@src/background/log';
 import { recordStepScreenshot } from '@src/background/services/step-screenshots';
 import { ActionResult, type AgentOutput } from '../types';
@@ -440,32 +441,18 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
    * @returns
    */
   private fixActions(response: this['ModelOutput']): Record<string, unknown>[] {
+    if (!Array.isArray(response.action)) {
+      logger.warning('Unexpected action format', response.action);
+    }
     let actions: Record<string, unknown>[];
-    if (Array.isArray(response.action)) {
-      // if the item is null, skip it
-      actions = response.action.filter((item: unknown) => item !== null);
-      if (actions.length === 0) {
-        logger.warning('No valid actions found', response.action);
-      }
-    } else if (typeof response.action === 'string') {
-      try {
-        logger.warning('Unexpected action format', response.action);
-        // First try to parse the action string directly
-        actions = JSON.parse(response.action);
-      } catch {
-        try {
-          // If direct parsing fails, try to fix the JSON first
-          const fixedAction = repairJsonString(response.action);
-          logger.info('Fixed action string', fixedAction);
-          actions = JSON.parse(fixedAction);
-        } catch {
-          logger.error('Invalid action format even after repair attempt', response.action);
-          throw new Error('Invalid action output format');
-        }
-      }
-    } else {
-      // if the action is neither an array nor a string, it should be an object
-      actions = [response.action];
+    try {
+      actions = normalizeActions(response.action, repairJsonString);
+    } catch (error) {
+      logger.error('Invalid action format even after repair attempt', response.action);
+      throw error;
+    }
+    if (actions.length === 0) {
+      logger.warning('No valid actions found', response.action);
     }
     return actions;
   }
