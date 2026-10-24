@@ -18,6 +18,17 @@ describe('navigator model contract', () => {
     expect(schema).toMatchSnapshot();
   });
 
+  it('never sends boolean exclusiveMinimum/exclusiveMaximum, which strict providers reject with a 400', () => {
+    const registry = new NavigatorActionRegistry(buildActions());
+    const schema = convertZodToJsonSchema(registry.setupModelOutputSchema(), 'NavigatorAgentOutput', true);
+    const booleanFlags: string[] = [];
+    JSON.stringify(schema, (key, value) => {
+      if (/^exclusive(Minimum|Maximum)$/.test(key) && typeof value === 'boolean') booleanFlags.push(key);
+      return value;
+    });
+    expect(booleanFlags).toEqual([]);
+  });
+
   it('keeps the action prompts stable', () => {
     expect(buildActions().map(action => action.prompt())).toMatchSnapshot();
   });

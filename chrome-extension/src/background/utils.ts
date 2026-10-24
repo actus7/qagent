@@ -112,6 +112,17 @@ export function convertZodToJsonSchema(zodSchema: z.ZodType, name: string, addTi
     override: ({ jsonSchema: node }) => {
       if (node.minimum === Number.MIN_SAFE_INTEGER) delete node.minimum;
       if (node.maximum === Number.MAX_SAFE_INTEGER) delete node.maximum;
+      // The openapi-3.0 target writes .positive() as {minimum: 0, exclusiveMinimum: true}. Tool parameters are plain
+      // JSON Schema, where the bound must be numeric; strict providers (Xiaomi MiMo) reject the boolean with a 400.
+      for (const [flag, bound] of [
+        ['exclusiveMinimum', 'minimum'],
+        ['exclusiveMaximum', 'maximum'],
+      ] as const) {
+        if (typeof node[flag] !== 'boolean') continue;
+        if (node[flag] && typeof node[bound] === 'number') node[flag] = node[bound];
+        else delete node[flag];
+        if (typeof node[flag] === 'number') delete node[bound];
+      }
     },
   });
   delete jsonSchema.$schema; // the dialect URI is noise for the model

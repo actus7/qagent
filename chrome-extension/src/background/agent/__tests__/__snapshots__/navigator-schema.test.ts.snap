@@ -889,8 +889,7 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
               "pixels": {
                 "description": "pixel amount to scroll",
-                "exclusiveMinimum": true,
-                "minimum": 0,
+                "exclusiveMinimum": 0,
                 "title": "Pixels",
                 "type": "integer",
               },
