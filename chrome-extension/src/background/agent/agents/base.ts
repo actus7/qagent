@@ -110,6 +110,10 @@ function resolveRateLimitRetryDelayMs(error: unknown, attempt: number): number {
   return fallback;
 }
 
+// LangChain 1.x defaults withStructuredOutput to response_format json_schema, which many OpenAI-compatible routers and
+// models reject with a 400. Tool calling is the broadly supported path (and what the agents read tool_calls from).
+export const STRUCTURED_OUTPUT_METHOD = 'functionCalling' as const;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CallOptions = Record<string, any>;
 
@@ -332,6 +336,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
       const structuredLlm = this.chatLLM.withStructuredOutput(jsonSchema, {
         includeRaw: true,
         name: this.modelOutputToolName,
+        method: STRUCTURED_OUTPUT_METHOD,
       });
 
       let response = undefined;

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseAgent, type BaseAgentOptions, type ExtraAgentOptions } from './base';
+import { BaseAgent, STRUCTURED_OUTPUT_METHOD, type BaseAgentOptions, type ExtraAgentOptions } from './base';
 import { createLogger } from '@src/background/log';
 import { recordStepScreenshot } from '@src/background/services/step-screenshots';
 import { ActionResult, type AgentOutput } from '../types';
@@ -121,6 +121,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
       const structuredLlm = this.chatLLM.withStructuredOutput(this.jsonSchema, {
         includeRaw: true,
         name: this.modelOutputToolName,
+        method: STRUCTURED_OUTPUT_METHOD,
       });
 
       let response = undefined;

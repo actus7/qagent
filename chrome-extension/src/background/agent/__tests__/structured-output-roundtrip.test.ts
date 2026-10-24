@@ -79,6 +79,27 @@ describe('structured output round trip', { timeout: 30_000 }, () => {
     expect(JSON.stringify(requests.at(-1))).toContain('NavigatorAgentOutput');
   });
 
+  it('uses tool calling, never response_format, so strict OpenAI-compatible routers accept it', async () => {
+    const { createChatModel } = await import('../helper');
+    const { STRUCTURED_OUTPUT_METHOD } = await import('../agents/base');
+    const mimo = createChatModel(
+      { type: ProviderTypeEnum.CustomOpenAI, apiKey: 'sk-test', baseUrl },
+      { provider: ProviderTypeEnum.CustomOpenAI, modelName: 'mimo-v2.6-pro' },
+    );
+    const jsonSchema = convertZodToJsonSchema(z.object({ next_goal: z.string() }), 'AgentOutput');
+
+    const llm = mimo.withStructuredOutput(jsonSchema, {
+      includeRaw: true,
+      name: 'AgentOutput',
+      method: STRUCTURED_OUTPUT_METHOD,
+    });
+    await llm.invoke([new HumanMessage('next step?')]);
+
+    const sent = requests.at(-1) as Record<string, unknown>;
+    expect(sent.response_format).toBeUndefined();
+    expect(sent.tools).toHaveLength(1);
+  });
+
   it('parses a zod-schema response like the base agent does', async () => {
     const schema = z.object({ evaluation_previous_goal: z.string(), memory: z.string(), next_goal: z.string() });
     const wrapper = z.object({ current_state: schema, action: z.array(z.record(z.string(), z.unknown())) });
