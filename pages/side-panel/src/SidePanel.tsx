@@ -9,7 +9,6 @@ import AssistantHeader from './components/AssistantHeader';
 import BrowserPreview from './components/BrowserPreview';
 import ComposeArea from './components/ComposeArea';
 import ConversationArea from './components/ConversationArea';
-import ModeBar from './components/ModeBar';
 import ScheduleDialog from './components/ScheduleDialog';
 import SettingsModal from './components/SettingsModal';
 import SetupRequiredModal from './components/SetupRequiredModal';
@@ -337,8 +336,7 @@ const SidePanel = () => {
     setTakeover(null);
   };
 
-  const handleSuggestion = (mode: AssistantMode, prompt: string) => {
-    workspace.setMode(mode);
+  const handleSuggestion = (_mode: AssistantMode, prompt: string) => {
     setInputText(prompt);
   };
 
@@ -394,7 +392,6 @@ const SidePanel = () => {
         </div>
       ) : (
         <>
-          <ModeBar copy={copy} mode={workspace.mode} disabled={showStopButton} onModeChange={workspace.setMode} />
           <WorkflowRecordControl sendMessage={sendMessage} ensureConnection={ensureConnection} />
           {isAgentBrowserEngine && hasConfiguredModels ? (
             <BrowserPreview

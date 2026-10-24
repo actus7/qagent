@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { FiGlobe, FiPlus, FiX, FiCheck, FiCrosshair } from 'react-icons/fi';
 import { t } from '@extension/i18n';
 import type { WorkspaceTab } from '../hooks/useAssistantWorkspace';
@@ -22,6 +23,18 @@ export default function PageContext({
   disabled,
   copy,
 }: Props) {
+  const menuRef = useRef<HTMLDetailsElement>(null);
+
+  // Close the tab picker when clicking anywhere outside it.
+  useEffect(() => {
+    const close = (event: PointerEvent) => {
+      const menu = menuRef.current;
+      if (menu?.open && !menu.contains(event.target as Node)) menu.open = false;
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, []);
+
   return (
     <div className="assistant-context" aria-label={copy.tabs}>
       <div className="assistant-context-chips">
@@ -46,7 +59,7 @@ export default function PageContext({
           ))
         )}
       </div>
-      <details className="assistant-tabs-menu">
+      <details className="assistant-tabs-menu" ref={menuRef}>
         <summary aria-label={copy.addTabs} title={copy.addTabs}>
           <FiPlus size={15} />
         </summary>

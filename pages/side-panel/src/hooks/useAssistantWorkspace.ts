@@ -20,7 +20,8 @@ function preference<T extends string>(key: string, values: readonly T[], fallbac
 }
 
 export function useAssistantWorkspace(frozen = false) {
-  const [mode, setMode] = useState<AssistantMode>(() => preference('qagent-mode', ['chat', 'plan', 'act'], 'chat'));
+  // ponytail: mode is no longer user-selectable; the agent handles chat/plan/act within the conversation
+  const [mode, setMode] = useState<AssistantMode>('act');
   const [permissionMode, setPermissionMode] = useState<PermissionMode>(() =>
     preference('qagent-permission', ['ask', 'auto', 'plan'], 'ask'),
   );
@@ -33,9 +34,6 @@ export function useAssistantWorkspace(frozen = false) {
   const [followActive, setFollowActive] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('qagent-mode', mode);
-  }, [mode]);
   useEffect(() => {
     localStorage.setItem('qagent-permission', permissionMode);
   }, [permissionMode]);
