@@ -52,4 +52,28 @@ describe('PlannerAgent Gemini mode', () => {
     expect(output.done).toBe(false);
     expect(output.web_task).toBe(true);
   });
+
+  it('accepts list answers for text fields instead of failing validation', async () => {
+    vi.mocked(generateText).mockResolvedValue({
+      text: JSON.stringify({
+        observation: 'login page',
+        challenges: ['captcha may appear', 'slow load'],
+        done: false,
+        next_steps: ['fill email', 'submit'],
+        web_task: true,
+      }),
+      toolCalls: [],
+    } as never);
+
+    const agent = new PlannerAgent({
+      chatLLM: fakeChatModel('gemini-2.5-flash'),
+      context: { controller: new AbortController() } as AgentContext,
+      prompt: new TestPrompt(),
+    });
+
+    const output = await agent.invoke([userMessage('test')]);
+
+    expect(output.challenges).toBe('captcha may appear\nslow load');
+    expect(output.next_steps).toBe('fill email\nsubmit');
+  });
 });

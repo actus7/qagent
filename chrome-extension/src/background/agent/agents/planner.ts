@@ -20,10 +20,15 @@ import { filterExternalContent } from '../messages/utils';
 const logger = createLogger('PlannerAgent');
 
 // Define Zod schema for planner output
-// ponytail: the text fields are informational; a model that omits one (MiMo does) must not fail the whole step
+// ponytail: the text fields are informational; a model that omits one (MiMo does) or answers a "list" field
+// with an array must not fail the whole step
+const textField = z
+  .union([z.string(), z.array(z.unknown()).transform(items => items.map(String).join('\n'))])
+  .default('');
+
 export const plannerOutputSchema = z.object({
-  observation: z.string().default(''),
-  challenges: z.string().default(''),
+  observation: textField,
+  challenges: textField,
   done: z.union([
     z.boolean(),
     z.string().transform(val => {
@@ -32,9 +37,9 @@ export const plannerOutputSchema = z.object({
       throw new Error('Invalid boolean string');
     }),
   ]),
-  next_steps: z.string().default(''),
-  final_answer: z.string().default(''),
-  reasoning: z.string().default(''),
+  next_steps: textField,
+  final_answer: textField,
+  reasoning: textField,
   web_task: z
     .union([
       z.boolean(),
