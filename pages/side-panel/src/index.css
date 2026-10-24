@@ -99,8 +99,14 @@
 .assistant-mode-bar button:hover {
   color: var(--foreground);
 }
+/* Radix wraps the content in display:table, which grows to the longest unbreakable line (a URL, a code block)
+   and pushes messages past the panel edge; block keeps it at the viewport width so pre/links scroll or wrap. */
 .assistant-conversation > div > div {
   min-height: 100%;
+  display: block !important;
+}
+.assistant-markdown {
+  overflow-wrap: anywhere;
 }
 .assistant-welcome {
   padding: clamp(24px, 7vh, 76px) 24px 28px;
