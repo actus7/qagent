@@ -1,32 +1,33 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { z } from 'zod';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import type { SystemModelMessage, UserModelMessage } from 'ai';
+import type * as AiModule from 'ai';
+import { generateText } from 'ai';
 import { BaseAgent } from '../agents/base';
+import type { ChatModel } from '../helper';
 import { BasePrompt } from '../prompts/base';
 import type { AgentContext, AgentOutput } from '../types';
 import { LLMTimeoutError } from '../agents/errors';
+import { systemMessage, userMessage } from '../messages/model-messages';
+import { fakeChatModel } from '../../__tests__/utils/fakeChatModel';
+
+vi.mock('ai', async importOriginal => ({ ...(await importOriginal<typeof AiModule>()), generateText: vi.fn() }));
 
 class TestPrompt extends BasePrompt {
-  getSystemMessage(): SystemMessage {
-    return new SystemMessage('system');
+  getSystemMessage(): SystemModelMessage {
+    return systemMessage('system');
   }
 
-  async getUserMessage(context: AgentContext): Promise<HumanMessage> {
+  async getUserMessage(context: AgentContext): Promise<UserModelMessage> {
     void context;
-    return new HumanMessage('user');
+    return userMessage('user');
   }
 }
 
 class TimeoutTestAgent extends BaseAgent<z.ZodAny, never> {
-  constructor(context: AgentContext, modelName = 'test-model', chatLLMOverride?: BaseChatModel) {
+  constructor(context: AgentContext, modelName = 'test-model', chatLLMOverride?: ChatModel) {
     super(z.any(), {
-      chatLLM:
-        chatLLMOverride ??
-        ({
-          constructor: { name: 'TestModel' },
-          modelName,
-        } as unknown as BaseChatModel),
+      chatLLM: chatLLMOverride ?? fakeChatModel(modelName),
       context,
       prompt: new TestPrompt(),
     });
@@ -44,6 +45,7 @@ class TimeoutTestAgent extends BaseAgent<z.ZodAny, never> {
 describe('BaseAgent invokeWithTimeout', () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.mocked(generateText).mockReset();
   });
 
   it('throws LLMTimeoutError when model invocation hangs', async () => {
@@ -153,25 +155,19 @@ describe('BaseAgent invokeWithTimeout', () => {
       controller: new AbortController(),
     } as AgentContext;
 
-    const structuredInvoke = vi.fn(
+    vi.mocked(generateText).mockImplementation(
       () =>
-        new Promise<unknown>(() => {
+        new Promise(() => {
           // Intentionally unresolved promise to simulate a hung provider request.
-        }),
+        }) as never,
     );
-    const chatLLM = {
-      constructor: { name: 'TestModel' },
-      modelName: 'test-model',
-      withStructuredOutput: vi.fn(() => ({
-        invoke: structuredInvoke,
-      })),
-    } as unknown as BaseChatModel;
 
-    const agent = new TimeoutTestAgent(context, 'test-model', chatLLM);
-    const pendingInvoke = agent.invoke([new HumanMessage('test')]);
+    const agent = new TimeoutTestAgent(context, 'test-model');
+    const pendingInvoke = agent.invoke([userMessage('test')]);
 
     const timeoutAssertion = expect(pendingInvoke).rejects.toBeInstanceOf(LLMTimeoutError);
     await vi.advanceTimersByTimeAsync(45_000);
     await timeoutAssertion;
+    expect(vi.mocked(generateText).mock.calls[0][0]).toHaveProperty('tools');
   });
 });

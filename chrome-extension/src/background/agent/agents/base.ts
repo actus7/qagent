@@ -1,13 +1,14 @@
 import type { z } from 'zod';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { generateText, jsonSchema, tool, ToolChoiceViolationError, type JSONSchema7 } from 'ai';
 import type { AgentContext, AgentOutput } from '../types';
 import type { BasePrompt } from '../prompts/base';
-import type { BaseMessage } from '@langchain/core/messages';
+import type { ModelMessage } from '../messages/model-messages';
+import type { ChatModel } from '../helper';
 import { createLogger } from '@src/background/log';
 import { convertZodToJsonSchema } from '@src/background/utils';
 import type { Action } from '../actions/builder';
 import { convertInputMessages, extractJsonFromModelOutput, removeThinkTags } from '../messages/utils';
-import { isAbortedError, LLMTimeoutError, ResponseParseError } from './errors';
+import { errorStatusCode, isAbortedError, LLMTimeoutError, ResponseParseError } from './errors';
 import { getDefaultModelRequestsPerMinute, ProviderTypeEnum } from '@extension/storage';
 import { acquireRateLimitSlot } from '../rate-limiter';
 
@@ -68,6 +69,8 @@ function errorMessageIncludesRateLimit(message: string): boolean {
 }
 
 function isRateLimitError(error: unknown): boolean {
+  if (errorStatusCode(error) === 429) return true;
+
   if (error instanceof Error) {
     if (errorMessageIncludesRateLimit(error.message)) {
       return true;
@@ -110,16 +113,11 @@ function resolveRateLimitRetryDelayMs(error: unknown, attempt: number): number {
   return fallback;
 }
 
-// LangChain 1.x defaults withStructuredOutput to response_format json_schema, which many OpenAI-compatible routers and
-// models reject with a 400. Tool calling is the broadly supported path (and what the agents read tool_calls from).
-export const STRUCTURED_OUTPUT_METHOD = 'functionCalling' as const;
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CallOptions = Record<string, any>;
 
-// Update options to use Zod schema
 export interface BaseAgentOptions {
-  chatLLM: BaseChatModel;
+  chatLLM: ChatModel;
   context: AgentContext;
   prompt: BasePrompt;
   provider?: string;
@@ -128,7 +126,6 @@ export interface BaseAgentOptions {
 }
 export interface ExtraAgentOptions {
   id?: string;
-  toolCallingMethod?: string;
   callOptions?: CallOptions;
 }
 
@@ -139,13 +136,11 @@ export interface ExtraAgentOptions {
  */
 export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
   protected id: string;
-  protected chatLLM: BaseChatModel;
+  protected chatLLM: ChatModel;
   protected prompt: BasePrompt;
   protected context: AgentContext;
   protected actions: Record<string, Action> = {};
   protected modelOutputSchema: T;
-  protected toolCallingMethod: string | null;
-  protected chatModelLibrary: string;
   protected modelName: string;
   protected provider: string;
   protected withStructuredOutput: boolean;
@@ -162,9 +157,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     this.prompt = options.prompt;
     this.context = options.context;
     this.provider = options.provider || '';
-    // TODO: fix this, the name is not correct in production environment
-    this.chatModelLibrary = this.chatLLM.constructor.name;
-    this.modelName = this.getModelName();
+    this.modelName = this.chatLLM.modelName || 'Unknown';
     this.withStructuredOutput = this.setWithStructuredOutput();
     const normalizedProvider = options.provider?.trim() || ProviderTypeEnum.CustomOpenAI;
     const explicitRequestsPerMinute =
@@ -176,7 +169,6 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     this.rateLimitKey = options.rateLimitKey || `${normalizedProvider}:${this.modelName}`;
     // extra options
     this.id = extraOptions?.id || 'agent';
-    this.toolCallingMethod = this.setToolCallingMethod(extraOptions?.toolCallingMethod);
     this.callOptions = extraOptions?.callOptions;
     this.modelOutputToolName = `${this.id}_output`;
   }
@@ -269,38 +261,6 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     return LLM_REQUEST_TIMEOUT_MS;
   }
 
-  // Set the model name
-  private getModelName(): string {
-    if ('modelName' in this.chatLLM) {
-      return this.chatLLM.modelName as string;
-    }
-    if ('model_name' in this.chatLLM) {
-      return this.chatLLM.model_name as string;
-    }
-    if ('model' in this.chatLLM) {
-      return this.chatLLM.model as string;
-    }
-    return 'Unknown';
-  }
-
-  // Set the tool calling method
-  private setToolCallingMethod(toolCallingMethod?: string): string | null {
-    if (toolCallingMethod === 'auto') {
-      switch (this.chatModelLibrary) {
-        case 'ChatGoogleGenerativeAI':
-          return null;
-        case 'ChatOpenAI':
-        case 'AzureChatOpenAI':
-        case 'ChatGroq':
-        case 'ChatXAI':
-          return 'function_calling';
-        default:
-          return null;
-      }
-    }
-    return toolCallingMethod || null;
-  }
-
   // Check if model is a Llama model (only for Llama-specific handling)
   private isLlamaModel(modelName: string): boolean {
     return modelName.includes('Llama-4') || modelName.includes('Llama-3.3') || modelName.includes('llama-3.3');
@@ -312,7 +272,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
       return false;
     }
 
-    // Llama API models don't support json_schema response format
+    // Llama API models don't support tool calling for structured output
     if (this.provider === ProviderTypeEnum.Llama || this.isLlamaModel(this.modelName)) {
       logger.debug(`[${this.modelName}] Llama API doesn't support structured output, using manual JSON extraction`);
       return false;
@@ -321,8 +281,24 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     return true;
   }
 
-  async invoke(inputMessages: BaseMessage[]): Promise<this['ModelOutput']> {
-    // Use structured output
+  /** Options shared by every call: the model, its sampling settings, our own retry policy. */
+  private baseCallOptions(messages: ModelMessage[], signal: AbortSignal) {
+    return {
+      model: this.chatLLM.model,
+      ...this.chatLLM.settings,
+      ...this.callOptions,
+      messages,
+      // the history starts with the agent's system prompt
+      allowSystemInMessages: true,
+      abortSignal: signal,
+      // ponytail: rate limits are retried by invokeWithTimeout; the SDK's own retries would hide inside the timeout
+      maxRetries: 0,
+    };
+  }
+
+  async invoke(inputMessages: ModelMessage[]): Promise<this['ModelOutput']> {
+    // Structured output: one tool the model is forced to call, so OpenAI-compatible routers that reject
+    // response_format json_schema still work. The tool input is validated by the agent, not by the SDK.
     if (this.withStructuredOutput) {
       logger.debug(`[${this.modelName}] Preparing structured output call with schema:`, {
         schemaName: this.modelOutputToolName,
@@ -330,64 +306,51 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
         modelProvider: this.provider,
       });
 
-      // Send the input-side JSON schema and validate with zod ourselves: LangChain 1.x converts zod 4 schemas in
-      // output mode, which throws on transforms (planner's string -> boolean coercion).
-      const jsonSchema = convertZodToJsonSchema(this.modelOutputSchema, this.modelOutputToolName);
-      const structuredLlm = this.chatLLM.withStructuredOutput(jsonSchema, {
-        includeRaw: true,
-        name: this.modelOutputToolName,
-        method: STRUCTURED_OUTPUT_METHOD,
-      });
+      const toolName = this.modelOutputToolName;
+      const schema = convertZodToJsonSchema(this.modelOutputSchema, toolName) as JSONSchema7;
+      const tools = { [toolName]: tool({ description: 'The agent output.', inputSchema: jsonSchema(schema) }) };
 
-      let response = undefined;
       try {
-        logger.debug(`[${this.modelName}] Invoking LLM with structured output...`);
-        response = await this.invokeWithTimeout(
+        const result = await this.invokeWithTimeout(
           signal =>
-            structuredLlm.invoke(inputMessages, {
-              ...this.callOptions,
-              signal,
-            }),
+            generateText({ ...this.baseCallOptions(inputMessages, signal), tools, toolChoice: { type: 'tool', toolName } }),
           `[${this.modelName}] structured output invocation`,
         );
-
+        const text = result.text;
+        const call = result.toolCalls.find(item => item.toolName === toolName && !item.invalid);
         logger.debug(`[${this.modelName}] LLM response received:`, {
-          hasParsed: !!response.parsed,
-          hasRaw: !!response.raw,
-          rawContent: response.raw?.content?.slice(0, 500) + (response.raw?.content?.length > 500 ? '...' : ''),
+          hasToolCall: Boolean(call),
+          text: text.slice(0, 500) + (text.length > 500 ? '...' : ''),
         });
 
-        const output = response.parsed ? this.validateModelOutput(response.parsed) : undefined;
+        const output = call ? this.acceptStructuredOutput(call.input) : undefined;
         if (output) {
           logger.debug(`[${this.modelName}] Successfully parsed structured output`);
           return output;
         }
-        // parsed is null on parse failure; the raw text may still contain a valid JSON answer
-        const rawContent = response.raw?.content;
-        const manuallyParsed =
-          typeof rawContent === 'string' && rawContent.length > 0 ? this.manuallyParseResponse(rawContent) : undefined;
+        // no (valid) tool call; the text may still contain a valid JSON answer
+        const manuallyParsed = text.length > 0 ? this.manuallyParseResponse(text) : undefined;
         if (manuallyParsed) {
           return manuallyParsed;
         }
-        logger.error('Failed to parse response', response);
+        logger.error('Failed to parse response', { toolCalls: result.toolCalls, text });
         throw new Error('Could not parse response with structured output');
       } catch (error) {
         if (error instanceof LLMTimeoutError || isAbortedError(error)) {
           throw error;
         }
 
-        // Try to extract JSON from raw response manually if possible
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        if (
-          errorMessage.includes('is not valid JSON') &&
-          response?.raw?.content &&
-          typeof response.raw.content === 'string'
-        ) {
-          const parsed = this.manuallyParseResponse(response.raw.content);
-          if (parsed) {
-            return parsed;
+        // The model ignored the forced tool: it may still have answered as JSON text or called a tool under
+        // another name (e.g. the "AgentOutput" example in its history). Read the answer from the content.
+        if (ToolChoiceViolationError.isInstance(error)) {
+          const recovered = this.recoverFromToolChoiceViolation(error.content);
+          if (recovered) {
+            logger.warning(`[${this.modelName}] Tool choice ignored; recovered the output from the response content`);
+            return recovered;
           }
         }
+
+        const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error(`[${this.modelName}] LLM call failed with error: \n${errorMessage}`);
         throw new Error(`Failed to invoke ${this.modelName} with structured output: \n${errorMessage}`, {
           cause: error,
@@ -401,19 +364,13 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
 
     try {
       const response = await this.invokeWithTimeout(
-        signal =>
-          this.chatLLM.invoke(convertedInputMessages, {
-            ...this.callOptions,
-            signal,
-          }),
+        signal => generateText(this.baseCallOptions(convertedInputMessages, signal)),
         `[${this.modelName}] fallback invocation`,
       );
 
-      if (typeof response.content === 'string') {
-        const parsed = this.manuallyParseResponse(response.content);
-        if (parsed) {
-          return parsed;
-        }
+      const parsed = this.manuallyParseResponse(response.text);
+      if (parsed) {
+        return parsed;
       }
     } catch (error) {
       const logDetails = normalizeErrorForLog(error);
@@ -431,6 +388,32 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
 
   // Execute the agent and return the result
   abstract execute(): Promise<AgentOutput<M>>;
+
+  /** Output from a response that did not call the forced tool: any tool call's input first, then the text. */
+  private recoverFromToolChoiceViolation(
+    content: ReadonlyArray<{ type: string; text?: string; input?: unknown }>,
+  ): this['ModelOutput'] | undefined {
+    for (const part of content) {
+      if (part.type !== 'tool-call') continue;
+      try {
+        const input = typeof part.input === 'string' ? JSON.parse(part.input) : part.input;
+        const output = this.acceptStructuredOutput(input);
+        if (output) return output;
+      } catch (error) {
+        logger.warning('Could not read the tool call from the response content', error);
+      }
+    }
+    const text = content
+      .filter(part => part.type === 'text')
+      .map(part => part.text ?? '')
+      .join('');
+    return text.trim() ? this.manuallyParseResponse(text) : undefined;
+  }
+
+  /** Turns the forced tool call's input into the model output; agents may accept looser shapes than the schema. */
+  protected acceptStructuredOutput(input: unknown): this['ModelOutput'] | undefined {
+    return this.validateModelOutput(input);
+  }
 
   // Helper method to validate metadata
   protected validateModelOutput(data: unknown): this['ModelOutput'] | undefined {

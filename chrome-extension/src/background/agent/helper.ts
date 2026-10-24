@@ -5,115 +5,81 @@ import {
   normalizeReasoningEffort,
   type ReasoningEffort,
 } from '@extension/storage';
-import { ChatOpenAI, AzureChatOpenAI } from '@langchain/openai';
-import { ChatAnthropic } from '@langchain/anthropic';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { ChatXAI } from '@langchain/xai';
-import { ChatGroq } from '@langchain/groq';
-import { ChatCerebras } from '@langchain/cerebras';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { ChatOllama } from '@langchain/ollama';
-import { ChatDeepSeek } from '@langchain/deepseek';
+import type { LanguageModel, LanguageModelCallOptions } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAzure } from '@ai-sdk/azure';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createXai } from '@ai-sdk/xai';
+import { createGroq } from '@ai-sdk/groq';
+import { createCerebras } from '@ai-sdk/cerebras';
+import { createDeepSeek } from '@ai-sdk/deepseek';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { createLogger } from '@src/background/log';
 
 const logger = createLogger('agent/helper');
 
-const maxTokens = 1024 * 4;
+const maxOutputTokens = 1024 * 4;
 
-type ChatOpenAIArgs = ConstructorParameters<typeof ChatOpenAI>[0];
+/** Per-call sampling settings; the AI SDK takes them on each call rather than on the model. */
+export type ChatModelSettings = Pick<LanguageModelCallOptions, 'temperature' | 'topP' | 'maxOutputTokens' | 'reasoning'>;
 
-interface LlamaMetric {
-  metric?: string;
-  value?: number;
-}
-
-interface LlamaCompletionMessage {
-  content?: {
-    text?: string;
-  };
-  stop_reason?: string;
+/** A configured language model plus what the agents need to know about it. */
+export interface ChatModel {
+  model: LanguageModel;
+  modelName: string;
+  /** Provider id from the model config (e.g. `custom_openai_2`). */
+  provider: string;
+  settings: ChatModelSettings;
 }
 
 interface LlamaApiResponse {
   id?: string;
-  completion_message?: LlamaCompletionMessage;
-  metrics?: LlamaMetric[];
+  completion_message?: { content?: { text?: string }; stop_reason?: string };
+  metrics?: Array<{ metric?: string; value?: number }>;
 }
 
-interface LlamaCompletionRequest {
-  model?: string;
-}
-
-type CompletionWithRetryFn = (this: ChatOpenAI, request: unknown, options?: unknown) => Promise<unknown>;
-
-const chatOpenAICompletionWithRetry = (
-  ChatOpenAI.prototype as unknown as { completionWithRetry: CompletionWithRetryFn }
-).completionWithRetry;
-
-// Custom ChatLlama class to handle Llama API response format
-class ChatLlama extends ChatOpenAI {
-  constructor(args: ChatOpenAIArgs) {
-    super(args);
+/**
+ * Llama API answers in its own shape (`completion_message`) instead of OpenAI's `choices`. Non-streaming JSON
+ * responses are rewritten to the OpenAI shape; anything else (streams, errors) passes through untouched.
+ */
+const llamaFetch: typeof fetch = async (input, init) => {
+  const response = await fetch(input, init);
+  if (!response.ok || !(response.headers.get('content-type') ?? '').includes('application/json')) return response;
+  const text = await response.text();
+  try {
+    const llama = JSON.parse(text) as LlamaApiResponse;
+    const completionText = llama.completion_message?.content?.text;
+    if (typeof completionText !== 'string') return new Response(text, response);
+    const metric = (name: string) => llama.metrics?.find(item => item.metric === name)?.value ?? 0;
+    const body = {
+      id: llama.id ?? 'llama-response',
+      object: 'chat.completion',
+      created: Math.floor(Date.now() / 1000),
+      choices: [
+        {
+          index: 0,
+          message: { role: 'assistant', content: completionText },
+          finish_reason: llama.completion_message?.stop_reason ?? 'stop',
+        },
+      ],
+      usage: {
+        prompt_tokens: metric('num_prompt_tokens'),
+        completion_tokens: metric('num_completion_tokens'),
+        total_tokens: metric('num_total_tokens'),
+      },
+    };
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+  } catch (error) {
+    logger.error('[Llama] Could not read the API response:', error);
+    return new Response(text, response);
   }
-
-  // Override the completionWithRetry method to intercept and transform the response
-  async completionWithRetry(request: unknown, options?: unknown): Promise<unknown> {
-    try {
-      // Make the request using the parent's implementation
-      const response = await chatOpenAICompletionWithRetry.call(this, request, options);
-      const llamaResponse = response as LlamaApiResponse;
-      const llamaRequest = request as LlamaCompletionRequest;
-      const completionText = llamaResponse.completion_message?.content?.text;
-
-      // Check if this is a Llama API response format
-      if (completionText) {
-        const metrics = llamaResponse.metrics || [];
-        const metricValue = (metricName: string) => metrics.find(metric => metric.metric === metricName)?.value || 0;
-
-        // Transform Llama API response to OpenAI format
-        const transformedResponse = {
-          id: llamaResponse.id || 'llama-response',
-          object: 'chat.completion',
-          created: Date.now(),
-          model: llamaRequest.model,
-          choices: [
-            {
-              index: 0,
-              message: {
-                role: 'assistant',
-                content: completionText,
-              },
-              finish_reason: llamaResponse.completion_message?.stop_reason || 'stop',
-            },
-          ],
-          usage: {
-            prompt_tokens: metricValue('num_prompt_tokens'),
-            completion_tokens: metricValue('num_completion_tokens'),
-            total_tokens: metricValue('num_total_tokens'),
-          },
-        };
-
-        return transformedResponse;
-      }
-
-      return response;
-    } catch (error: unknown) {
-      logger.error(`[ChatLlama] Error during API call:`, error);
-      throw error;
-    }
-  }
-}
+};
 
 // O series models or GPT-5 models that support reasoning
 function isOpenAIReasoningModel(modelName: string): boolean {
-  let modelNameWithoutProvider = modelName;
-  if (modelName.startsWith('openai/')) {
-    modelNameWithoutProvider = modelName.substring(7);
-  }
-  return (
-    modelNameWithoutProvider.startsWith('o') ||
-    (modelNameWithoutProvider.startsWith('gpt-5') && !modelNameWithoutProvider.startsWith('gpt-5-chat'))
-  );
+  const name = modelName.startsWith('openai/') ? modelName.substring(7) : modelName;
+  return name.startsWith('o') || (name.startsWith('gpt-5') && !name.startsWith('gpt-5-chat'));
 }
 
 function resolveReasoningEffortForModel(
@@ -133,60 +99,40 @@ function resolveReasoningEffortForModel(
   return normalizedReasoningEffort;
 }
 
-function createOpenAIChatModel(
+const samplingSettings = (modelConfig: ModelConfig, withMaxTokens = true): ChatModelSettings => ({
+  temperature: (modelConfig.parameters?.temperature ?? 0.1) as number,
+  topP: (modelConfig.parameters?.topP ?? 0.1) as number,
+  ...(withMaxTokens ? { maxOutputTokens } : {}),
+});
+
+/** Reasoning models take an effort level instead of sampling parameters. */
+const openAISettings = (modelConfig: ModelConfig, modelName: string): ChatModelSettings => {
+  if (!isOpenAIReasoningModel(modelName)) return samplingSettings(modelConfig);
+  const reasoning = resolveReasoningEffortForModel(modelName, modelConfig.reasoningEffort);
+  return { maxOutputTokens, ...(reasoning ? { reasoning } : {}) };
+};
+
+function createOpenAICompatibleModel(
   providerConfig: ProviderConfig,
   modelConfig: ModelConfig,
-  // Add optional extra fetch options for headers etc.
-  extraFetchOptions: { headers?: Record<string, string> } | undefined,
-): BaseChatModel {
-  const args: {
-    model: string;
-    apiKey?: string;
-    // Configuration should align with ClientOptions from @langchain/openai
-    configuration?: Record<string, unknown>;
-    modelKwargs?: {
-      max_completion_tokens: number;
-      reasoning_effort?: 'none' | 'minimal' | 'low' | 'medium' | 'high';
-    };
-    topP?: number;
-    temperature?: number;
-    maxTokens?: number;
-  } = {
-    model: modelConfig.modelName,
-    apiKey: providerConfig.apiKey,
+  options: { name: string; defaultBaseUrl?: string; headers?: Record<string, string>; fetch?: typeof fetch } = {
+    name: modelConfig.provider,
+  },
+): ChatModel {
+  const provider = createOpenAICompatible({
+    name: options.name,
+    baseURL: providerConfig.baseUrl || options.defaultBaseUrl || 'https://api.openai.com/v1',
+    // custom provider may have no api key
+    ...(providerConfig.apiKey ? { apiKey: providerConfig.apiKey } : {}),
+    ...(options.headers ? { headers: options.headers } : {}),
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+  });
+  return {
+    model: provider.chatModel(modelConfig.modelName),
+    modelName: modelConfig.modelName,
+    provider: modelConfig.provider,
+    settings: openAISettings(modelConfig, modelConfig.modelName),
   };
-
-  const configuration: Record<string, unknown> = {};
-  if (providerConfig.baseUrl) {
-    configuration.baseURL = providerConfig.baseUrl;
-  }
-  if (extraFetchOptions?.headers) {
-    configuration.defaultHeaders = extraFetchOptions.headers;
-  }
-  args.configuration = configuration;
-
-  // custom provider may have no api key
-  if (providerConfig.apiKey) {
-    args.apiKey = providerConfig.apiKey;
-  }
-
-  // O series models have different parameters
-  if (isOpenAIReasoningModel(modelConfig.modelName)) {
-    args.modelKwargs = {
-      max_completion_tokens: maxTokens,
-    };
-
-    // Add reasoning_effort parameter for o-series models if specified
-    const resolvedReasoningEffort = resolveReasoningEffortForModel(modelConfig.modelName, modelConfig.reasoningEffort);
-    if (resolvedReasoningEffort) {
-      args.modelKwargs.reasoning_effort = resolvedReasoningEffort;
-    }
-  } else {
-    args.topP = (modelConfig.parameters?.topP ?? 0.1) as number;
-    args.temperature = (modelConfig.parameters?.temperature ?? 0.1) as number;
-    args.maxTokens = maxTokens;
-  }
-  return new ChatOpenAI(args);
 }
 
 // Function to extract instance name from Azure endpoint URL
@@ -210,10 +156,7 @@ function isAzureProvider(providerId: string): boolean {
 }
 
 // Function to create an Azure OpenAI chat model
-function createAzureChatModel(providerConfig: ProviderConfig, modelConfig: ModelConfig): BaseChatModel {
-  const temperature = (modelConfig.parameters?.temperature ?? 0.1) as number;
-  const topP = (modelConfig.parameters?.topP ?? 0.1) as number;
-
+function createAzureChatModel(providerConfig: ProviderConfig, modelConfig: ModelConfig): ChatModel {
   // Validate necessary fields first
   if (
     !providerConfig.baseUrl ||
@@ -227,8 +170,7 @@ function createAzureChatModel(providerConfig: ProviderConfig, modelConfig: Model
     );
   }
 
-  // Instead of always using the first deployment name, use the model name from modelConfig
-  // which contains the actual model selected in the UI
+  // The model name from modelConfig is the deployment selected in the UI
   const deploymentName = modelConfig.modelName;
 
   // Validate that the selected model exists in the configured deployments
@@ -247,180 +189,83 @@ function createAzureChatModel(providerConfig: ProviderConfig, modelConfig: Model
     );
   }
 
-  // Check if the Azure deployment is using an "o" series model (GPT-4o, etc.)
-  const isOSeriesModel = isOpenAIReasoningModel(deploymentName);
-  const resolvedReasoningEffort = resolveReasoningEffortForModel(deploymentName, modelConfig.reasoningEffort);
-
-  // Use AzureChatOpenAI with specific parameters
-  const args = {
-    azureOpenAIApiInstanceName: instanceName, // Derived from endpoint
-    azureOpenAIApiDeploymentName: deploymentName,
-    azureOpenAIApiKey: providerConfig.apiKey,
-    azureOpenAIApiVersion: providerConfig.azureApiVersion,
-    // For Azure, the model name should be the deployment name itself
-    model: deploymentName, // Set model = deployment name to fix Azure requests
-    // For O series models, use modelKwargs instead of temperature/topP
-    ...(isOSeriesModel
-      ? {
-          modelKwargs: {
-            max_completion_tokens: maxTokens,
-            // Add reasoning_effort parameter for Azure o-series models if specified
-            ...(resolvedReasoningEffort ? { reasoning_effort: resolvedReasoningEffort } : {}),
-          },
-        }
-      : {
-          temperature,
-          topP,
-          maxTokens,
-        }),
-    // DO NOT pass baseUrl or configuration here
+  const azure = createAzure({
+    resourceName: instanceName,
+    apiKey: providerConfig.apiKey,
+    apiVersion: providerConfig.azureApiVersion,
+  });
+  return {
+    model: azure.chat(deploymentName),
+    modelName: deploymentName,
+    provider: modelConfig.provider,
+    settings: openAISettings(modelConfig, deploymentName),
   };
-  return new AzureChatOpenAI(args);
 }
 
 // create a chat model based on the agent name, the model name and provider
-export function createChatModel(providerConfig: ProviderConfig, modelConfig: ModelConfig): BaseChatModel {
-  const temperature = (modelConfig.parameters?.temperature ?? 0.1) as number;
-  const topP = (modelConfig.parameters?.topP ?? 0.1) as number;
+export function createChatModel(providerConfig: ProviderConfig, modelConfig: ModelConfig): ChatModel {
+  const { modelName, provider } = modelConfig;
+  const base = { modelName, provider };
+  const apiKey = providerConfig.apiKey;
 
   // Check if the provider is an Azure provider with a custom ID (e.g. azure_openai_2)
-  const isAzure = isAzureProvider(modelConfig.provider);
-
-  // If this is any type of Azure provider, handle it with the dedicated function
-  if (isAzure) {
+  if (isAzureProvider(provider)) {
     return createAzureChatModel(providerConfig, modelConfig);
   }
 
-  switch (modelConfig.provider) {
+  switch (provider) {
     case ProviderTypeEnum.OpenAI: {
-      // Call helper without extra options
-      return createOpenAIChatModel(providerConfig, modelConfig, undefined);
+      const openai = createOpenAI({ apiKey, ...(providerConfig.baseUrl ? { baseURL: providerConfig.baseUrl } : {}) });
+      return { ...base, model: openai.chat(modelName), settings: openAISettings(modelConfig, modelName) };
     }
     case ProviderTypeEnum.Anthropic: {
-      // For Opus models, only support temperature, not topP
-      // For 4.5 models, only support either temperature or topP, not both, so we only use temperature to align with Opus
-      const args = {
-        model: modelConfig.modelName,
-        apiKey: providerConfig.apiKey,
-        maxTokens,
-        temperature,
-        clientOptions: {},
-      };
-      return new ChatAnthropic(args);
+      // Opus and 4.5 models accept temperature or topP, not both; temperature is used for all of them
+      const { topP: _topP, ...settings } = samplingSettings(modelConfig);
+      void _topP;
+      return { ...base, model: createAnthropic({ apiKey })(modelName), settings };
     }
     case ProviderTypeEnum.DeepSeek: {
-      const args = {
-        model: modelConfig.modelName,
-        apiKey: providerConfig.apiKey,
-        temperature,
-        topP,
-      };
-      return new ChatDeepSeek(args) as BaseChatModel;
+      return { ...base, model: createDeepSeek({ apiKey })(modelName), settings: samplingSettings(modelConfig, false) };
     }
     case ProviderTypeEnum.Gemini: {
-      const args = {
-        model: modelConfig.modelName,
-        apiKey: providerConfig.apiKey,
-        temperature,
-        topP,
+      return {
+        ...base,
+        model: createGoogleGenerativeAI({ apiKey })(modelName),
+        settings: samplingSettings(modelConfig, false),
       };
-      return new ChatGoogleGenerativeAI(args);
     }
     case ProviderTypeEnum.Grok: {
-      const args = {
-        model: modelConfig.modelName,
-        apiKey: providerConfig.apiKey,
-        temperature,
-        topP,
-        maxTokens,
-        configuration: {},
-      };
-      return new ChatXAI(args) as BaseChatModel;
+      return { ...base, model: createXai({ apiKey })(modelName), settings: samplingSettings(modelConfig) };
     }
     case ProviderTypeEnum.Groq: {
-      const args = {
-        model: modelConfig.modelName,
-        apiKey: providerConfig.apiKey,
-        temperature,
-        topP,
-        maxTokens,
-      };
-      return new ChatGroq(args);
+      return { ...base, model: createGroq({ apiKey })(modelName), settings: samplingSettings(modelConfig) };
     }
     case ProviderTypeEnum.Cerebras: {
-      const args = {
-        model: modelConfig.modelName,
-        apiKey: providerConfig.apiKey,
-        temperature,
-        topP,
-        maxTokens,
-      };
-      return new ChatCerebras(args);
+      return { ...base, model: createCerebras({ apiKey })(modelName), settings: samplingSettings(modelConfig) };
     }
     case ProviderTypeEnum.Ollama: {
-      const args: {
-        model: string;
-        apiKey?: string;
-        baseUrl: string;
-        modelKwargs?: { max_completion_tokens: number };
-        topP?: number;
-        temperature?: number;
-        maxTokens?: number;
-        numCtx: number;
-      } = {
-        model: modelConfig.modelName,
-        // required but ignored by ollama
-        apiKey: providerConfig.apiKey === '' ? 'ollama' : providerConfig.apiKey,
-        baseUrl: providerConfig.baseUrl ?? 'http://localhost:11434',
-        topP,
-        temperature,
-        maxTokens,
-        // ollama usually has a very small context window, so we need to set a large number for agent to work
-        // It was set to 128000 in the original code, but it will cause ollama reload the models frequently if you have multiple models working together
-        // not sure why, but setting it to 64000 seems to work fine
-        // TODO: configure the context window size in model config
-        numCtx: 64000,
-      };
-      return new ChatOllama(args);
+      // ponytail: Ollama's OpenAI-compatible endpoint cannot set num_ctx; set the context window on the Ollama
+      // model itself (Modelfile `PARAMETER num_ctx`) or add a native Ollama provider if that proves too limiting.
+      return createOpenAICompatibleModel(
+        { ...providerConfig, apiKey: apiKey || 'ollama', baseUrl: `${providerConfig.baseUrl ?? 'http://localhost:11434'}/v1` },
+        modelConfig,
+        { name: 'ollama' },
+      );
     }
     case ProviderTypeEnum.OpenRouter: {
-      // Call the helper function, passing OpenRouter headers via the third argument
-      return createOpenAIChatModel(providerConfig, modelConfig, {
-        headers: {
-          'HTTP-Referer': 'https://qagent.ai',
-          'X-Title': 'QAgent',
-        },
+      return createOpenAICompatibleModel(providerConfig, modelConfig, {
+        name: 'openrouter',
+        defaultBaseUrl: 'https://openrouter.ai/api/v1',
+        headers: { 'HTTP-Referer': 'https://qagent.ai', 'X-Title': 'QAgent' },
       });
     }
     case ProviderTypeEnum.Llama: {
-      // Llama API has a different response format, use custom ChatLlama class
-      const args: {
-        model: string;
-        apiKey?: string;
-        configuration?: Record<string, unknown>;
-        topP?: number;
-        temperature?: number;
-        maxTokens?: number;
-      } = {
-        model: modelConfig.modelName,
-        apiKey: providerConfig.apiKey,
-        topP: (modelConfig.parameters?.topP ?? 0.1) as number,
-        temperature: (modelConfig.parameters?.temperature ?? 0.1) as number,
-        maxTokens,
-      };
-
-      const configuration: Record<string, unknown> = {};
-      if (providerConfig.baseUrl) {
-        configuration.baseURL = providerConfig.baseUrl;
-      }
-      args.configuration = configuration;
-
-      return new ChatLlama(args);
+      // Llama API has a different response format, rewritten by llamaFetch
+      return createOpenAICompatibleModel(providerConfig, modelConfig, { name: 'llama', fetch: llamaFetch });
     }
     default: {
       // by default, we think it's a openai-compatible provider
-      // Pass undefined for extraFetchOptions for default/custom cases
-      return createOpenAIChatModel(providerConfig, modelConfig, undefined);
+      return createOpenAICompatibleModel(providerConfig, modelConfig);
     }
   }
 }

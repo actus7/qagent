@@ -104,7 +104,7 @@ Agent logic is under `chrome-extension/src/background/agent/`.
 - **Vite** for bundling
 - **Puppeteer** for browser automation
 - **Chrome APIs** for browser automation
-- **LangChain.js** for LLM integration
+- **Vercel AI SDK** (`ai` + `@ai-sdk/*` providers) for LLM integration
 
 ## Development Notes
 

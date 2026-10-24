@@ -1,6 +1,6 @@
+import { generateText } from 'ai';
 import { llmProviderStore } from '@extension/storage';
 import { t } from '@extension/i18n';
-import { HumanMessage } from '@langchain/core/messages';
 import { createChatModel } from '../agent/helper';
 import { describeModelError } from '../agent/agents/errors';
 import { createLogger } from '../log';
@@ -24,11 +24,17 @@ export async function testProviderConnection(
   const modelName = provider.modelNames?.[0];
   if (!modelName) return { ok: false, error: t('options_test_noModel') };
 
-  const model = createChatModel(provider, { provider: providerId, modelName });
+  const chat = createChatModel(provider, { provider: providerId, modelName });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    await model.invoke([new HumanMessage('Reply with the word OK.')], { signal: controller.signal });
+    await generateText({
+      model: chat.model,
+      ...chat.settings,
+      prompt: 'Reply with the word OK.',
+      abortSignal: controller.signal,
+      maxRetries: 0,
+    });
     logger.info(`Connection test passed for provider ${providerId}`);
     return { ok: true };
   } catch (error) {

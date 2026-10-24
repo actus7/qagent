@@ -2,13 +2,14 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { HumanMessage } from '@langchain/core/messages';
 import { ProviderTypeEnum } from '@extension/storage';
-import { convertZodToJsonSchema } from '@src/background/utils';
-import { plannerOutputSchema } from '../agents/planner';
+import { BaseAgent } from '../agents/base';
+import { BasePrompt } from '../prompts/base';
+import type { AgentContext, AgentOutput } from '../types';
+import { systemMessage, userMessage } from '../messages/model-messages';
 
-// End-to-end check of the LangChain structured-output path the agents use (withStructuredOutput + includeRaw),
-// against a local OpenAI-compatible server. Guards LangChain/zod upgrades without a real API key.
+// End-to-end check of the AI SDK structured-output path the agents use (one forced tool call), against a local
+// OpenAI-compatible server. Guards AI SDK/zod upgrades without a real API key.
 const answer = {
   current_state: { evaluation_previous_goal: 'ok', memory: 'm', next_goal: 'g' },
   action: [{ click: { intent: 'open menu', selector: '@e3' } }],
@@ -56,66 +57,65 @@ beforeAll(async () => {
 
 afterAll(() => new Promise<void>(resolve => server.close(() => resolve())));
 
-async function model() {
+const schema = z.object({
+  current_state: z.object({ evaluation_previous_goal: z.string(), memory: z.string(), next_goal: z.string() }),
+  action: z.array(z.record(z.string(), z.unknown())),
+});
+
+class TestPrompt extends BasePrompt {
+  getSystemMessage() {
+    return systemMessage('system');
+  }
+  async getUserMessage() {
+    return userMessage('user');
+  }
+}
+
+class TestAgent extends BaseAgent<typeof schema, never> {
+  async execute(): Promise<AgentOutput<never>> {
+    return { id: this.id };
+  }
+}
+
+async function agentFor(provider: ProviderTypeEnum, modelName: string) {
   const { createChatModel } = await import('../helper');
-  return createChatModel(
-    { type: ProviderTypeEnum.OpenAI, apiKey: 'sk-test', baseUrl },
-    { provider: ProviderTypeEnum.OpenAI, modelName: 'gpt-4o' },
-  );
+  const chatLLM = createChatModel({ type: provider, apiKey: 'sk-test', baseUrl }, { provider, modelName });
+  return new TestAgent(schema, {
+    chatLLM,
+    context: { controller: new AbortController() } as AgentContext,
+    prompt: new TestPrompt(),
+  });
 }
 
 describe('structured output round trip', { timeout: 30_000 }, () => {
-  it('parses a JSON-schema response like the navigator does', async () => {
-    const schema = z.object({
-      current_state: z.object({ evaluation_previous_goal: z.string(), memory: z.string(), next_goal: z.string() }),
-      action: z.array(z.object({ click: z.object({ intent: z.string(), selector: z.string() }).nullable().optional() })),
-    });
-    const jsonSchema = convertZodToJsonSchema(schema, 'NavigatorAgentOutput', true);
+  it('reads the agent output from the forced tool call (OpenAI provider)', async () => {
+    const agent = await agentFor(ProviderTypeEnum.OpenAI, 'gpt-4o');
+    const output = await agent.invoke([userMessage('next step?')]);
 
-    const llm = (await model()).withStructuredOutput(jsonSchema, { includeRaw: true, name: 'NavigatorAgentOutput' });
-    const response = await llm.invoke([new HumanMessage('next step?')]);
-
-    expect(response.parsed).toEqual(answer);
-    expect(JSON.stringify(requests.at(-1))).toContain('NavigatorAgentOutput');
+    expect(output).toEqual(answer);
+    const sent = requests.at(-1) as { tools: Array<{ function: { name: string } }>; tool_choice: unknown };
+    expect(sent.tools).toHaveLength(1);
+    expect(sent.tools[0].function.name).toBe('agent_output');
+    expect(sent.tool_choice).toEqual({ type: 'function', function: { name: 'agent_output' } });
   });
 
   it('uses tool calling, never response_format, so strict OpenAI-compatible routers accept it', async () => {
-    const { createChatModel } = await import('../helper');
-    const { STRUCTURED_OUTPUT_METHOD } = await import('../agents/base');
-    const mimo = createChatModel(
-      { type: ProviderTypeEnum.CustomOpenAI, apiKey: 'sk-test', baseUrl },
-      { provider: ProviderTypeEnum.CustomOpenAI, modelName: 'mimo-v2.6-pro' },
-    );
-    const jsonSchema = convertZodToJsonSchema(z.object({ next_goal: z.string() }), 'AgentOutput');
+    const agent = await agentFor(ProviderTypeEnum.CustomOpenAI, 'mimo-v2.6-pro');
+    const output = await agent.invoke([userMessage('next step?')]);
 
-    const llm = mimo.withStructuredOutput(jsonSchema, {
-      includeRaw: true,
-      name: 'AgentOutput',
-      method: STRUCTURED_OUTPUT_METHOD,
-    });
-    await llm.invoke([new HumanMessage('next step?')]);
-
+    expect(output).toEqual(answer);
     const sent = requests.at(-1) as Record<string, unknown>;
     expect(sent.response_format).toBeUndefined();
     expect(sent.tools).toHaveLength(1);
+    expect(sent.model).toBe('mimo-v2.6-pro');
   });
 
-  it('parses a zod-schema response like the base agent does', async () => {
-    const schema = z.object({ evaluation_previous_goal: z.string(), memory: z.string(), next_goal: z.string() });
-    const wrapper = z.object({ current_state: schema, action: z.array(z.record(z.string(), z.unknown())) });
+  it('falls back to parsing JSON from the text for models without tool calling', async () => {
+    // Llama API models are answered without tools (manual JSON extraction)
+    const agent = await agentFor(ProviderTypeEnum.CustomOpenAI, 'Llama-4-Maverick');
+    const output = await agent.invoke([userMessage('next step?')]);
 
-    const llm = (await model()).withStructuredOutput(wrapper, { includeRaw: true, name: 'planner_output' });
-    const response = await llm.invoke([new HumanMessage('plan?')]);
-
-    expect(response.parsed).toEqual(answer);
-  });
-
-  it('sends the planner schema (union with a transform) as input JSON schema', async () => {
-    // BaseAgent.invoke converts on our side: LangChain 1.x would throw on the transform.
-    const jsonSchema = convertZodToJsonSchema(plannerOutputSchema, 'planner_output');
-    const llm = (await model()).withStructuredOutput(jsonSchema, { includeRaw: true, name: 'planner_output' });
-    await expect(llm.invoke([new HumanMessage('plan?')])).resolves.toHaveProperty('raw');
-    expect(JSON.stringify(requests.at(-1))).toContain('next_steps');
-    expect(plannerOutputSchema.shape.done.parse('true')).toBe(true);
+    expect(output).toEqual(answer);
+    expect((requests.at(-1) as Record<string, unknown>).tools).toBeUndefined();
   });
 });

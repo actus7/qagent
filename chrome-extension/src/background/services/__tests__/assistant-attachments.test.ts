@@ -14,6 +14,7 @@ import {
 } from '../assistant-attachments';
 
 const PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgo=';
+const PNG_PART = { type: 'file', mediaType: 'image/png', data: 'iVBORw0KGgo=' };
 const PDF_DATA_URL = `data:application/pdf;base64,${Buffer.from('%PDF-1.4').toString('base64')}`;
 
 const image = (overrides: Partial<AssistantAttachment> = {}): AssistantAttachment => ({
@@ -86,10 +87,8 @@ describe('attachment validation', () => {
 });
 
 describe('model content', () => {
-  it('builds image_url parts only from image attachments', () => {
-    expect(buildImageContentParts([image(), file()])).toEqual([
-      { type: 'image_url', image_url: { url: PNG_DATA_URL } },
-    ]);
+  it('builds image file parts only from image attachments', () => {
+    expect(buildImageContentParts([image(), file()])).toEqual([PNG_PART]);
   });
 
   it('keeps plain text when there are no images', () => {
@@ -98,14 +97,11 @@ describe('model content', () => {
   });
 
   it('puts the text first and the images after it', () => {
-    expect(buildUserContent('what is this?', [image()])).toEqual([
-      { type: 'text', text: 'what is this?' },
-      { type: 'image_url', image_url: { url: PNG_DATA_URL } },
-    ]);
+    expect(buildUserContent('what is this?', [image()])).toEqual([{ type: 'text', text: 'what is this?' }, PNG_PART]);
   });
 
   it('omits the text part when the task text is blank', () => {
-    expect(buildUserContent('  ', [image()])).toEqual([{ type: 'image_url', image_url: { url: PNG_DATA_URL } }]);
+    expect(buildUserContent('  ', [image()])).toEqual([PNG_PART]);
   });
 });
 

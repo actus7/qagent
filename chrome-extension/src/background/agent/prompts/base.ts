@@ -1,4 +1,5 @@
-import { HumanMessage, type SystemMessage } from '@langchain/core/messages';
+import type { SystemModelMessage, UserModelMessage } from 'ai';
+import { userMessage } from '../messages/model-messages';
 import type { AgentContext } from '@src/background/agent/types';
 import { wrapUntrustedContent } from '../messages/utils';
 import { createLogger } from '@src/background/log';
@@ -10,23 +11,23 @@ const logger = createLogger('BasePrompt');
 abstract class BasePrompt {
   /**
    * Returns the system message that defines the AI's role and behavior
-   * @returns SystemMessage from LangChain
+   * @returns the system message
    */
-  abstract getSystemMessage(): SystemMessage;
+  abstract getSystemMessage(): SystemModelMessage;
 
   /**
    * Returns the user message for the specific prompt type
    * @param context - Optional context data needed for generating the user message
-   * @returns HumanMessage from LangChain
+   * @returns the user message
    */
-  abstract getUserMessage(context: AgentContext): Promise<HumanMessage>;
+  abstract getUserMessage(context: AgentContext): Promise<UserModelMessage>;
 
   /**
    * Builds the user message containing the browser state
    * @param context - The agent context
-   * @returns HumanMessage from LangChain
+   * @returns the user message
    */
-  async buildBrowserStateUserMessage(context: AgentContext): Promise<HumanMessage> {
+  async buildBrowserStateUserMessage(context: AgentContext): Promise<UserModelMessage> {
     const browserState = await context.browserContext.getState(context.options.useVision);
     const rawElementsText = browserState.elementTree.clickableElementsToString(context.options.includeAttributes);
 
@@ -82,18 +83,13 @@ ${actionResultsDescription}
 `;
 
     if (browserState.screenshot && context.options.useVision) {
-      return new HumanMessage({
-        content: [
-          { type: 'text', text: stateDescription },
-          {
-            type: 'image_url',
-            image_url: { url: `data:image/jpeg;base64,${browserState.screenshot}` },
-          },
-        ],
-      });
+      return userMessage([
+        { type: 'text', text: stateDescription },
+        { type: 'file', mediaType: 'image/jpeg', data: browserState.screenshot },
+      ]);
     }
 
-    return new HumanMessage(stateDescription);
+    return userMessage(stateDescription);
   }
 }
 

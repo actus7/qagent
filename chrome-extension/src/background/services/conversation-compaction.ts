@@ -1,7 +1,7 @@
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { generateText } from 'ai';
 import { Actors, chatHistoryStore, type ChatMessage } from '@extension/storage';
 import { t } from '@extension/i18n';
+import type { ChatModel } from '../agent/helper';
 
 // Characters of chat sent to the model per call; the older part of a long chat is replaced by a summary once it grows past this.
 export const CONTEXT_CHAR_BUDGET = 24000;
@@ -62,16 +62,19 @@ function buildTranscript(summary: string | null, recent: ChatMessage[]): string 
  * The full history stays in storage (and in the UI); only what is sent to the model is replaced.
  * @returns false when there is nothing new to summarize.
  */
-export async function compactChatConversation(taskId: string, model: BaseChatModel): Promise<boolean> {
+export async function compactChatConversation(taskId: string, model: ChatModel): Promise<boolean> {
   const session = await chatHistoryStore.getSession(taskId);
   const { summary, recent } = selectContext(session?.messages ?? []);
   if (recent.length === 0) return false;
 
-  const response = await model.invoke([
-    new SystemMessage(COMPACTION_INSTRUCTIONS),
-    new HumanMessage(buildTranscript(summary, recent)),
-  ]);
-  const text = typeof response.content === 'string' ? response.content.trim() : '';
+  const response = await generateText({
+    model: model.model,
+    ...model.settings,
+    instructions: COMPACTION_INSTRUCTIONS,
+    prompt: buildTranscript(summary, recent),
+    maxRetries: 0,
+  });
+  const text = response.text.trim();
   if (!text) throw new Error(t('bg_compact_empty'));
 
   await chatHistoryStore.addMessage(taskId, {
@@ -84,7 +87,7 @@ export async function compactChatConversation(taskId: string, model: BaseChatMod
 }
 
 /** Compacts only when the context sent to the model would exceed the budget. */
-export async function compactIfNeeded(taskId: string, model: BaseChatModel): Promise<boolean> {
+export async function compactIfNeeded(taskId: string, model: ChatModel): Promise<boolean> {
   const session = await chatHistoryStore.getSession(taskId);
   if (!needsAutoCompaction(session?.messages ?? [])) return false;
   return compactChatConversation(taskId, model);

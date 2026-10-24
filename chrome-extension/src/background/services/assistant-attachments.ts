@@ -1,18 +1,19 @@
 import type { AssistantAttachment } from '@extension/shared';
 import { parseBase64DataUrl } from '@extension/shared';
+import type { FilePart, UserContent } from 'ai';
 
-/** Multimodal content parts for LangChain messages; image URLs are base64 data URLs built by the panel. */
-export type ImageContentPart = { type: 'image_url'; image_url: { url: string } };
-
-/** Image attachments as model content parts (empty when there are none). */
-export function buildImageContentParts(attachments: readonly AssistantAttachment[] = []): ImageContentPart[] {
+/** Image attachments as model file parts (empty when there are none); data URLs are built by the panel. */
+export function buildImageContentParts(attachments: readonly AssistantAttachment[] = []): FilePart[] {
   return attachments
     .filter(item => item.kind === 'image')
-    .map(item => ({ type: 'image_url' as const, image_url: { url: item.dataUrl } }));
+    .flatMap(item => {
+      const parsed = parseBase64DataUrl(item.dataUrl);
+      return parsed ? [{ type: 'file' as const, mediaType: parsed.mimeType, data: parsed.base64 }] : [];
+    });
 }
 
 /** Text first, then image parts; plain text when there are no images so text-only providers are unaffected. */
-export function buildUserContent(task: string, attachments?: readonly AssistantAttachment[]) {
+export function buildUserContent(task: string, attachments?: readonly AssistantAttachment[]): UserContent {
   const images = buildImageContentParts(attachments);
   if (images.length === 0) return task;
   return [...(task.trim() ? [{ type: 'text' as const, text: task }] : []), ...images];

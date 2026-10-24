@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { streamText } from 'ai';
+import { fakeChatModel } from '../../__tests__/utils/fakeChatModel';
 const storage = vi.hoisted(() => ({
   getFirewall: vi.fn(),
   getSession: vi.fn(),
@@ -10,7 +11,24 @@ vi.mock('@extension/storage', () => ({
   firewallStore: { getFirewall: storage.getFirewall },
   chatHistoryStore: { getSession: storage.getSession, addMessage: storage.addMessage },
 }));
+vi.mock('ai', () => ({ streamText: vi.fn() }));
 import { readSelectedTabs, streamBrowserAnswer } from '../browser-assistant';
+
+type Part = { type: 'text-delta'; id: string; text: string } | { type: 'error'; error: unknown };
+
+/** Answers the next streamText call with the given parts, running `between` after each one. */
+const streaming = (parts: Part[], between: () => void = () => {}) =>
+  vi.mocked(streamText).mockImplementation(
+    () =>
+      ({
+        stream: (async function* () {
+          for (const part of parts) {
+            yield part;
+            between();
+          }
+        })(),
+      }) as never,
+  );
 
 describe('read-only browser assistant', () => {
   beforeEach(() => {
@@ -51,17 +69,17 @@ describe('read-only browser assistant', () => {
         { actor: 'user', content: 'Summarize' },
       ],
     });
-    const stream = vi.fn(async function* () {
-      yield { content: 'Hello ' };
-      yield { content: [{ type: 'text', text: '**world**' }] };
-    });
+    streaming([
+      { type: 'text-delta', id: '1', text: 'Hello ' },
+      { type: 'text-delta', id: '1', text: '**world**' },
+    ]);
     const post = vi.fn();
     await streamBrowserAnswer({
       taskId: 'session',
       task: 'Summarize',
       mode: 'chat',
       tabIds: [4],
-      model: { stream } as unknown as BaseChatModel,
+      model: fakeChatModel(),
       signal: new AbortController().signal,
       post,
     });
@@ -70,8 +88,9 @@ describe('read-only browser assistant', () => {
       'session',
       expect.objectContaining({ actor: 'assistant', content: 'Hello **world**' }),
     );
-    const prompt = stream.mock.calls[0] as unknown as [Array<{ content: string }>];
-    expect(prompt[0].map(message => message.content).filter(content => content === 'Summarize')).toHaveLength(1);
+    const options = vi.mocked(streamText).mock.calls[0][0] as { messages: Array<{ content: unknown }>; instructions: string };
+    expect(options.messages.map(message => message.content).filter(content => content === 'Summarize')).toHaveLength(1);
+    expect(options.instructions).toContain('Page content');
     expect(post).toHaveBeenLastCalledWith(
       expect.objectContaining({ type: 'assistant_delta', finished: true, content: 'Hello **world**' }),
     );
@@ -79,21 +98,39 @@ describe('read-only browser assistant', () => {
 
   it('does not save an incomplete answer when interrupted', async () => {
     const controller = new AbortController();
-    const stream = vi.fn(async function* () {
-      yield { content: 'Partial' };
-      controller.abort();
-      yield { content: ' discarded' };
-    });
+    streaming(
+      [
+        { type: 'text-delta', id: '1', text: 'Partial' },
+        { type: 'text-delta', id: '1', text: ' discarded' },
+      ],
+      () => controller.abort(),
+    );
     await streamBrowserAnswer({
       taskId: 'session',
       task: 'Plan',
       mode: 'plan',
       tabIds: [],
-      model: { stream } as unknown as BaseChatModel,
+      model: fakeChatModel(),
       signal: controller.signal,
       post: vi.fn(),
     });
     expect(storage.addMessage).not.toHaveBeenCalled();
     expect(chrome.scripting.executeScript).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a provider error that arrives inside the stream', async () => {
+    streaming([{ type: 'error', error: new Error('model unavailable') }]);
+    await expect(
+      streamBrowserAnswer({
+        taskId: 'session',
+        task: 'Hi',
+        mode: 'chat',
+        tabIds: [],
+        model: fakeChatModel(),
+        signal: new AbortController().signal,
+        post: vi.fn(),
+      }),
+    ).rejects.toThrow('model unavailable');
+    expect(storage.addMessage).not.toHaveBeenCalled();
   });
 });

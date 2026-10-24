@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseAgent, STRUCTURED_OUTPUT_METHOD, type BaseAgentOptions, type ExtraAgentOptions } from './base';
+import { BaseAgent, type BaseAgentOptions, type ExtraAgentOptions } from './base';
 import { normalizeActions } from './normalize-actions';
 import { createLogger } from '@src/background/log';
 import { recordStepScreenshot } from '@src/background/services/step-screenshots';
@@ -7,7 +7,7 @@ import { ActionResult, type AgentOutput } from '../types';
 import type { Action } from '../actions/builder';
 import { buildDynamicActionSchema } from '../actions/builder';
 import { agentBrainSchema } from '../types';
-import { type BaseMessage, HumanMessage } from '@langchain/core/messages';
+import { type ModelMessage, userMessage } from '../messages/model-messages';
 import { Actors, ExecutionState } from '../event/types';
 import {
   ChatModelAuthError,
@@ -21,13 +21,12 @@ import {
   isExtensionConflictError,
   isForbiddenError,
   LLMTimeoutError,
-  ResponseParseError,
   LLM_FORBIDDEN_ERROR_MESSAGE,
   RequestCancelledError,
 } from './errors';
 import { calcBranchPathHashSet } from '@src/background/browser/dom/views';
 import { type BrowserState, BrowserStateHistory, URLNotAllowedError } from '@src/background/browser/views';
-import { convertZodToJsonSchema, repairJsonString } from '@src/background/utils';
+import { repairJsonString } from '@src/background/utils';
 import { HistoryTreeProcessor } from '@src/background/browser/dom/history/service';
 import { AgentStepRecord } from '../history';
 import { type DOMHistoryElement } from '@src/background/browser/dom/history/view';
@@ -80,7 +79,6 @@ type NavigatorOutputSchema = ReturnType<NavigatorActionRegistry['setupModelOutpu
 
 export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorResult> {
   private actionRegistry: NavigatorActionRegistry;
-  private jsonSchema: Record<string, unknown>;
 
   constructor(
     actionRegistry: NavigatorActionRegistry,
@@ -90,9 +88,6 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
     super(actionRegistry.setupModelOutputSchema(), options, { ...extraOptions, id: 'navigator' });
 
     this.actionRegistry = actionRegistry;
-
-    // The zod object is too complex to be used directly, so we need to convert it to json schema first for the model to use
-    this.jsonSchema = convertZodToJsonSchema(this.modelOutputSchema, 'NavigatorAgentOutput', true);
 
     // Gemini often stalls with navigator's large structured schema. Prefer manual JSON extraction for stability.
     if (this.isGeminiModel() && this.withStructuredOutput) {
@@ -105,7 +100,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
     return this.modelName.toLowerCase().includes('gemini');
   }
 
-  private async invokeWithoutStructuredOutput(inputMessages: BaseMessage[]): Promise<this['ModelOutput']> {
+  private async invokeWithoutStructuredOutput(inputMessages: ModelMessage[]): Promise<this['ModelOutput']> {
     const previousWithStructuredOutput = this.withStructuredOutput;
     this.withStructuredOutput = false;
     try {
@@ -116,92 +111,26 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
     }
   }
 
-  async invoke(inputMessages: BaseMessage[]): Promise<this['ModelOutput']> {
-    // Use structured output
-    if (this.withStructuredOutput) {
-      const structuredLlm = this.chatLLM.withStructuredOutput(this.jsonSchema, {
-        includeRaw: true,
-        name: this.modelOutputToolName,
-        method: STRUCTURED_OUTPUT_METHOD,
-      });
-
-      let response = undefined;
-      try {
-        response = await this.invokeWithTimeout(
-          signal =>
-            structuredLlm.invoke(inputMessages, {
-              ...this.callOptions,
-              signal,
-            }),
-          `[${this.modelName}] navigator structured output invocation`,
-        );
-
-        if (response.parsed) {
-          return response.parsed as this['ModelOutput'];
-        }
-        // parsing failed but the raw text may still hold a valid JSON answer
-        const rawContent = response.raw?.content;
-        const manuallyParsed =
-          typeof rawContent === 'string' && rawContent.length > 0 ? this.manuallyParseResponse(rawContent) : undefined;
-        if (manuallyParsed) {
-          return manuallyParsed;
-        }
-      } catch (error) {
-        if (error instanceof LLMTimeoutError) {
-          if (this.isGeminiModel()) {
-            return this.invokeWithoutStructuredOutput(inputMessages);
-          }
-          throw error;
-        }
-
-        if (isAbortedError(error)) {
-          throw error;
-        }
-
-        // Try to extract JSON from markdown code blocks if parsing failed
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        if (
-          errorMessage.includes('is not valid JSON') &&
-          response?.raw?.content &&
-          typeof response.raw.content === 'string'
-        ) {
-          const parsed = this.manuallyParseResponse(response.raw.content);
-          if (parsed) {
-            return parsed;
-          }
-        }
-        throw new Error(`Failed to invoke ${this.modelName} with structured output: \n${errorMessage}`, {
-          cause: error,
-        });
+  async invoke(inputMessages: ModelMessage[]): Promise<this['ModelOutput']> {
+    try {
+      return await super.invoke(inputMessages);
+    } catch (error) {
+      // Gemini sometimes stalls on the large navigator tool schema; a plain-text answer still works
+      if (error instanceof LLMTimeoutError && this.withStructuredOutput && this.isGeminiModel()) {
+        return this.invokeWithoutStructuredOutput(inputMessages);
       }
-
-      // Use type assertion to access the properties
-      const rawResponse = response.raw as BaseMessage & {
-        tool_calls?: Array<{
-          args: {
-            current_state: z.infer<typeof agentBrainSchema>;
-            action: Array<z.infer<ReturnType<typeof buildDynamicActionSchema>>>;
-          };
-        }>;
-      };
-
-      // sometimes LLM returns an empty content, but with one or more tool calls, so we need to check the tool calls
-      if (rawResponse.tool_calls && rawResponse.tool_calls.length > 0) {
-        logger.info('Navigator structuredLlm tool call with empty content', rawResponse.tool_calls);
-        // only use the first tool call
-        const toolCall = rawResponse.tool_calls[0];
-        // Not spread: some models send `action` as JSON text, and spreading a string yields its characters.
-        // fixActions() normalizes whatever shape arrives here.
-        return {
-          current_state: toolCall.args.current_state,
-          action: toolCall.args.action,
-        };
-      }
-      throw new ResponseParseError('Could not parse navigator response');
+      throw error;
     }
+  }
 
-    // Fallback to parent class manual JSON extraction for models without structured output support
-    return super.invoke(inputMessages);
+  /**
+   * The tool input is taken as-is instead of being validated against the action schema: some models send `action`
+   * as JSON text or wrap items differently, and fixActions() normalizes those shapes before execution.
+   */
+  protected acceptStructuredOutput(input: unknown): this['ModelOutput'] | undefined {
+    if (typeof input !== 'object' || input === null || !('action' in input)) return undefined;
+    const parsed = input as ParsedModelOutput;
+    return { current_state: parsed.current_state, action: parsed.action } as this['ModelOutput'];
   }
 
   async execute(): Promise<AgentOutput<NavigatorResult>> {
@@ -395,8 +324,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
       for (const r of this.context.actionResults) {
         if (r.includeInMemory) {
           if (r.extractedContent) {
-            const msg = new HumanMessage(`Action result: ${r.extractedContent}`);
-            messageManager.addMessageWithTokens(msg);
+            messageManager.addMessageWithTokens(userMessage(`Action result: ${r.extractedContent}`));
           }
           if (r.error) {
             // Get error text and convert to string
@@ -405,9 +333,8 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
             // Get only the last line of the error
             const lastLine = errorText.split('\n').pop() || '';
 
-            const msg = new HumanMessage(`Action error: ${lastLine}`);
-            logger.info('Adding action error to memory', msg.content);
-            messageManager.addMessageWithTokens(msg);
+            logger.info('Adding action error to memory', lastLine);
+            messageManager.addMessageWithTokens(userMessage(`Action error: ${lastLine}`));
           }
           // reset this action result to empty, we dont want to add it again in the state message
           // NOTE: in python version, all action results are reset to empty, but in ts version, only those included in memory are reset to empty

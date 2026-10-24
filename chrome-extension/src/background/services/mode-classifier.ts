@@ -1,7 +1,6 @@
 import { inferMode, resolveMode, type AssistantMode, type AssistantTaskOptions } from '@extension/shared';
 import { jevStore } from '@extension/storage';
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import type { MessageContent } from '@langchain/core/messages';
+import { generateText } from 'ai';
 import { createLogger } from '../log';
 import { loadAssistantModel } from './assistant-model';
 
@@ -17,11 +16,6 @@ const routerPrompt = (previous: AssistantMode) =>
   'plan: the user wants a plan or a list of steps written down, not executed.\n' +
   'chat: a question, explanation, summary, comparison or opinion about the open pages, or small talk.\n' +
   `The previous message used "${previous}"; a short follow-up such as "yes" or "continue" keeps it.`;
-
-const contentText = (content: MessageContent): string =>
-  typeof content === 'string'
-    ? content
-    : content.map(part => (part.type === 'text' && 'text' in part ? part.text : '')).join('');
 
 /**
  * Decides whether a message is answered from the pages (chat), planned (plan) or executed in the browser (act).
@@ -44,12 +38,15 @@ export async function classifyMode(
 
   try {
     const model = await loadAssistantModel(modelAgent);
-    const reply = await model.invoke([new SystemMessage(routerPrompt(previous)), new HumanMessage(text)], {
-      signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+    const reply = await generateText({
+      model: model.model,
+      ...model.settings,
+      instructions: routerPrompt(previous),
+      prompt: text,
+      abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+      maxRetries: 0,
     });
-    const word = contentText(reply.content)
-      .toLowerCase()
-      .match(/\b(act|plan|chat)\b/)?.[1];
+    const word = reply.text.toLowerCase().match(/\b(act|plan|chat)\b/)?.[1];
     if (word) return word as AssistantMode;
     logger.warning('Model mode reply was not one of act/plan/chat; using the heuristic');
   } catch (error) {

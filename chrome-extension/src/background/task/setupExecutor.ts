@@ -7,9 +7,8 @@ import {
 } from '@extension/storage';
 import { t } from '@extension/i18n';
 import type { AssistantAttachment, AssistantTaskOptions } from '@extension/shared';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Executor } from '../agent/executor';
-import { createChatModel } from '../agent/helper';
+import { type ChatModel, createChatModel } from '../agent/helper';
 import { createLogger } from '../log';
 import type { BrowserContextLike } from '../browser/types';
 import { isAgentBrowserContext } from '../state/browserSession';
@@ -57,7 +56,7 @@ export async function setupExecutor(
   const navigatorProviderConfig = providers[navigatorModel.provider];
   const navigatorLLM = createChatModel(navigatorProviderConfig, navigatorModel);
 
-  let plannerLLM: BaseChatModel | null = null;
+  let plannerLLM: ChatModel | null = null;
   const plannerModel = agentModels[AgentNameEnum.Planner];
   if (plannerModel) {
     // Log the provider config being used for the planner

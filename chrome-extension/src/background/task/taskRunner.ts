@@ -139,7 +139,7 @@ export async function runAssistantTask(
     const previous = history
       .slice(0, -1)
       .slice(-10)
-      .map(item => `${item.getType()}: ${item.content}`);
+      .map(item => `${item.role === 'user' ? 'human' : 'ai'}: ${item.content}`);
     const conversation = [summary ? `summary of earlier messages: ${summary}` : '', ...previous]
       .filter(Boolean)
       .join('\n');

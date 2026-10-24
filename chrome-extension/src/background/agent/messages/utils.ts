@@ -1,5 +1,5 @@
-import { type BaseMessage, AIMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
 import { jsonrepair } from 'jsonrepair';
+import { assistantMessage, messageText, type ModelMessage, userMessage } from './model-messages';
 
 import { guardrails } from '@src/background/services/guardrails';
 import { ResponseParseError } from '../agents/errors';
@@ -238,81 +238,54 @@ export function extractJsonFromModelOutput(content: string): Record<string, unkn
  * @param modelName - Name of the model to convert messages for
  * @returns Converted list of messages
  */
-export function convertInputMessages(inputMessages: BaseMessage[], modelName: string | null): BaseMessage[] {
+export function convertInputMessages(inputMessages: ModelMessage[], modelName: string | null): ModelMessage[] {
   if (modelName === null) {
     return inputMessages;
   }
   if (modelName === 'deepseek-reasoner' || modelName.includes('deepseek-r1')) {
     const convertedInputMessages = convertMessagesForNonFunctionCallingModels(inputMessages);
-    let mergedInputMessages = mergeSuccessiveMessages(convertedInputMessages, HumanMessage);
-    mergedInputMessages = mergeSuccessiveMessages(mergedInputMessages, AIMessage);
+    let mergedInputMessages = mergeSuccessiveMessages(convertedInputMessages, 'user');
+    mergedInputMessages = mergeSuccessiveMessages(mergedInputMessages, 'assistant');
     return mergedInputMessages;
   }
   return inputMessages;
 }
 
 /**
- * Convert messages for non-function-calling models
+ * Convert messages for non-function-calling models: tool results become user text, tool calls become
+ * assistant text (JSON), image parts are dropped.
  * @param inputMessages - List of messages to convert
  * @returns Converted list of messages
  */
-function convertMessagesForNonFunctionCallingModels(inputMessages: BaseMessage[]): BaseMessage[] {
-  const outputMessages: BaseMessage[] = [];
-
-  for (const message of inputMessages) {
-    if (message instanceof HumanMessage || message instanceof SystemMessage) {
-      outputMessages.push(message);
-    } else if (message instanceof ToolMessage) {
-      outputMessages.push(new HumanMessage({ content: message.content }));
-    } else if (message instanceof AIMessage) {
-      if (message.tool_calls) {
-        const toolCalls = JSON.stringify(message.tool_calls);
-        outputMessages.push(new AIMessage({ content: toolCalls }));
-      } else {
-        outputMessages.push(message);
-      }
-    } else {
-      throw new Error(`Unknown message type: ${message.constructor.name}`);
-    }
-  }
-
-  return outputMessages;
+function convertMessagesForNonFunctionCallingModels(inputMessages: ModelMessage[]): ModelMessage[] {
+  return inputMessages.map(message => {
+    if (message.role === 'system') return message;
+    if (message.role === 'tool') return userMessage(messageText(message));
+    if (typeof message.content === 'string') return message;
+    return message.role === 'user' ? userMessage(messageText(message)) : assistantMessage(messageText(message));
+  });
 }
 
 /**
- * Merge successive messages of the same type into one message
+ * Merge successive messages of the same role into one message
  * Some models like deepseek-reasoner don't allow multiple human messages in a row
  * @param messages - List of messages to merge
- * @param classToMerge - Message class type to merge
+ * @param role - Message role to merge
  * @returns Merged list of messages
  */
-function mergeSuccessiveMessages(
-  messages: BaseMessage[],
-  classToMerge: typeof HumanMessage | typeof AIMessage,
-): BaseMessage[] {
-  const mergedMessages: BaseMessage[] = [];
+function mergeSuccessiveMessages(messages: ModelMessage[], role: 'user' | 'assistant'): ModelMessage[] {
+  const mergedMessages: ModelMessage[] = [];
   let streak = 0;
 
   for (const message of messages) {
-    if (message instanceof classToMerge) {
+    if (message.role === role) {
       streak += 1;
       if (streak > 1) {
         const lastMessage = mergedMessages[mergedMessages.length - 1];
-        if (Array.isArray(message.content)) {
-          // Handle array content case
-          if (typeof lastMessage.content === 'string') {
-            const textContent = message.content.find(
-              item => typeof item === 'object' && 'type' in item && item.type === 'text',
-            );
-            if (textContent && 'text' in textContent) {
-              lastMessage.content += textContent.text;
-            }
-          }
-        } else {
-          // Handle string content case
-          if (typeof lastMessage.content === 'string' && typeof message.content === 'string') {
-            lastMessage.content += message.content;
-          }
+        // only string contents are merged (convertMessagesForNonFunctionCallingModels flattens the parts)
+        if (typeof lastMessage.content === 'string') {
+          const text = lastMessage.content + messageText(message);
+          mergedMessages[mergedMessages.length - 1] = role === 'user' ? userMessage(text) : assistantMessage(text);
         }
       } else {
         mergedMessages.push(message);

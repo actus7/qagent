@@ -1,19 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { NavigatorActionRegistry, NavigatorAgent } from '../agents/navigator';
 import { Action } from '../actions/builder';
 import { ActionResult, type AgentContext } from '../types';
 import { RequestCancelledError } from '../agents/errors';
 import { BasePrompt } from '../prompts/base';
+import { systemMessage, userMessage } from '../messages/model-messages';
+import { fakeChatModel } from '../../__tests__/utils/fakeChatModel';
 
 class TestPrompt extends BasePrompt {
   getSystemMessage() {
-    return new SystemMessage('system');
+    return systemMessage('system');
   }
   async getUserMessage() {
-    return new HumanMessage('user');
+    return userMessage('user');
   }
 }
 
@@ -42,7 +42,7 @@ describe('navigator action cancellation', () => {
     const agent = new NavigatorAgent(new NavigatorActionRegistry([declined, done]), {
       context,
       prompt: new TestPrompt(),
-      chatLLM: { constructor: { name: 'TestModel' }, modelName: 'test' } as unknown as BaseChatModel,
+      chatLLM: fakeChatModel('test'),
     });
     const execute = agent as unknown as { doMultiAction: (actions: Record<string, unknown>[]) => Promise<unknown> };
     await expect(execute.doMultiAction([{ click: {} }, { done: {} }])).rejects.toThrow('recusada');

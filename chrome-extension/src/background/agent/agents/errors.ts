@@ -89,6 +89,14 @@ export class ChatModelBadRequestError extends Error {
   }
 }
 
+/** HTTP status carried by AI SDK `APICallError`s (and anything else that exposes `statusCode`). */
+export function errorStatusCode(error: unknown): number | undefined {
+  const status = (error as { statusCode?: unknown } | null)?.statusCode;
+  if (typeof status === 'number') return status;
+  const cause = (error as { cause?: unknown } | null)?.cause;
+  return cause && cause !== error ? errorStatusCode(cause) : undefined;
+}
+
 /**
  * Checks if an error is related to API authentication
  *
@@ -97,6 +105,7 @@ export class ChatModelBadRequestError extends Error {
  */
 export function isAuthenticationError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
+  if (errorStatusCode(error) === 401) return true;
 
   // Get the error message
   const errorMessage = error.message || '';
@@ -132,6 +141,7 @@ export function isAuthenticationError(error: unknown): boolean {
  */
 export function isForbiddenError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
+  if (errorStatusCode(error) === 403) return true;
   return error.message.includes(' 403') && error.message.includes('Forbidden');
 }
 
@@ -143,6 +153,7 @@ export function isForbiddenError(error: unknown): boolean {
  */
 export function isBadRequestError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
+  if (errorStatusCode(error) === 400) return true;
 
   // Get the error message
   const errorMessage = error.message || '';
@@ -370,17 +381,20 @@ export class ResponseParseError extends Error {
 const TROUBLESHOOTING_SUFFIX = /\s*Troubleshooting URL:\s*\S+/gi;
 
 /**
- * Turns provider/LangChain errors into a short message the user can act on. Known cases get a
- * localized explanation; anything else keeps its text minus LangChain's troubleshooting link.
+ * Turns provider errors into a short message the user can act on. Known cases get a
+ * localized explanation; anything else keeps its text minus any troubleshooting link.
  */
 export function describeModelError(error: unknown, translate: (key: ModelErrorKey) => string): string {
   const message = error instanceof Error ? error.message : String(error);
   const lower = message.toLowerCase();
+  const status = errorStatusCode(error);
   if (isAuthenticationError(error) || lower.includes('model_authentication')) return translate('bg_errors_modelAuth');
   if (isForbiddenError(error) || lower.includes(' 403')) return translate('bg_errors_modelForbidden');
-  if (/rate limit|too many requests|\b429\b|quota exceeded/.test(lower)) return translate('bg_errors_modelRateLimit');
+  if (status === 429 || /rate limit|too many requests|\b429\b|quota exceeded/.test(lower)) {
+    return translate('bg_errors_modelRateLimit');
+  }
   // A 404 only means "model not found" when the provider says so; a page 404 must keep its own text.
-  if (lower.includes('model_not_found') || (/\b404\b/.test(lower) && lower.includes('model'))) {
+  if (lower.includes('model_not_found') || ((status === 404 || /\b404\b/.test(lower)) && lower.includes('model'))) {
     return translate('bg_errors_modelNotFound');
   }
   if (/failed to fetch|fetch failed|econnrefused|enotfound|networkerror|network error/.test(lower)) {

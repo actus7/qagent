@@ -1,4 +1,4 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { ChatModel } from './helper';
 import { type ActionResult, AgentContext, type AgentOptions, type AgentOutput } from './types';
 import type { TaskMemoryAction } from './task-memory';
 import { t } from '@extension/i18n';
@@ -43,7 +43,7 @@ interface ExecutorExtraArgs {
     signal: AbortSignal,
     planNextSteps: string | null,
   ) => Promise<void>;
-  plannerLLM?: BaseChatModel;
+  plannerLLM?: ChatModel;
   navigatorProvider?: string;
   plannerProvider?: string;
   navigatorRequestsPerMinute?: number;
@@ -69,7 +69,7 @@ export class Executor {
     task: string,
     taskId: string,
     browserContext: BrowserContextLike,
-    navigatorLLM: BaseChatModel,
+    navigatorLLM: ChatModel,
     extraArgs?: Partial<ExecutorExtraArgs>,
   ) {
     const messageManager = new MessageManager(

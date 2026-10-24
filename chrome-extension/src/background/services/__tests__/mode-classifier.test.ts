@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { generateText } from 'ai';
+import { fakeChatModel } from '../../__tests__/utils/fakeChatModel';
 
 vi.mock('@extension/storage', () => ({ jevStore: { getConfig: vi.fn() } }));
 vi.mock('../assistant-model', () => ({ loadAssistantModel: vi.fn() }));
 vi.mock('../../log', () => ({ createLogger: () => ({ error: vi.fn(), warning: vi.fn(), info: vi.fn() }) }));
+vi.mock('ai', () => ({ generateText: vi.fn() }));
 
 import { jevStore } from '@extension/storage';
 import { loadAssistantModel } from '../assistant-model';
@@ -11,7 +14,10 @@ import { classifyMode } from '../mode-classifier';
 const getConfig = vi.mocked(jevStore.getConfig);
 const loadModel = vi.mocked(loadAssistantModel);
 
-const modelReplying = (content: string) => ({ invoke: vi.fn(async () => ({ content })) });
+const modelReplying = (content: string) => {
+  vi.mocked(generateText).mockResolvedValue({ text: content } as never);
+  loadModel.mockResolvedValue(fakeChatModel());
+};
 
 describe('classifyMode', () => {
   beforeEach(() => {
@@ -36,21 +42,21 @@ describe('classifyMode', () => {
   });
 
   it("asks the user's model when the heuristic has no verb to go on", async () => {
-    const model = modelReplying('act');
-    loadModel.mockResolvedValue(model as never);
+    modelReplying('act');
     expect(await classifyMode('Me meve até a definição de variáveis de ambiente', 'chat', 'planner')).toBe('act');
     expect(loadModel).toHaveBeenCalledWith('planner');
-    const [messages] = model.invoke.mock.calls[0] as unknown as [{ content: string }[]];
-    expect(messages[1].content).toBe('Me meve até a definição de variáveis de ambiente');
+    const options = vi.mocked(generateText).mock.calls[0][0] as { prompt: string; instructions: string };
+    expect(options.prompt).toBe('Me meve até a definição de variáveis de ambiente');
+    expect(options.instructions).toContain('previous message used "chat"');
   });
 
   it('accepts a chatty reply as long as it contains one mode word', async () => {
-    loadModel.mockResolvedValue(modelReplying('Mode: **chat**.') as never);
+    modelReplying('Mode: **chat**.');
     expect(await classifyMode('Explicar pra mim o que é esse material de apoio', 'act', 'navigator')).toBe('chat');
   });
 
   it('falls back to the heuristic when the model reply is unusable or the model fails', async () => {
-    loadModel.mockResolvedValue(modelReplying('I am not sure') as never);
+    modelReplying('I am not sure');
     expect(await classifyMode('o que significa isso tudo aqui', 'act', 'navigator')).toBe('chat');
     loadModel.mockRejectedValue(new Error('no model configured'));
     expect(await classifyMode('o que significa isso tudo aqui', 'act', 'navigator')).toBe('chat');

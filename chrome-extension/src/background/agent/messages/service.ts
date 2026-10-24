@@ -1,6 +1,15 @@
-import { type BaseMessage, AIMessage, HumanMessage, type SystemMessage, ToolMessage } from '@langchain/core/messages';
+import type { FilePart, SystemModelMessage, UserModelMessage } from 'ai';
 import { MessageHistory, MessageMetadata } from '@src/background/agent/messages/views';
-import type { ImageContentPart } from '../../services/assistant-attachments';
+import {
+  AGENT_OUTPUT_TOOL,
+  assistantMessage,
+  assistantToolCall,
+  isImagePart,
+  messageText,
+  type ModelMessage,
+  toolResultMessage,
+  userMessage,
+} from './model-messages';
 import { createLogger } from '@src/background/log';
 import {
   filterExternalContent,
@@ -54,20 +63,17 @@ export default class MessageManager {
   }
 
   public initTaskMessages(
-    systemMessage: SystemMessage,
+    systemMessage: SystemModelMessage,
     task: string,
     messageContext?: string,
-    images: ImageContentPart[] = [],
+    images: FilePart[] = [],
   ): void {
     // Add system message
     this.addMessageWithTokens(systemMessage, 'init');
 
     // Add context message if provided
     if (messageContext && messageContext.length > 0) {
-      const contextMessage = new HumanMessage({
-        content: `Context for the task: ${messageContext}`,
-      });
-      this.addMessageWithTokens(contextMessage, 'init');
+      this.addMessageWithTokens(userMessage(`Context for the task: ${messageContext}`), 'init');
     }
 
     // Add task instructions
@@ -77,64 +83,44 @@ export default class MessageManager {
     // Add sensitive data info if sensitive data is provided
     if (this.settings.sensitiveData) {
       const info = `Here are placeholders for sensitive data: ${Object.keys(this.settings.sensitiveData)}`;
-      const infoMessage = new HumanMessage({
-        content: `${info}\nTo use them, write <secret>the placeholder name</secret>`,
-      });
-      this.addMessageWithTokens(infoMessage, 'init');
+      this.addMessageWithTokens(userMessage(`${info}\nTo use them, write <secret>the placeholder name</secret>`), 'init');
     }
 
     // Add example output
-    const placeholderMessage = new HumanMessage({
-      content: 'Example output:',
-    });
-    this.addMessageWithTokens(placeholderMessage, 'init');
+    this.addMessageWithTokens(userMessage('Example output:'), 'init');
 
     const toolCallId = this.nextToolId();
-    const toolCalls = [
-      {
-        name: 'AgentOutput',
-        args: {
-          current_state: {
-            evaluation_previous_goal:
-              `Success - I successfully clicked on the 'Apple' link from the Google Search results page, 
-              which directed me to the 'Apple' company homepage. This is a good start toward finding 
+    const exampleOutput = {
+      current_state: {
+        evaluation_previous_goal:
+          `Success - I successfully clicked on the 'Apple' link from the Google Search results page,
+              which directed me to the 'Apple' company homepage. This is a good start toward finding
               the best place to buy a new iPhone as the Apple website often list iPhones for sale.`.trim(),
-            memory: `I searched for 'iPhone retailers' on Google. From the Google Search results page, 
-              I used the 'click_element' tool to click on a element labelled 'Best Buy' but calling 
-              the tool did not direct me to a new page. I then used the 'click_element' tool to click 
-              on a element labelled 'Apple' which redirected me to the 'Apple' company homepage. 
+        memory: `I searched for 'iPhone retailers' on Google. From the Google Search results page,
+              I used the 'click_element' tool to click on a element labelled 'Best Buy' but calling
+              the tool did not direct me to a new page. I then used the 'click_element' tool to click
+              on a element labelled 'Apple' which redirected me to the 'Apple' company homepage.
               Currently at step 3/15.`.trim(),
-            next_goal: `Looking at reported structure of the current page, I can see the item '[127]<h3 iPhone/>' 
-              in the content. I think this button will lead to more information and potentially prices 
-              for iPhones. I'll click on the link to 'iPhone' at index [127] using the 'click_element' 
+        next_goal: `Looking at reported structure of the current page, I can see the item '[127]<h3 iPhone/>'
+              in the content. I think this button will lead to more information and potentially prices
+              for iPhones. I'll click on the link to 'iPhone' at index [127] using the 'click_element'
               tool and hope to see prices on the next page.`.trim(),
-          },
-          action: [{ click_element: { index: 127 } }],
-        },
-        id: String(toolCallId),
-        type: 'tool_call' as const,
       },
-    ];
+      action: [{ click_element: { index: 127 } }],
+    };
 
-    const exampleToolCall = new AIMessage({
-      content: '',
-      tool_calls: toolCalls,
-    });
-    this.addMessageWithTokens(exampleToolCall, 'init');
+    this.addMessageWithTokens(assistantToolCall(AGENT_OUTPUT_TOOL, String(toolCallId), exampleOutput), 'init');
     this.addToolMessage('Browser started', toolCallId, 'init');
 
     // Add history start marker
-    const historyStartMessage = new HumanMessage({
-      content: '[Your task history memory starts here]',
-    });
-    this.addMessageWithTokens(historyStartMessage);
+    this.addMessageWithTokens(userMessage('[Your task history memory starts here]'));
 
     // Add available file paths if provided
     if (this.settings.availableFilePaths && this.settings.availableFilePaths.length > 0) {
-      const filepathsMsg = new HumanMessage({
-        content: `Here are file paths you can use: ${this.settings.availableFilePaths}`,
-      });
-      this.addMessageWithTokens(filepathsMsg, 'init');
+      this.addMessageWithTokens(
+        userMessage(`Here are file paths you can use: ${this.settings.availableFilePaths}`),
+        'init',
+      );
     }
   }
 
@@ -147,9 +133,9 @@ export default class MessageManager {
   /**
    * Createthe task instructions
    * @param task - The raw description of the task
-   * @returns A HumanMessage object containing the task instructions
+   * @returns A user message containing the task instructions
    */
-  private static taskInstructions(task: string, images: ImageContentPart[] = []): HumanMessage {
+  private static taskInstructions(task: string, images: FilePart[] = []): UserModelMessage {
     const { userText, attachmentsInner } = splitUserTextAndAttachments(task);
 
     // Filter and wrap user text
@@ -164,9 +150,9 @@ export default class MessageManager {
         : wrappedUser;
     // Images are attached to the first task message so the navigator sees them with the task
     if (images.length > 0) {
-      return new HumanMessage({ content: [{ type: 'text', text }, ...images] });
+      return userMessage([{ type: 'text', text }, ...images]);
     }
-    return new HumanMessage({ content: text });
+    return userMessage(text);
   }
 
   /**
@@ -196,8 +182,7 @@ export default class MessageManager {
       finalContent = `${wrappedUser}\n\n${wrappedFiles}`;
     }
 
-    const msg = new HumanMessage({ content: finalContent });
-    this.addMessageWithTokens(msg);
+    this.addMessageWithTokens(userMessage(finalContent));
   }
 
   /**
@@ -208,16 +193,15 @@ export default class MessageManager {
   public addPlan(plan?: string, position?: number): void {
     if (plan) {
       const cleanedPlan = filterExternalContent(plan, false);
-      const msg = new AIMessage({ content: `<plan>${cleanedPlan}</plan>` });
-      this.addMessageWithTokens(msg, null, position);
+      this.addMessageWithTokens(assistantMessage(`<plan>${cleanedPlan}</plan>`), null, position);
     }
   }
 
   /**
    * Adds a state message to the history
-   * @param stateMessage - The HumanMessage object containing the state
+   * @param stateMessage - The user message containing the state
    */
-  public addStateMessage(stateMessage: HumanMessage): void {
+  public addStateMessage(stateMessage: UserModelMessage): void {
     this.addMessageWithTokens(stateMessage);
   }
 
@@ -227,20 +211,7 @@ export default class MessageManager {
    */
   public addModelOutput(modelOutput: Record<string, unknown>): void {
     const toolCallId = this.nextToolId();
-    const toolCalls = [
-      {
-        name: 'AgentOutput',
-        args: modelOutput,
-        id: String(toolCallId),
-        type: 'tool_call' as const,
-      },
-    ];
-
-    const msg = new AIMessage({
-      content: 'tool call',
-      tool_calls: toolCalls,
-    });
-    this.addMessageWithTokens(msg);
+    this.addMessageWithTokens(assistantToolCall(AGENT_OUTPUT_TOOL, String(toolCallId), modelOutput, 'tool call'));
 
     // Need a placeholder for the tool response here to avoid errors sometimes
     // NOTE: in browser-use, it uses an empty string
@@ -254,7 +225,7 @@ export default class MessageManager {
     this.history.removeLastStateMessage();
   }
 
-  public getMessages(): BaseMessage[] {
+  public getMessages(): ModelMessage[] {
     const messages = this.history.messages
       .filter(m => {
         if (!m.message) {
@@ -271,7 +242,7 @@ export default class MessageManager {
     for (const m of this.history.messages) {
       totalInputTokens += m.metadata.tokens;
       if (m.message) {
-        logger.debug(`${m.message.constructor.name} - Token count: ${m.metadata.tokens}`);
+        logger.debug(`${m.message.role} - Token count: ${m.metadata.tokens}`);
       } else {
         logger.error(`[MessageManager] Found message with undefined message property:`, m);
         logger.debug(`Message with undefined message property - Token count: ${m.metadata.tokens}`);
@@ -284,16 +255,13 @@ export default class MessageManager {
 
   /**
    * Adds a message to the history with the token count metadata
-   * @param message - The BaseMessage object to add
+   * @param message - The message to add
    * @param messageType - The type of the message (optional)
    * @param position - The optional position to add the message, if not provided, the message will be added to the end of the history
    */
-  public addMessageWithTokens(message: BaseMessage, messageType?: string | null, position?: number): void {
-    let filteredMessage = message;
+  public addMessageWithTokens(message: ModelMessage, messageType?: string | null, position?: number): void {
     // filter out sensitive data if provided
-    if (this.settings.sensitiveData) {
-      filteredMessage = this._filterSensitiveData(message);
-    }
+    const filteredMessage = this.settings.sensitiveData ? this._filterSensitiveData(message) : message;
 
     const tokenCount = this._countTokens(filteredMessage);
     const metadata: MessageMetadata = new MessageMetadata(tokenCount, messageType);
@@ -301,11 +269,11 @@ export default class MessageManager {
   }
 
   /**
-   * Filters out sensitive data from the message
-   * @param message - The BaseMessage object to filter
-   * @returns The filtered BaseMessage object
+   * Returns a copy of the message with sensitive values replaced by their placeholders
+   * @param message - The message to filter
+   * @returns The filtered message
    */
-  private _filterSensitiveData(message: BaseMessage): BaseMessage {
+  private _filterSensitiveData(message: ModelMessage): ModelMessage {
     const replaceSensitive = (value: string): string => {
       let filteredValue = value;
       if (!this.settings.sensitiveData) return filteredValue;
@@ -319,46 +287,20 @@ export default class MessageManager {
     };
 
     if (typeof message.content === 'string') {
-      message.content = replaceSensitive(message.content);
-    } else if (Array.isArray(message.content)) {
-      message.content = message.content.map(item => {
-        // Add null check to match Python's isinstance() behavior
-        if (typeof item === 'object' && item !== null && 'text' in item && typeof item.text === 'string') {
-          return { ...item, text: replaceSensitive(item.text) };
-        }
-        return item;
-      });
+      return { ...message, content: replaceSensitive(message.content) } as ModelMessage;
     }
-
-    return message;
+    const content = message.content.map(part => (part.type === 'text' ? { ...part, text: replaceSensitive(part.text) } : part));
+    return { ...message, content } as ModelMessage;
   }
 
   /**
    * Counts the tokens in the message
-   * @param message - The BaseMessage object to count the tokens
+   * @param message - The message to count the tokens
    * @returns The number of tokens in the message
    */
-  private _countTokens(message: BaseMessage): number {
-    let tokens = 0;
-
-    if (Array.isArray(message.content)) {
-      for (const item of message.content) {
-        if ('image_url' in item) {
-          tokens += this.settings.imageTokens;
-        } else if (typeof item === 'object' && 'text' in item && typeof item.text === 'string') {
-          tokens += this._countTextTokens(item.text);
-        }
-      }
-    } else {
-      let msg = message.content;
-      // Check if it's an AIMessage with tool_calls
-      if ('tool_calls' in message) {
-        msg += JSON.stringify(message.tool_calls);
-      }
-      tokens += this._countTextTokens(msg);
-    }
-
-    return tokens;
+  private _countTokens(message: ModelMessage): number {
+    const images = Array.isArray(message.content) ? message.content.filter(part => isImagePart(part)).length : 0;
+    return images * this.settings.imageTokens + this._countTextTokens(messageText(message));
   }
 
   /**
@@ -387,51 +329,46 @@ export default class MessageManager {
 
     // if list with image remove image
     if (Array.isArray(lastMsg.message.content)) {
-      let text = '';
-      lastMsg.message.content = lastMsg.message.content.filter(item => {
-        if ('image_url' in item) {
-          diff -= this.settings.imageTokens;
-          lastMsg.metadata.tokens -= this.settings.imageTokens;
-          this.history.totalTokens -= this.settings.imageTokens;
-          logger.debug(
-            `Removed image with ${this.settings.imageTokens} tokens - total tokens now: ${this.history.totalTokens}/${this.settings.maxInputTokens}`,
-          );
-          return false;
-        }
-        if ('text' in item) {
-          text += item.text;
-        }
-        return true;
-      });
-      lastMsg.message.content = text;
-      this.history.messages[this.history.messages.length - 1] = lastMsg;
+      const images = lastMsg.message.content.filter(part => isImagePart(part)).length;
+      if (images > 0) {
+        const removed = images * this.settings.imageTokens;
+        lastMsg.metadata.tokens -= removed;
+        this.history.totalTokens -= removed;
+        logger.debug(
+          `Removed ${images} image(s) with ${removed} tokens - total tokens now: ${this.history.totalTokens}/${this.settings.maxInputTokens}`,
+        );
+      }
+      const text = lastMsg.message.content
+        .map(part => (part.type === 'text' ? part.text : ''))
+        .join('');
+      this.history.messages[this.history.messages.length - 1] = {
+        ...lastMsg,
+        message: { ...lastMsg.message, content: text } as ModelMessage,
+      };
     }
 
     diff = this.history.totalTokens - this.settings.maxInputTokens;
     if (diff <= 0) return;
 
-    if (
-      !(lastMsg.message instanceof HumanMessage) ||
-      typeof lastMsg.message.content !== 'string' ||
-      lastMsg.metadata.tokens <= 0
-    ) {
+    const trimmed = this.history.messages[this.history.messages.length - 1];
+    if (trimmed.message.role !== 'user' || typeof trimmed.message.content !== 'string' || trimmed.metadata.tokens <= 0) {
       this.trimToTokenBudget();
       return;
     }
 
     // if still over, remove text from state message proportionally to the number of tokens needed with buffer
     // Calculate the proportion of content to remove
-    const proportionToRemove = diff / lastMsg.metadata.tokens;
+    const proportionToRemove = diff / trimmed.metadata.tokens;
     if (proportionToRemove > 0.99) {
       this.trimToTokenBudget();
       return;
     }
 
     logger.debug(
-      `Removing ${(proportionToRemove * 100).toFixed(2)}% of the last message (${(proportionToRemove * lastMsg.metadata.tokens).toFixed(2)} / ${lastMsg.metadata.tokens.toFixed(2)} tokens)`,
+      `Removing ${(proportionToRemove * 100).toFixed(2)}% of the last message (${(proportionToRemove * trimmed.metadata.tokens).toFixed(2)} / ${trimmed.metadata.tokens.toFixed(2)} tokens)`,
     );
 
-    const content = lastMsg.message.content as string;
+    const content = trimmed.message.content;
     const charactersToRemove = Math.floor(content.length * proportionToRemove);
     const newContent = content.slice(0, -charactersToRemove);
 
@@ -439,8 +376,7 @@ export default class MessageManager {
     this.history.removeMessage();
 
     // new message with updated content
-    const msg = new HumanMessage({ content: newContent });
-    this.addMessageWithTokens(msg);
+    this.addMessageWithTokens(userMessage(newContent));
     this.trimToTokenBudget();
 
     const finalMsg = this.history.messages[this.history.messages.length - 1];
@@ -467,7 +403,6 @@ export default class MessageManager {
    */
   public addToolMessage(content: string, toolCallId?: number, messageType?: string | null): void {
     const id = toolCallId ?? this.nextToolId();
-    const msg = new ToolMessage({ content, tool_call_id: String(id) });
-    this.addMessageWithTokens(msg, messageType);
+    this.addMessageWithTokens(toolResultMessage(AGENT_OUTPUT_TOOL, String(id), content), messageType);
   }
 }

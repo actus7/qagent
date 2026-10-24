@@ -1,16 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { AIMessage } from '@langchain/core/messages';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Actors, type ChatMessage } from '@extension/storage';
 import type * as StorageModule from '@extension/storage';
 import type * as CompactionModule from '../conversation-compaction';
 import { installChromeStorageMock } from '../../__tests__/utils/chromeStorageMock';
+import { fakeChatModel } from '../../__tests__/utils/fakeChatModel';
 import {
   COMPACTION_KIND,
   needsAutoCompaction,
   selectContext,
   trimToBudget,
 } from '../conversation-compaction';
+
+// One mock instance shared with the modules re-imported after vi.resetModules()
+const ai = vi.hoisted(() => ({ generateText: vi.fn() }));
+vi.mock('ai', () => ai);
 
 const message = (actor: Actors, content: string, kind?: ChatMessage['kind']): ChatMessage => ({
   id: crypto.randomUUID(),
@@ -21,8 +24,8 @@ const message = (actor: Actors, content: string, kind?: ChatMessage['kind']): Ch
 });
 
 const fakeModel = (reply: string) => {
-  const invoke = vi.fn(async () => new AIMessage(reply));
-  return { model: { invoke } as unknown as BaseChatModel, invoke };
+  ai.generateText.mockReset().mockResolvedValue({ text: reply });
+  return { model: fakeChatModel(), invoke: ai.generateText };
 };
 
 describe('selectContext', () => {
@@ -100,6 +103,7 @@ describe('compactChatConversation', () => {
     // Assert
     expect(compacted).toBe(true);
     expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke.mock.calls[0][0].prompt).toContain('User: open the docs');
     const stored = (await chatHistoryStore.getSession(session.id))?.messages ?? [];
     expect(stored).toHaveLength(3);
     expect(stored[2]).toMatchObject({ kind: COMPACTION_KIND, actor: Actors.SYSTEM });

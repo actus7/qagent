@@ -2,7 +2,7 @@ import { BaseAgent, type BaseAgentOptions, type ExtraAgentOptions } from './base
 import { createLogger } from '@src/background/log';
 import { z } from 'zod';
 import type { AgentOutput } from '../types';
-import { HumanMessage } from '@langchain/core/messages';
+import { userMessage } from '../messages/model-messages';
 import { Actors, ExecutionState } from '../event/types';
 import {
   ChatModelAuthError,
@@ -68,20 +68,12 @@ export class PlannerAgent extends BaseAgent<typeof plannerOutputSchema, PlannerO
       // Remove images from last message if vision is not enabled for planner but vision is enabled
       if (!this.context.options.useVisionForPlanner && this.context.options.useVision) {
         const lastStateMessage = plannerMessages[plannerMessages.length - 1];
-        let newMsg = '';
+        // Keep the text parts only; image parts are skipped
+        const newMsg = Array.isArray(lastStateMessage.content)
+          ? lastStateMessage.content.map(part => (part.type === 'text' ? part.text : '')).join('')
+          : lastStateMessage.content;
 
-        if (Array.isArray(lastStateMessage.content)) {
-          for (const msg of lastStateMessage.content) {
-            if (msg.type === 'text') {
-              newMsg += msg.text;
-            }
-            // Skip image_url messages
-          }
-        } else {
-          newMsg = lastStateMessage.content;
-        }
-
-        plannerMessages[plannerMessages.length - 1] = new HumanMessage(newMsg);
+        plannerMessages[plannerMessages.length - 1] = userMessage(newMsg);
       }
 
       const modelOutput = await this.invoke(plannerMessages);
