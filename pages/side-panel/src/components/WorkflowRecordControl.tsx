@@ -109,7 +109,7 @@ export default function WorkflowRecordControl({ sendMessage, ensureConnection }:
     <section className="mx-3 mt-2 flex flex-col gap-2 text-sm" aria-label={t('chat_record_start')}>
       {!isRecording && !isStopped && (
         <div className="flex items-center justify-between gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => void handleStart()}>
+          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => void handleStart()}>
             <FiCircle aria-hidden="true" size={10} className="text-red-500" />
             {t('chat_record_start')}
           </Button>

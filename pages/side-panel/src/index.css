@@ -354,10 +354,9 @@
 }
 .assistant-composer-settings {
   position: relative;
-  padding: 6px 8px 8px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  min-width: 0;
   font-size: 11px;
   color: var(--muted-foreground);
 }
@@ -368,7 +367,7 @@
   max-width: 100%;
   padding: 5px 9px;
   border-radius: 8px;
-  background: var(--muted);
+  background: transparent;
   transition: background 150ms;
 }
 .assistant-menu-trigger:hover:not(:disabled),
@@ -400,8 +399,8 @@
 }
 .assistant-menu {
   position: absolute;
-  right: 8px;
-  bottom: calc(100% - 2px);
+  right: 0;
+  bottom: calc(100% + 10px);
   min-width: 220px;
   max-width: calc(100vw - 32px);
   padding: 6px;

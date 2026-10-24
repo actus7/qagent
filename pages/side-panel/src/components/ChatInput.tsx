@@ -579,31 +579,34 @@ export default function ChatInput({
             )}
           </div>
 
-          {action.type === 'stop' ? (
-            <Button type="button" variant="destructive" size="sm" onClick={action.onStopTask}>
-              <FiSquare size={13} className="mr-1.5" />
-              {t('chat_buttons_stop')}
-            </Button>
-          ) : action.type === 'replay' ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => action.onReplay(action.historicalSessionId)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90">
-              {t('chat_buttons_replay')}
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              size="sm"
-              disabled={isSendButtonDisabled}
-              aria-disabled={isSendButtonDisabled}
-              aria-label={t('chat_buttons_send')}
-              title={t('chat_buttons_send')}
-              className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <FiArrowUp size={18} />
-            </Button>
-          )}
+          <div className="flex min-w-0 items-center gap-2">
+            {footer}
+            {action.type === 'stop' ? (
+              <Button type="button" variant="destructive" size="sm" onClick={action.onStopTask}>
+                <FiSquare size={13} className="mr-1.5" />
+                {t('chat_buttons_stop')}
+              </Button>
+            ) : action.type === 'replay' ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => action.onReplay(action.historicalSessionId)}
+                className="bg-primary text-primary-foreground hover:bg-primary/90">
+                {t('chat_buttons_replay')}
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isSendButtonDisabled}
+                aria-disabled={isSendButtonDisabled}
+                aria-label={t('chat_buttons_send')}
+                title={t('chat_buttons_send')}
+                className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <FiArrowUp size={18} />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
       {isDragging ? <p className="px-3 pb-1 text-xs text-primary">{t('chat_input_dropHint')}</p> : null}
@@ -612,7 +615,6 @@ export default function ChatInput({
           {fileError}
         </p>
       ) : null}
-      {footer}
       {cropSource ? (
         <ScreenshotCropper src={cropSource} onConfirm={handleCropConfirm} onCancel={() => setCropSource(null)} />
       ) : null}

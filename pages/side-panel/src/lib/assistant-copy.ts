@@ -1,7 +1,7 @@
 const en = {
   tagline: 'Your browser, with an assistant.',
   greeting: 'What shall we do?',
-  intro: 'Ask about a page, make a plan, or put your browser to work.',
+  intro: 'Ask about a page or put your browser to work.',
   chat: 'Chat',
   plan: 'Plan',
   act: 'Act',
@@ -66,7 +66,7 @@ const en = {
 const pt: typeof en = {
   tagline: 'Seu navegador, com um assistente.',
   greeting: 'O que vamos fazer?',
-  intro: 'Pergunte sobre uma página, crie um plano ou coloque o navegador para trabalhar.',
+  intro: 'Pergunte sobre uma página ou coloque o navegador para trabalhar.',
   chat: 'Conversar',
   plan: 'Planejar',
   act: 'Executar',
@@ -132,7 +132,7 @@ const zh: typeof en = {
   ...en,
   tagline: '您的瀏覽器助理。',
   greeting: '我們來做些什麼？',
-  intro: '詢問網頁、制定計畫，或讓瀏覽器完成工作。',
+  intro: '詢問網頁，或讓瀏覽器完成工作。',
   chat: '對話',
   plan: '規劃',
   act: '執行',
