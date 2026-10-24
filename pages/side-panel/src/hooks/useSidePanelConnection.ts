@@ -94,11 +94,7 @@ export const useSidePanelConnection = ({
         }
 
         const message = incomingMessage;
-        if (
-          message.type === 'assistant_delta' ||
-          message.type === 'approval_required' ||
-          message.type === 'approval_resolved'
-        ) {
+        if (message.type === 'assistant_delta') {
           onAssistantMessage(message);
           return;
         }
@@ -164,7 +160,7 @@ export const useSidePanelConnection = ({
           });
           setIsProcessingSpeech(false);
         } else if (message.type === 'heartbeat_ack') {
-          appendDebugMessage('connection.heartbeat.ack', message);
+          // Keep-alive only: a chat card every 25 s buries the real debug events
         } else {
           appendDebugMessage('connection.message.unhandled', message);
         }
@@ -194,7 +190,6 @@ export const useSidePanelConnection = ({
       heartbeatIntervalRef.current = window.setInterval(() => {
         if (portRef.current?.name === SIDE_PANEL_CONNECTION_PORT_NAME) {
           try {
-            appendDebugMessage('connection.heartbeat.sent', { type: 'heartbeat' });
             portRef.current.postMessage({ type: 'heartbeat' });
           } catch (error) {
             console.error('Heartbeat failed:', error);

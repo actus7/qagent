@@ -6,6 +6,9 @@ import { ScrollArea } from '@src/components/ui/scroll-area';
 import type { assistantCopy } from '../lib/assistant-copy';
 import MessageList from './MessageList';
 
+// How close to the bottom still counts as "following" the conversation.
+const FOLLOW_THRESHOLD_PX = 80;
+
 interface ConversationAreaProps {
   copy: ReturnType<typeof assistantCopy>;
   isCheckingConfig: boolean;
@@ -28,11 +31,22 @@ export default function ConversationArea({
   onContinue,
 }: ConversationAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Follows new messages only while the reader is at the bottom; scrolling up to read must not be yanked back down.
+  const followRef = useRef(true);
 
-  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    const viewport = messagesEndRef.current?.closest<HTMLElement>('[data-radix-scroll-area-viewport]');
+    if (!viewport) return;
+    const onScroll = () => {
+      followRef.current = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < FOLLOW_THRESHOLD_PX;
+    };
+    viewport.addEventListener('scroll', onScroll, { passive: true });
+    return () => viewport.removeEventListener('scroll', onScroll);
+  }, []);
+
   useEffect(() => {
     // 'auto': streaming delivers a new array many times per second and overlapping smooth scrolls fight each other
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    if (followRef.current) messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages]);
 
   let content: ReactNode;
