@@ -55,10 +55,13 @@ export default function ModelControls({ copy, workspace, showStopButton }: Model
         className="assistant-menu-trigger"
         aria-haspopup="menu"
         aria-expanded={open}
+        title={`${modelLabel} · ${permissionLabel}`}
         disabled={showStopButton}
         onClick={() => setOpen(value => !value)}>
-        <span className="assistant-menu-model">{modelLabel}</span>
-        <span className="assistant-menu-sub">{permissionLabel}</span>
+        <span className="assistant-menu-labels">
+          <span className="assistant-menu-model">{modelLabel}</span>
+          <span className="assistant-menu-sub">{permissionLabel}</span>
+        </span>
         <FiChevronUp size={12} className="assistant-menu-chevron" data-open={open} />
       </button>
       {open ? (

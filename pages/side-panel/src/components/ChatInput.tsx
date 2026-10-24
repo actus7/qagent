@@ -504,7 +504,7 @@ export default function ChatInput({
         </div>
 
         <div className="flex items-center justify-between bg-card px-2 py-1.5">
-          <div className="flex gap-2 text-muted-foreground">
+          <div className="flex shrink-0 gap-0.5 text-muted-foreground">
             {/* File attachment button */}
             <Button
               type="button"
