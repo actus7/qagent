@@ -10,3 +10,5 @@ export * from './mcp-bridge-protocol';
 export * from './workflow-recording';
 export * from './schedule-draft';
 export * from './workflow-selector';
+export * from './infer-mode';
+export * from './jev';

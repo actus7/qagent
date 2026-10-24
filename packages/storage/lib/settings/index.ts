@@ -7,3 +7,4 @@ export * from './sitePermissions';
 export * from './speechToText';
 export * from './analyticsSettings';
 export * from './mcpBridge';
+export * from './jev';

@@ -20,8 +20,8 @@ function preference<T extends string>(key: string, values: readonly T[], fallbac
 }
 
 export function useAssistantWorkspace(frozen = false) {
-  // ponytail: mode is no longer user-selectable; the agent handles chat/plan/act within the conversation
-  const [mode, setMode] = useState<AssistantMode>('act');
+  // ponytail: mode is not user-selectable; useTaskSubmission infers it from each message
+  const [mode, setMode] = useState<AssistantMode>('chat');
   const [permissionMode, setPermissionMode] = useState<PermissionMode>(() =>
     preference('qagent-permission', ['ask', 'auto', 'plan'], 'ask'),
   );

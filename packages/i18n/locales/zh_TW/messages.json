@@ -544,6 +544,21 @@
   "options_models_selection_header": {
     "message": "模型選擇"
   },
+  "options_models_jev_header": {
+    "message": "TypeSafe System One (Jev)"
+  },
+  "options_models_jev_desc": {
+    "message": "選用。設定 API 金鑰後，QAgent 會讓 Jev 在毫秒內決定每則訊息的處理方式（回答、規劃或執行）。未設定時使用內建規則。"
+  },
+  "options_models_jev_apiKey": {
+    "message": "API 金鑰"
+  },
+  "options_models_jev_status_on": {
+    "message": "已啟用：由 Jev 決定每則訊息的模式。移除金鑰即可停用。"
+  },
+  "options_models_jev_status_off": {
+    "message": "已停用：由內建規則決定每則訊息的模式。"
+  },
   "options_models_speechToText_header": {
     "message": "語音轉文字模型"
   },

@@ -1,6 +1,6 @@
-import type { MutableRefObject } from 'react';
-import { Actors, chatHistoryStore } from '@extension/storage';
-import type { AssistantAttachment } from '@extension/shared';
+import { useRef, type MutableRefObject } from 'react';
+import { Actors, chatHistoryStore, jevStore } from '@extension/storage';
+import { resolveMode, type AssistantAttachment, type AssistantMode } from '@extension/shared';
 import type { assistantCopy } from '../lib/assistant-copy';
 import type { AppendMessage } from '../lib/sidepanel-events';
 import type { AssistantWorkspace } from './useAssistantWorkspace';
@@ -47,6 +47,8 @@ export const useTaskSubmission = ({
   const { setLastEvent, setIsPaused, setIsStopping, setPendingApproval } = runState;
   const { ensureConnection, sendMessage, stopConnection } = connection;
 
+  const lastModeRef = useRef<AssistantMode>('chat');
+
   const createTaskSession = async (titleText: string) => {
     const isLong = titleText.length > SESSION_TITLE_MAX_LENGTH;
     const title = titleText.substring(0, SESSION_TITLE_MAX_LENGTH) + (isLong ? '...' : '');
@@ -55,9 +57,15 @@ export const useTaskSubmission = ({
     sessionIdRef.current = newSession.id;
   };
 
-  const dispatchTask = async (taskId: string, text: string, tabId: number, attachments: AssistantAttachment[]) => {
+  const dispatchTask = async (
+    taskId: string,
+    text: string,
+    tabId: number,
+    attachments: AssistantAttachment[],
+    mode: AssistantMode,
+  ) => {
     const options = {
-      mode: workspace.mode,
+      mode,
       permissionMode: workspace.permissionMode,
       tabIds: workspace.selectedTabs.map(tab => tab.id),
       modelAgent: workspace.modelAgent,
@@ -94,7 +102,12 @@ export const useTaskSubmission = ({
       if (!tabId) {
         throw new Error(t('errors_noActiveTab'));
       }
-      if (workspace.mode === 'act' && workspace.selectedTabs.length === 0) throw new Error(copy.noActive);
+      const mode = await resolveMode(trimmedText, lastModeRef.current, await jevStore.getConfig(), error =>
+        console.error('Jev mode inference failed, using the heuristic', errorText(error)),
+      );
+      if (mode === 'act' && workspace.selectedTabs.length === 0) throw new Error(copy.noActive);
+      lastModeRef.current = mode;
+      workspace.setMode(mode);
 
       setInputEnabled(false);
       setShowStopButton(true);
@@ -123,7 +136,7 @@ export const useTaskSubmission = ({
       }
 
       ensureConnection();
-      await dispatchTask(taskId, text, tabId, attachments);
+      await dispatchTask(taskId, text, tabId, attachments, mode);
     } catch (err) {
       console.error('Task error', errorText(err));
       appendMessage({

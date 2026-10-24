@@ -547,6 +547,21 @@
   "options_models_selection_header": {
     "message": "Model Selection"
   },
+  "options_models_jev_header": {
+    "message": "TypeSafe System One (Jev)"
+  },
+  "options_models_jev_desc": {
+    "message": "Optional. With an API key, QAgent lets Jev choose how each message is handled (answer, plan, or act) in milliseconds. Without a key, the built-in rules are used."
+  },
+  "options_models_jev_apiKey": {
+    "message": "API key"
+  },
+  "options_models_jev_status_on": {
+    "message": "Enabled: Jev decides the mode of each message. Remove the key to turn it off."
+  },
+  "options_models_jev_status_off": {
+    "message": "Disabled: the built-in rules decide the mode of each message."
+  },
   "options_models_speechToText_header": {
     "message": "Speech to Text Model"
   },
