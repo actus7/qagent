@@ -37,8 +37,8 @@
 .assistant-small-mark {
   display: grid;
   place-items: center;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: var(--brand);
+  color: #ffffff;
   border-radius: 8px;
   font:
     600 19px/1 Georgia,
@@ -400,11 +400,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.assistant-menu-sub {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .assistant-menu-chevron {
   flex-shrink: 0;
   transition: transform 150ms;
@@ -438,11 +433,6 @@
   letter-spacing: 0.4px;
   text-transform: uppercase;
   color: var(--muted-foreground);
-}
-.assistant-menu-divider {
-  height: 1px;
-  margin: 6px 4px;
-  background: var(--border);
 }
 .assistant-menu button {
   display: flex;
@@ -532,64 +522,6 @@
 .assistant-task-status small {
   color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
-}
-.assistant-approval {
-  background: var(--card);
-  border: 1px solid var(--primary);
-  border-radius: 12px;
-  margin: 8px 16px;
-  padding: 14px;
-  font-size: 12px;
-}
-.assistant-approval-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--primary);
-}
-.assistant-approval > p {
-  margin: 10px 0;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.assistant-approval-origin {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--muted-foreground);
-  font-size: 10px;
-}
-.assistant-approval-origin span {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.assistant-approval-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 14px;
-}
-.assistant-approval-actions button {
-  font-size: 11px;
-}
-.assistant-approval-details {
-  margin: 8px 0;
-  color: var(--muted-foreground);
-  font-size: 10px;
-}
-.assistant-approval-details summary {
-  cursor: pointer;
-  font-family: var(--font-mono);
-}
-.assistant-approval-details pre {
-  max-height: 120px;
-  overflow: auto;
-  padding: 8px;
-  background: var(--muted);
-  border-radius: 5px;
-  margin-top: 6px;
-  white-space: pre-wrap;
 }
 .assistant-messages {
   padding: 12px 20px 24px;

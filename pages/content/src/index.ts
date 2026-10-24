@@ -20,10 +20,8 @@ interface OverlayMessage {
 }
 
 // Pointer tip sits at the top-left of the arrow glyph (see the SVG in createOverlay).
-const CURSOR_TIP_X = 4;
-const CURSOR_TIP_Y = 3;
-// The cursor fades out this long after its last movement, so it is only visible while the agent acts.
-const CURSOR_IDLE_HIDE_MS = 1800;
+const CURSOR_TIP_X = 5;
+const CURSOR_TIP_Y = 4;
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 let shadowHost: HTMLDivElement | null = null;
@@ -35,7 +33,6 @@ let cursorEl: HTMLDivElement | null = null;
 let cursorPoint: AgentPoint | null = null;
 // Incremented per glide so a newer pointer message cancels the one in flight.
 let glideToken = 0;
-let cursorIdleTimer: ReturnType<typeof setTimeout> | null = null;
 
 function createOverlay(): void {
   if (shadowHost) return;
@@ -108,8 +105,6 @@ function destroyOverlay(): void {
     cursorEl = null;
     cursorPoint = null;
     glideToken++;
-    if (cursorIdleTimer) clearTimeout(cursorIdleTimer);
-    cursorIdleTimer = null;
   }
 }
 
@@ -138,14 +133,6 @@ function placeCursor(point: AgentPoint): void {
   cursorEl.style.transform = `translate3d(${point.x - CURSOR_TIP_X}px, ${point.y - CURSOR_TIP_Y}px, 0)`;
   cursorEl.classList.add('is-visible');
   cursorPoint = point;
-}
-
-function scheduleCursorHide(): void {
-  if (cursorIdleTimer) clearTimeout(cursorIdleTimer);
-  cursorIdleTimer = setTimeout(() => {
-    cursorEl?.classList.remove('is-visible');
-    cursorIdleTimer = null;
-  }, CURSOR_IDLE_HIDE_MS);
 }
 
 /** Glides the cursor along the curved path; `onArrive` runs once it is on the target. Reduced motion jumps. */
@@ -252,11 +239,14 @@ chrome.runtime.onMessage.addListener((message: OverlayMessage, _sender, sendResp
       break;
     case 'qagent:overlay:pointer': {
       // The background sends this to every frame of the tab; only the top frame draws the cursor.
-      if (window.top !== window || !cursorEl) return false;
+      if (window.top !== window) return false;
       if (message.x === undefined || message.y === undefined) return false;
-      if (cursorIdleTimer) clearTimeout(cursorIdleTimer);
-      moveCursorTo({ x: message.x, y: message.y }, () => {
-        scheduleCursorHide();
+      // A tab the agent just opened or switched to may not have the overlay yet; the cursor must still show.
+      createOverlay();
+      const target = { x: message.x, y: message.y };
+      moveCursorTo(target, () => {
+        // Ripple where the cursor actually landed (after scrolling), so the click is seen on the target
+        createRipple(target.x, target.y);
         sendResponse({ ok: true });
       });
       // Reply after the glide finishes, so the action starts once the cursor has arrived.

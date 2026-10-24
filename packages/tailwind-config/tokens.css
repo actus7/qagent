@@ -12,7 +12,9 @@
   --card-foreground: #302e2b;
   --popover: #ffffff;
   --popover-foreground: #302e2b;
-  --primary: #bd5836;
+  --primary: #00843f;
+  /* the icon green (#00a650); --primary is a shade darker so white button text keeps AA contrast */
+  --brand: #00a650;
   --primary-foreground: #ffffff;
   --secondary: #eeede9;
   --secondary-foreground: #55524c;
@@ -26,7 +28,7 @@
   --warning: #b7791f;
   --border: #e6e3dc;
   --input: #dedad1;
-  --ring: #bd5836;
+  --ring: #00843f;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
   --font-mono: 'Cascadia Code', Consolas, monospace;
@@ -41,7 +43,7 @@
   --card-foreground: #e9e7e0;
   --popover: #302f2c;
   --popover-foreground: #e9e7e0;
-  --primary: #de916d;
+  --primary: #3fd286;
   --primary-foreground: #242321;
   --secondary: #353430;
   --secondary-foreground: #d0cdc5;
@@ -55,7 +57,7 @@
   --warning: #e0b061;
   --border: #403e38;
   --input: #504d45;
-  --ring: #de916d;
+  --ring: #3fd286;
 }
 
 body {

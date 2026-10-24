@@ -41,21 +41,8 @@ async function clickBySelector(context: AgentContext, selector: string, intent: 
 
   try {
     const initialTabIds = await context.browserContext.getAllTabIds();
+    // The overlay ripples where the agent cursor lands, so no separate ripple from stale pre-scroll coordinates
     await page.clickBySelector(context.options.useVision, normalizedSelector, elementNode);
-
-    // Send ripple effect to overlay when selector maps to a known interactive element.
-    if (elementNode?.viewportCoordinates?.center) {
-      const tabId = context.browserContext.currentTabId;
-      if (tabId) {
-        chrome.tabs
-          .sendMessage(tabId, {
-            type: 'qagent:overlay:ripple',
-            x: elementNode.viewportCoordinates.center.x,
-            y: elementNode.viewportCoordinates.center.y,
-          })
-          .catch(() => {});
-      }
-    }
 
     const elementText = elementNode?.getAllTextTillNextClickableElement(2) || normalizedSelector;
     let msg = t('act_click_ok', [normalizedSelector, elementText]);

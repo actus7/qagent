@@ -254,9 +254,9 @@ function showIndicator(text: string, stopText: string): void {
   const root = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
   style.textContent =
-    '.bar{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-radius:999px;background:#7c2d12;color:#fff;font:600 13px/1.2 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)}' +
+    '.bar{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-radius:999px;background:#00843f;color:#fff;font:600 13px/1.2 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)}' +
     '.dot{width:8px;height:8px;border-radius:50%;background:#fca5a5;animation:pulse 1.2s ease-in-out infinite}' +
-    'button{border:0;border-radius:999px;padding:6px 12px;background:#fff;color:#7c2d12;font:inherit;cursor:pointer}' +
+    'button{border:0;border-radius:999px;padding:6px 12px;background:#fff;color:#00843f;font:inherit;cursor:pointer}' +
     'button:focus-visible{outline:2px solid #fff;outline-offset:2px}' +
     '@keyframes pulse{50%{opacity:.3}}' +
     '@media (prefers-reduced-motion: reduce){.dot{animation:none}}';
