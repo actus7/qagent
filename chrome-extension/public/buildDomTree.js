@@ -8,8 +8,8 @@ window.buildDomTree = (
   },
 ) => {
   const { showHighlightElements, focusHighlightIndex, viewportExpansion, startHighlightIndex, startId } = args;
-  // Make sure to do highlight elements always, but we can hide the highlights if needed
-  const doHighlightElements = true;
+  // Overlays are visual only (nothing reads them back); skip drawing them when they would be hidden anyway
+  const doHighlightElements = showHighlightElements || focusHighlightIndex >= 0;
 
   let highlightIndex = startHighlightIndex; // Reset highlight index
 
@@ -373,15 +373,17 @@ window.buildDomTree = (
 
     const tagName = currentElement.nodeName.toLowerCase();
 
-    const siblings = Array.from(currentElement.parentElement.children).filter(
-      sib => sib.nodeName.toLowerCase() === tagName,
-    );
-
-    if (siblings.length === 1) {
+    // Walk the siblings instead of copying the whole children list per element (O(n^2) on long lists)
+    let index = 1;
+    for (let sib = currentElement.previousElementSibling; sib; sib = sib.previousElementSibling) {
+      if (sib.nodeName.toLowerCase() === tagName) index++;
+    }
+    if (index === 1) {
+      for (let sib = currentElement.nextElementSibling; sib; sib = sib.nextElementSibling) {
+        if (sib.nodeName.toLowerCase() === tagName) return 1; // has later siblings of its type: 1-based index
+      }
       return 0; // Only element of its type
     }
-
-    const index = siblings.indexOf(currentElement) + 1; // 1-based index
     return index;
   }
 
@@ -456,14 +458,12 @@ window.buildDomTree = (
           isAnyRectVisible = true;
 
           // Viewport check for this rect
-          if (
-            !(
-              rect.bottom < -viewportExpansion ||
-              rect.top > window.innerHeight + viewportExpansion ||
-              rect.right < -viewportExpansion ||
-              rect.left > window.innerWidth + viewportExpansion
-            )
-          ) {
+          if (!(
+            rect.bottom < -viewportExpansion ||
+            rect.top > window.innerHeight + viewportExpansion ||
+            rect.right < -viewportExpansion ||
+            rect.left > window.innerWidth + viewportExpansion
+          )) {
             isAnyRectInViewport = true;
             break; // Found a visible rect in viewport, no need to check others
           }
@@ -806,12 +806,10 @@ window.buildDomTree = (
         rect.height > 0 &&
         !(
           // Only check non-empty rects
-          (
-            rect.bottom < -viewportExpansion ||
-            rect.top > window.innerHeight + viewportExpansion ||
-            rect.right < -viewportExpansion ||
-            rect.left > window.innerWidth + viewportExpansion
-          )
+          rect.bottom < -viewportExpansion ||
+          rect.top > window.innerHeight + viewportExpansion ||
+          rect.right < -viewportExpansion ||
+          rect.left > window.innerWidth + viewportExpansion
         )
       ) {
         isAnyRectInViewport = true;
@@ -916,14 +914,12 @@ window.buildDomTree = (
     for (const rect of rects) {
       if (rect.width === 0 || rect.height === 0) continue; // Skip empty rects
 
-      if (
-        !(
-          rect.bottom < -viewportExpansion ||
-          rect.top > window.innerHeight + viewportExpansion ||
-          rect.right < -viewportExpansion ||
-          rect.left > window.innerWidth + viewportExpansion
-        )
-      ) {
+      if (!(
+        rect.bottom < -viewportExpansion ||
+        rect.top > window.innerHeight + viewportExpansion ||
+        rect.right < -viewportExpansion ||
+        rect.left > window.innerWidth + viewportExpansion
+      )) {
         return true; // Found at least one rect in the viewport
       }
     }

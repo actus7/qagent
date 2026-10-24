@@ -66,7 +66,8 @@ type NetworkWaitConfig = Pick<BrowserContextConfig, 'waitForNetworkIdlePageLoadT
  */
 export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkWaitConfig): Promise<void> {
   const pendingRequests = new Set();
-  let lastActivity = Date.now();
+  // Start almost idle: a page with no new request in the first ~150 ms is already stable and must not pay the full idle window
+  let lastActivity = Date.now() - Math.max(0, config.waitForNetworkIdlePageLoadTime * 1000 - 150);
 
   const onRequest = (request: HTTPRequest) => {
     // Filter by resource type

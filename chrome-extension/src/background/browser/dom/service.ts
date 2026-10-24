@@ -490,6 +490,17 @@ export async function removeHighlights(tabId: number): Promise<void> {
     await chrome.scripting.executeScript({
       target: { tabId, allFrames: true },
       func: () => {
+        // Detach the scroll/resize listeners each highlight registered; otherwise they pile up every step
+        // and keep the old overlays (and their elements) alive.
+        const win = window as Window & { _highlightCleanupFunctions?: Array<() => void> };
+        for (const cleanup of win._highlightCleanupFunctions ?? []) {
+          try {
+            cleanup();
+          } catch {
+            // the overlay may already be gone
+          }
+        }
+        win._highlightCleanupFunctions = [];
         // Remove the highlight container and all its contents
         const container = document.getElementById('playwright-highlight-container');
         if (container) {

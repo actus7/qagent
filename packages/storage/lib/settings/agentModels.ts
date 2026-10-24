@@ -182,6 +182,9 @@ export const agentModelStore: AgentModelStorage = {
     return filteredAgents as Record<AgentNameEnum, ModelConfig>;
   },
   cleanupLegacyValidatorSettings: async () => {
+    // runs at every task start: only write when there is something to remove
+    const current = await storage.get();
+    if (!('validator' in (current.agents ?? {}))) return;
     await storage.set(current => {
       const newAgents = { ...current.agents };
       delete newAgents['validator' as keyof typeof newAgents];

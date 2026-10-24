@@ -33,6 +33,8 @@ import { type DOMHistoryElement } from '@src/background/browser/dom/history/view
 
 const logger = createLogger('NavigatorAgent');
 const MAX_AGENT_STEP_HISTORY_ENTRIES = 300;
+// ponytail: fixed pause between batched actions; replace with a DOM-settled wait if forms still race
+const WAIT_BETWEEN_ACTIONS_MS = 300;
 
 interface ParsedModelOutput {
   current_state?: {
@@ -424,10 +426,13 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
     logger.info('Actions', actions);
 
     const browserContext = this.context.browserContext;
-    const browserState = await browserContext.getState(this.context.options.useVision);
-    const cachedPathHashes = await calcBranchPathHashSet(browserState);
-
+    // The state the model just saw: its selectorMap is what the action indexes refer to
+    const browserState = await browserContext.getCachedState(this.context.options.useVision);
     await browserContext.removeHighlight();
+    // Only a second indexed action needs to know whether the page changed, and the baseline must be the page as it
+    // is now (after the LLM latency), or late-loading content would cut the batch as "something new appeared".
+    const cachedPathHashes =
+      actions.length > 1 ? await calcBranchPathHashSet(await browserContext.getState(false)) : undefined;
 
     for (const [i, action] of actions.entries()) {
       const actionName = Object.keys(action)[0];
@@ -444,8 +449,9 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         }
 
         const indexArg = actionInstance.getIndexArg(actionArgs);
-        if (i > 0 && indexArg !== null) {
-          const newState = await browserContext.getState(this.context.options.useVision);
+        if (i > 0 && indexArg !== null && cachedPathHashes) {
+          // no screenshot: only the element hashes are compared
+          const newState = await browserContext.getState(false);
           const newPathHashes = await calcBranchPathHashSet(newState);
           // next action requires index but there are new elements on the page
           if (!newPathHashes.isSubsetOf(cachedPathHashes)) {
@@ -485,8 +491,11 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         if (this.context.paused || this.context.stopped) {
           return results;
         }
-        // TODO: wait for 1 second for now, need to optimize this to avoid unnecessary waiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Let the page react before the next action; the next getState already waits for network idle,
+        // so nothing is gained by sleeping after the last one.
+        if (i < actions.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, WAIT_BETWEEN_ACTIONS_MS));
+        }
       } catch (error) {
         if (error instanceof URLNotAllowedError || error instanceof RequestCancelledError || this.context.stopped) {
           throw error;

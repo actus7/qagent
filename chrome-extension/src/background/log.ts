@@ -55,9 +55,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Object.prototype.toString.call(value) === '[object Object]';
 }
 
+// Page text, DOM trees and data URLs reach the logger; running the secret regexes over megabytes blocks the worker
+const MAX_LOG_STRING_CHARS = 8_000;
+
 function redactLogValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
   if (typeof value === 'string') {
-    return redactString(value);
+    return redactString(
+      value.length > MAX_LOG_STRING_CHARS
+        ? `${value.slice(0, MAX_LOG_STRING_CHARS)}…[${value.length - MAX_LOG_STRING_CHARS} more chars]`
+        : value,
+    );
   }
 
   if (value === null || typeof value !== 'object') {
@@ -75,11 +82,14 @@ function redactLogValue(value: unknown, depth = 0, seen = new WeakSet<object>())
   seen.add(value);
 
   if (value instanceof Error) {
-    return {
-      name: value.name,
-      message: redactString(value.message),
-      stack: value.stack === undefined ? undefined : redactString(value.stack),
-    };
+    // A string, not an object: chrome://extensions renders object arguments as "[object Object]"
+    const headline = `${value.name}: ${value.message}`;
+    // V8 stacks already start with the headline
+    const text = value.stack?.startsWith(headline)
+      ? value.stack
+      : `${headline}${value.stack ? `\n${value.stack}` : ''}`;
+    const cause = value.cause instanceof Error ? `\ncaused by: ${value.cause.name}: ${value.cause.message}` : '';
+    return redactString(`${text}${cause}`);
   }
 
   if (Array.isArray(value)) {

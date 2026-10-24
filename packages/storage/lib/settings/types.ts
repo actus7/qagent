@@ -156,19 +156,20 @@ export const llmProviderParameters = {
   },
 };
 
+// ponytail: a soft default well above what navigator + planner need; the 429 retry in BaseAgent handles real limits
 const DEFAULT_RPM_BY_PROVIDER: Record<ProviderTypeEnum, number> = {
-  [ProviderTypeEnum.OpenAI]: 20,
-  [ProviderTypeEnum.Anthropic]: 20,
-  [ProviderTypeEnum.DeepSeek]: 20,
-  [ProviderTypeEnum.Gemini]: 15,
-  [ProviderTypeEnum.Grok]: 20,
+  [ProviderTypeEnum.OpenAI]: 60,
+  [ProviderTypeEnum.Anthropic]: 60,
+  [ProviderTypeEnum.DeepSeek]: 60,
+  [ProviderTypeEnum.Gemini]: 60,
+  [ProviderTypeEnum.Grok]: 60,
   [ProviderTypeEnum.Ollama]: 120,
-  [ProviderTypeEnum.AzureOpenAI]: 20,
-  [ProviderTypeEnum.OpenRouter]: 15,
-  [ProviderTypeEnum.Groq]: 30,
-  [ProviderTypeEnum.Cerebras]: 30,
-  [ProviderTypeEnum.Llama]: 20,
-  [ProviderTypeEnum.CustomOpenAI]: 10,
+  [ProviderTypeEnum.AzureOpenAI]: 60,
+  [ProviderTypeEnum.OpenRouter]: 60,
+  [ProviderTypeEnum.Groq]: 60,
+  [ProviderTypeEnum.Cerebras]: 60,
+  [ProviderTypeEnum.Llama]: 60,
+  [ProviderTypeEnum.CustomOpenAI]: 60,
 };
 
 function normalizeProviderType(providerId: string): ProviderTypeEnum {

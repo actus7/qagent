@@ -101,14 +101,18 @@ export function useAssistantWorkspace(frozen = false) {
     const refreshListener = () => {
       void refresh();
     };
+    // onUpdated fires for every loading/favicon/audible change; only what the list shows matters
+    const updatedListener = (_tabId: number, change: chrome.tabs.OnUpdatedInfo) => {
+      if (change.url || change.title || change.favIconUrl || change.status === 'complete') void refresh();
+    };
     refreshListener();
     chrome.tabs.onActivated.addListener(refreshListener);
-    chrome.tabs.onUpdated.addListener(refreshListener);
+    chrome.tabs.onUpdated.addListener(updatedListener);
     chrome.tabs.onRemoved.addListener(refreshListener);
     return () => {
       disposed = true;
       chrome.tabs.onActivated.removeListener(refreshListener);
-      chrome.tabs.onUpdated.removeListener(refreshListener);
+      chrome.tabs.onUpdated.removeListener(updatedListener);
       chrome.tabs.onRemoved.removeListener(refreshListener);
     };
   }, [followActive, frozen]);

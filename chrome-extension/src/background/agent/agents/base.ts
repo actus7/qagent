@@ -129,6 +129,18 @@ export interface ExtraAgentOptions {
   callOptions?: CallOptions;
 }
 
+const MAX_LOGGED_CONTENT_CHARS = 2000;
+
+/** The response content as one truncated string for the log. */
+function describeContent(content: ReadonlyArray<{ type: string; text?: string; input?: unknown }>): string {
+  const text = content
+    .map(part =>
+      part.type === 'tool-call' ? `[tool-call] ${JSON.stringify(part.input)}` : `[${part.type}] ${part.text ?? ''}`,
+    )
+    .join('\n');
+  return text.length > MAX_LOGGED_CONTENT_CHARS ? `${text.slice(0, MAX_LOGGED_CONTENT_CHARS)}…` : text;
+}
+
 /**
  * Base class for all agents
  * @param T - The Zod schema for the model output
@@ -146,6 +158,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
   protected withStructuredOutput: boolean;
   protected callOptions?: CallOptions;
   protected modelOutputToolName: string;
+  private structuredTools?: Record<string, ReturnType<typeof tool>>;
   protected requestsPerMinute?: number;
   protected rateLimitKey: string;
   declare ModelOutput: z.infer<T>;
@@ -307,13 +320,23 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
       });
 
       const toolName = this.modelOutputToolName;
-      const schema = convertZodToJsonSchema(this.modelOutputSchema, toolName) as JSONSchema7;
-      const tools = { [toolName]: tool({ description: 'The agent output.', inputSchema: jsonSchema(schema) }) };
+      // the schema never changes after construction; converting ~35 action schemas per call is wasted work
+      this.structuredTools ??= {
+        [toolName]: tool({
+          description: 'The agent output.',
+          inputSchema: jsonSchema(convertZodToJsonSchema(this.modelOutputSchema, toolName) as JSONSchema7),
+        }),
+      };
+      const tools = this.structuredTools;
 
       try {
         const result = await this.invokeWithTimeout(
           signal =>
-            generateText({ ...this.baseCallOptions(inputMessages, signal), tools, toolChoice: { type: 'tool', toolName } }),
+            generateText({
+              ...this.baseCallOptions(inputMessages, signal),
+              tools,
+              toolChoice: { type: 'tool', toolName },
+            }),
           `[${this.modelName}] structured output invocation`,
         );
         const text = result.text;
@@ -348,6 +371,10 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
             logger.warning(`[${this.modelName}] Tool choice ignored; recovered the output from the response content`);
             return recovered;
           }
+          // keep the raw answer in the log; without it the failure cannot be diagnosed
+          logger.error(
+            `[${this.modelName}] Tool choice ignored and the response content holds no valid output:\n${describeContent(error.content)}`,
+          );
         }
 
         const errorMessage = error instanceof Error ? error.message : String(error);

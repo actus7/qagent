@@ -168,12 +168,7 @@ export default function ChatInput({
     const newText = e.target.value;
     setText(newText);
     setCaret(e.target.selectionStart);
-
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 100)}px`;
-    }
+    // the [text] effect below resizes the textarea; doing it here too forced a second layout per keystroke
   };
 
   useEffect(() => {

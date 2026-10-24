@@ -122,6 +122,8 @@ export function createStorage<D = string>(key: string, fallback: D, config?: Sto
     const valueOrUpdate: ValueOrUpdate<D> = deserialize(changes[key].newValue as string);
 
     if (cache === valueOrUpdate) return;
+    // our own set() already updated the cache and notified; re-emitting would render every subscriber twice
+    if (cache !== null && JSON.stringify(changes[key].newValue) === JSON.stringify(serialize(cache))) return;
 
     cache = await updateCache(valueOrUpdate, cache);
 

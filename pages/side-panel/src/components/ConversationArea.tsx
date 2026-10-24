@@ -31,7 +31,8 @@ export default function ConversationArea({
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // 'auto': streaming delivers a new array many times per second and overlapping smooth scrolls fight each other
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages]);
 
   let content: ReactNode;

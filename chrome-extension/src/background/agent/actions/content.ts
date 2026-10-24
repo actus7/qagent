@@ -12,13 +12,21 @@ import {
   snapshotActionSchema,
 } from './schemas';
 
+// ponytail: results stay in memory for the rest of the task and are resent on every step; keep them bounded
+const MAX_MEMORY_CONTENT_CHARS = 10_000;
+const clip = (text: string) =>
+  text.length > MAX_MEMORY_CONTENT_CHARS
+    ? `${text.slice(0, MAX_MEMORY_CONTENT_CHARS)}
+…[truncated ${text.length - MAX_MEMORY_CONTENT_CHARS} chars]`
+    : text;
+
 export function createGetTextAction(context: AgentContext) {
   return new Action(async (input: z.infer<typeof getTextActionSchema.schema>) => {
     const intent = input.intent || `Get text from ${input.selector}`;
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const page = await context.browserContext.getCurrentPage();
     const text = await page.getTextBySelector(input.selector);
-    const msg = wrapUntrustedContent(text || '(empty)');
+    const msg = wrapUntrustedContent(clip(text || '(empty)'));
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, 'Text captured');
     return new ActionResult({ extractedContent: msg, includeInMemory: true });
   }, getTextActionSchema);
@@ -52,7 +60,7 @@ export function createSnapshotAction(context: AgentContext) {
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const browserState = await context.browserContext.getState(context.options.useVision);
     const rawSnapshot = browserState.elementTree.clickableElementsToString(context.options.includeAttributes);
-    const msg = rawSnapshot ? wrapUntrustedContent(rawSnapshot) : 'empty page';
+    const msg = rawSnapshot ? wrapUntrustedContent(clip(rawSnapshot)) : 'empty page';
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, 'Snapshot captured');
     return new ActionResult({ extractedContent: msg, includeInMemory: true });
   }, snapshotActionSchema);

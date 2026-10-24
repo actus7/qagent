@@ -20,9 +20,10 @@ import { filterExternalContent } from '../messages/utils';
 const logger = createLogger('PlannerAgent');
 
 // Define Zod schema for planner output
+// ponytail: the text fields are informational; a model that omits one (MiMo does) must not fail the whole step
 export const plannerOutputSchema = z.object({
-  observation: z.string(),
-  challenges: z.string(),
+  observation: z.string().default(''),
+  challenges: z.string().default(''),
   done: z.union([
     z.boolean(),
     z.string().transform(val => {
@@ -31,17 +32,19 @@ export const plannerOutputSchema = z.object({
       throw new Error('Invalid boolean string');
     }),
   ]),
-  next_steps: z.string(),
-  final_answer: z.string(),
-  reasoning: z.string(),
-  web_task: z.union([
-    z.boolean(),
-    z.string().transform(val => {
-      if (val.toLowerCase() === 'true') return true;
-      if (val.toLowerCase() === 'false') return false;
-      throw new Error('Invalid boolean string');
-    }),
-  ]),
+  next_steps: z.string().default(''),
+  final_answer: z.string().default(''),
+  reasoning: z.string().default(''),
+  web_task: z
+    .union([
+      z.boolean(),
+      z.string().transform(val => {
+        if (val.toLowerCase() === 'true') return true;
+        if (val.toLowerCase() === 'false') return false;
+        throw new Error('Invalid boolean string');
+      }),
+    ])
+    .default(true),
 });
 
 export type PlannerOutput = z.infer<typeof plannerOutputSchema>;

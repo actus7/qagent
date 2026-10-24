@@ -287,6 +287,10 @@ const SidePanel = () => {
     hasConfiguredModels,
     isFollowUpMode,
   });
+  // stable reference: an inline closure here re-rendered MessageList and the last message on every root render
+  const sendMessageRef = useRef(handleSendMessage);
+  sendMessageRef.current = handleSendMessage;
+  const handleContinue = useCallback(() => void sendMessageRef.current(t('chat_continueCommand')), []);
 
   const { handleMicClick } = useVoiceInput({ appendMessage, connection, isRecording });
 
@@ -408,7 +412,7 @@ const SidePanel = () => {
             messages={messages}
             planAnswer={planAnswer}
             onExecutePlan={handleExecutePlan}
-            onContinue={() => void handleSendMessage(t('chat_continueCommand'))}
+            onContinue={handleContinue}
             welcome={
               <WelcomeScreen
                 copy={copy}
