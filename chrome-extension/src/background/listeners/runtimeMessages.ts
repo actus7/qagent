@@ -38,8 +38,9 @@ export function registerRuntimeMessageListener(): void {
     }
 
     // Options page: one minimal request through a saved provider. Extension pages only, never content scripts.
+    // The options page opens in a tab (`options_page`), so sender.tab is set for it; check the sender URL instead.
     if (message?.type === 'qagent:test-provider') {
-      if (sender.tab) return false;
+      if (!isExtensionPageSender(sender)) return false;
       testProviderConnection(message.providerId)
         .then(result => sendResponse(result))
         .catch(() => sendResponse({ ok: false, error: t('options_test_failed') }));
