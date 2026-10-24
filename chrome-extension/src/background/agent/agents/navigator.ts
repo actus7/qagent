@@ -190,9 +190,11 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         logger.info('Navigator structuredLlm tool call with empty content', rawResponse.tool_calls);
         // only use the first tool call
         const toolCall = rawResponse.tool_calls[0];
+        // Not spread: some models send `action` as JSON text, and spreading a string yields its characters.
+        // fixActions() normalizes whatever shape arrives here.
         return {
           current_state: toolCall.args.current_state,
-          action: [...toolCall.args.action],
+          action: toolCall.args.action,
         };
       }
       throw new ResponseParseError('Could not parse navigator response');
