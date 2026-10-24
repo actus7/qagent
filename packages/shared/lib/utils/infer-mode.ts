@@ -1,9 +1,13 @@
 import type { AssistantMode } from './agent-port-messages';
 import { askSystemOne, type JevCredentials } from './jev';
 
-const POLITE = String.raw`(?:por favor,?\s+|pode(?:ria)?\s+|você pode\s+|ajude-me a\s+|please\s+|can you\s+|could you\s+)?`;
+const POLITE = String.raw`(?:por favor,?\s+|pode(?:ria)?\s+|você pode\s+|ajude-me a\s+|(?:quero|preciso|gostaria) que (?:você|vc)\s+|please\s+|can you\s+|could you\s+)?(?:me\s+)?`;
 const ACTION_VERBS = [
   // pt
+  'leve',
+  'leva',
+  'mova',
+  'vai',
   'clique',
   'clicar',
   'abra',
@@ -48,6 +52,7 @@ const ACTION_VERBS = [
   'edite',
   'atualize',
   // en
+  'take me',
   'click',
   'open',
   'go to',

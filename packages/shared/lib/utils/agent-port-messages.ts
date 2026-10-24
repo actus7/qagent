@@ -178,7 +178,8 @@ type BackgroundRuntimeMessage =
   | { type: 'qagent:overlay:state' }
   | { type: 'qagent:test-provider'; providerId: string }
   | { type: 'qagent:schedule:run-now'; id: string }
-  | { type: 'qagent:step-screenshots:get'; taskId: string };
+  | { type: 'qagent:step-screenshots:get'; taskId: string }
+  | { type: 'qagent:infer-mode'; text: string; previous: AssistantMode; modelAgent: 'navigator' | 'planner' };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -347,6 +348,15 @@ export function isBackgroundRuntimeMessage(message: unknown): message is Backgro
   }
   if (message.type === 'qagent:step-screenshots:get') {
     return typeof message.taskId === 'string' && message.taskId.length > 0 && message.taskId.length <= 100;
+  }
+  if (message.type === 'qagent:infer-mode') {
+    return (
+      typeof message.text === 'string' &&
+      message.text.length > 0 &&
+      message.text.length <= 20000 &&
+      (message.previous === 'chat' || message.previous === 'plan' || message.previous === 'act') &&
+      (message.modelAgent === 'navigator' || message.modelAgent === 'planner')
+    );
   }
   return message.type === 'qagent:cancel' || message.type === 'qagent:overlay:state';
 }

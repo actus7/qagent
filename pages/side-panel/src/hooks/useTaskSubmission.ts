@@ -1,6 +1,6 @@
 import { useRef, type MutableRefObject } from 'react';
-import { Actors, chatHistoryStore, jevStore } from '@extension/storage';
-import { resolveMode, type AssistantAttachment, type AssistantMode } from '@extension/shared';
+import { Actors, chatHistoryStore } from '@extension/storage';
+import { inferMode, type AssistantAttachment, type AssistantMode } from '@extension/shared';
 import type { assistantCopy } from '../lib/assistant-copy';
 import type { AppendMessage } from '../lib/sidepanel-events';
 import type { AssistantWorkspace } from './useAssistantWorkspace';
@@ -27,6 +27,22 @@ interface UseTaskSubmissionArgs {
 }
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
+// The background picks the mode (heuristic, Jev or the user's model); the heuristic alone is the local fallback.
+async function requestMode(
+  text: string,
+  previous: AssistantMode,
+  modelAgent: 'navigator' | 'planner',
+): Promise<AssistantMode> {
+  try {
+    const response = (await chrome.runtime.sendMessage({ type: 'qagent:infer-mode', text, previous, modelAgent })) as
+      { mode?: AssistantMode } | undefined;
+    if (response?.mode) return response.mode;
+  } catch (error) {
+    console.error('Mode inference failed, using the heuristic', errorText(error));
+  }
+  return inferMode(text, previous);
+}
 
 /** Sends composer input as a new task, a follow-up task, or a slash command, and cancels running tasks. */
 export const useTaskSubmission = ({
@@ -102,9 +118,7 @@ export const useTaskSubmission = ({
       if (!tabId) {
         throw new Error(t('errors_noActiveTab'));
       }
-      const mode = await resolveMode(trimmedText, lastModeRef.current, await jevStore.getConfig(), error =>
-        console.error('Jev mode inference failed, using the heuristic', errorText(error)),
-      );
+      const mode = await requestMode(trimmedText, lastModeRef.current, workspace.modelAgent);
       if (mode === 'act' && workspace.selectedTabs.length === 0) throw new Error(copy.noActive);
       lastModeRef.current = mode;
       workspace.setMode(mode);

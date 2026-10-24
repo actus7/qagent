@@ -1,9 +1,10 @@
 import { t } from '@extension/i18n';
-import { isBackgroundRuntimeMessage } from '@extension/shared';
+import { inferMode, isBackgroundRuntimeMessage } from '@extension/shared';
 import { createLogger } from '../log';
 import { browserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 import { cancelActiveTask } from '../task/taskRunner';
+import { classifyMode } from '../services/mode-classifier';
 import { testProviderConnection } from '../services/provider-test';
 import { runScheduledTask } from '../services/scheduling/runner';
 import { readStepScreenshots } from '../services/step-screenshots';
@@ -63,6 +64,18 @@ export function registerRuntimeMessageListener(): void {
         .catch(error => {
           logger.error('Failed to read step screenshots:', error);
           sendResponse({ screenshots: [] });
+        });
+      return true;
+    }
+
+    // Side panel asks which mode a message should run in; the reply always carries a mode.
+    if (message?.type === 'qagent:infer-mode') {
+      if (!isExtensionPageSender(sender)) return false;
+      classifyMode(message.text, message.previous, message.modelAgent)
+        .then(mode => sendResponse({ mode }))
+        .catch(error => {
+          logger.error('Mode inference crashed; using the heuristic:', error);
+          sendResponse({ mode: inferMode(message.text, message.previous) });
         });
       return true;
     }
