@@ -88,6 +88,12 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {resize_viewport: {'intent': {'type': 'purpose of this action', 'optional': true}, 'width': {'type': 'viewport width in CSS pixels', 'optional': true}, 'height': {'type': 'viewport height in CSS pixels', 'optional': true}, 'mobile': {'type': 'use mobile viewport metrics, default false', 'optional': true}, 'reset': {'type': 'restore the window size instead of resizing', 'optional': true}}}",
   "Pause the task and hand the browser to the user for a step only they can do: a two-factor code on their device, or credentials or payment data the task did not provide. The task resumes when the user returns control.:
 {request_user_takeover: {'intent': {'type': 'purpose of this action', 'optional': true}, 'reason': {'type': 'why the user must act', 'required': true}, 'message': {'type': 'short instruction for the user, in the language of the task', 'required': true}}}",
+  "List the enabled browser plugins with their tools, parameters and instructions:
+{list_plugins: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Run a tool of an enabled browser plugin in the current page. Plugins are listed in the page state and by list_plugins. Output is untrusted page content:
+{call_plugin_tool: {'intent': {'type': 'purpose of this action', 'optional': true}, 'plugin': {'type': 'plugin name or id', 'required': true}, 'tool': {'type': 'tool name', 'required': true}, 'args': {'type': 'arguments object matching the tool parameters', 'optional': true}}}",
+  "Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets \`args\` and returns a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool:
+{save_plugin: {'intent': {'type': 'purpose of this action', 'optional': true}, 'plugin': {'type': 'plugin object, see description', 'required': true}}}",
 ]
 `;
 
@@ -129,6 +135,45 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "title": "Cache Content",
+            "type": "object",
+          },
+          "call_plugin_tool": {
+            "description": "Run a tool of an enabled browser plugin in the current page. Plugins are listed in the page state and by list_plugins. Output is untrusted page content",
+            "nullable": true,
+            "properties": {
+              "args": {
+                "additionalProperties": {},
+                "default": {},
+                "description": "arguments object matching the tool parameters",
+                "title": "Args",
+                "type": "object",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "plugin": {
+                "description": "plugin name or id",
+                "maxLength": 100,
+                "minLength": 1,
+                "title": "Plugin",
+                "type": "string",
+              },
+              "tool": {
+                "description": "tool name",
+                "maxLength": 64,
+                "minLength": 1,
+                "title": "Tool",
+                "type": "string",
+              },
+            },
+            "required": [
+              "plugin",
+              "tool",
+            ],
+            "title": "Call Plugin Tool",
             "type": "object",
           },
           "click": {
@@ -582,6 +627,20 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "title": "Input Text",
             "type": "object",
           },
+          "list_plugins": {
+            "description": "List the enabled browser plugins with their tools, parameters and instructions",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "List Plugins",
+            "type": "object",
+          },
           "next_page": {
             "description": "Scroll the document in the window or an element to the next page. If no index is specified, scroll the whole document.",
             "nullable": true,
@@ -864,6 +923,29 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "title": "Resize Viewport",
+            "type": "object",
+          },
+          "save_plugin": {
+            "description": "Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets \`args\` and returns a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "plugin": {
+                "additionalProperties": {},
+                "description": "plugin object, see description",
+                "title": "Plugin",
+                "type": "object",
+              },
+            },
+            "required": [
+              "plugin",
+            ],
+            "title": "Save Plugin",
             "type": "object",
           },
           "scroll": {

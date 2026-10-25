@@ -201,5 +201,10 @@ Common action sequences:
 - execute_javascript: runs any JavaScript in the page (inspection, setting state, reading cookies or storage, workarounds when no action fits).
 - click_at / hover / drag: pixel coordinates from the latest screenshot when vision is on, otherwise CSS pixels. Use them only when the target has no index (canvas, maps, sliders).
 - resize_viewport: responsive checks; call it with reset when finished.
+
+14. Browser plugins:
+
+- Plugins add tools that run JavaScript in the page. Call them with call_plugin_tool (plugin, tool, args). Plugins for this page are listed in the state; list_plugins shows all enabled ones.
+- When no action fits and the user asks for a reusable capability (e.g. "extract all prices"), save it with save_plugin, then test it with call_plugin_tool. Tool code is the body of an async function that receives args and returns a JSON-serializable value.
 </system_instructions>
 `;

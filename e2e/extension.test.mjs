@@ -708,7 +708,9 @@ describe('extension e2e', { timeout: 300_000 }, () => {
     await target.bringToFront();
     // The panel runs in pt_BR in this suite (see the takeover test), so the labels below are pt_BR.
     // A DOM click: a Playwright click would focus the panel tab, and the start uses the window's active tab.
-    await panel.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Gravar fluxo').click());
+    await panel.evaluate(() =>
+      [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Gravar fluxo').click(),
+    );
     await panel.getByText('Gravando fluxo', { exact: true }).waitFor();
 
     // Playwright clicks are trusted events; the content script records the click as a step.
@@ -726,6 +728,65 @@ describe('extension e2e', { timeout: 300_000 }, () => {
 
     const stored = await panel.evaluate(() => chrome.storage.local.get(null));
     assert.ok(JSON.stringify(stored).includes('E2E go flow'), 'saved shortcut was not written to storage');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('runs a browser plugin tool that the navigator calls with call_plugin_tool', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    // The scripted navigator lists the enabled plugins, calls the plugin tool, then finishes.
+    state.script = [
+      { list_plugins: { intent: 'list plugins' } },
+      {
+        call_plugin_tool: { intent: 'set title', plugin: 'E2E title', tool: 'set_title', args: { text: 'plugin ran' } },
+      },
+      { done: { text: 'Title set by the plugin', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/page`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    await panel.evaluate(async () => {
+      await chrome.storage.local.set({
+        'browser-plugins': {
+          plugins: [
+            {
+              id: 'e2e-title-plugin',
+              name: 'E2E title',
+              description: 'Sets the page title',
+              version: '1.0.0',
+              enabled: true,
+              matches: [],
+              instructions: '',
+              tools: [
+                {
+                  name: 'set_title',
+                  description: 'Set the document title',
+                  parameters: { text: { type: 'string', required: true } },
+                  code: 'document.title = args.text; return document.title;',
+                },
+              ],
+              createdBy: 'user',
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          ],
+        },
+      });
+    });
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/page` })).at(-1)?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'target tab not found');
+
+    const seen = await runTask(panel, tabId, 'Set the page title with the plugin', 'e2e-plugin-task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.ok(prompts[0]?.includes('E2E title'), 'the applicable plugin was not listed in the state message');
+    assert.equal(await target.title(), 'plugin ran');
+    await panel.evaluate(() => chrome.storage.local.remove('browser-plugins'));
     assert.deepEqual(pageErrors, []);
   });
 });

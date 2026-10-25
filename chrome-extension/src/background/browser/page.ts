@@ -32,7 +32,7 @@ import { PageTelemetry } from './page-telemetry';
 import type { ConsoleEntry, ConsoleReadOptions, NetworkEntry, NetworkReadOptions } from './page-telemetry';
 import { centerOfBox, isInsideViewport, readJpegSizeFromBase64, screenshotPointToCss } from './page-pointer';
 import type { Point, Size } from './page-pointer';
-import { formatEvaluationResponse, JS_EVALUATION_TIMEOUT_MS, withTimeout } from './page-script';
+import { JS_EVALUATION_TIMEOUT_MS, truncateResult, withTimeout } from './page-script';
 import type { EvaluationOutcome } from './page-script';
 import {
   clickWithFallback,
@@ -1049,25 +1049,13 @@ export default class Page {
   /** Runs a script in the page's main world. Failures are reported as text, not thrown. */
   async evaluateScript(script: string, timeoutMs = JS_EVALUATION_TIMEOUT_MS): Promise<EvaluationOutcome> {
     const page = this._requirePuppeteerPage();
-    const session = await page.createCDPSession();
-    let outcome: EvaluationOutcome;
     try {
-      const evaluation = session.send('Runtime.evaluate', {
-        expression: script,
-        awaitPromise: true,
-        returnByValue: true,
-      });
-      // A promise that never settles keeps running after the race ends, so stop the isolate too.
-      const response = await withTimeout(evaluation, timeoutMs, () => {
-        session.send('Runtime.terminateExecution').catch(() => {});
-      });
-      outcome = formatEvaluationResponse(response);
+      // Runs on the page's existing connection in the main world. Opening a second CDP session here never completed in the e2e run.
+      const value: unknown = await withTimeout(page.evaluate(script), timeoutMs, () => {});
+      return { ok: true, text: truncateResult(JSON.stringify(value) ?? String(value)) };
     } catch (error) {
-      outcome = { ok: false, text: error instanceof Error ? error.message : String(error) };
-    } finally {
-      await session.detach().catch(() => {});
+      return { ok: false, text: truncateResult(error instanceof Error ? error.message : String(error)) };
     }
-    return outcome;
   }
 
   async setViewportSize(size: Size, mobile: boolean): Promise<void> {

@@ -6,3 +6,5 @@ export * from './speechToText';
 export * from './analyticsSettings';
 export * from './mcpBridge';
 export * from './jev';
+export * from './browserPlugins';
+export * from './browserPluginValidation';

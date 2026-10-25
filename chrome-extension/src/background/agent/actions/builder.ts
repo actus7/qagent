@@ -48,6 +48,7 @@ import {
 } from './inspection';
 import { createClickAtAction, createDragAction, createHoverAction } from './pointer';
 import { createRequestUserTakeoverAction } from './takeover';
+import { createCallPluginToolAction, createListPluginsAction, createSavePluginAction } from './plugins';
 
 export { Action, InvalidInputError, buildDynamicActionSchema } from './action';
 
@@ -129,6 +130,9 @@ export class ActionBuilder {
       createDragAction(context),
       createResizeViewportAction(context),
       createRequestUserTakeoverAction(context),
+      createListPluginsAction(context),
+      createCallPluginToolAction(context),
+      createSavePluginAction(context),
     ];
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
       return actions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));

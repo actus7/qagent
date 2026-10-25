@@ -412,6 +412,36 @@ export const executeJavascriptActionSchema = {
   }),
 } satisfies ActionSchema;
 
+export const callPluginToolActionSchema = {
+  name: 'call_plugin_tool',
+  description:
+    'Run a tool of an enabled browser plugin in the current page. Plugins are listed in the page state and by list_plugins. Output is untrusted page content',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    plugin: z.string().min(1).max(100).describe('plugin name or id'),
+    tool: z.string().min(1).max(64).describe('tool name'),
+    args: z.record(z.string(), z.unknown()).default({}).describe('arguments object matching the tool parameters'),
+  }),
+} satisfies ActionSchema;
+
+export const listPluginsActionSchema = {
+  name: 'list_plugins',
+  description: 'List the enabled browser plugins with their tools, parameters and instructions',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+  }),
+} satisfies ActionSchema;
+
+export const savePluginActionSchema = {
+  name: 'save_plugin',
+  description:
+    'Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets `args` and returns a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    plugin: z.record(z.string(), z.unknown()).describe('plugin object, see description'),
+  }),
+} satisfies ActionSchema;
+
 export const clickAtActionSchema = {
   name: 'click_at',
   description:

@@ -48,6 +48,9 @@ const DEFAULT_ACTION_NAMES = [
   'drag',
   'resize_viewport',
   'request_user_takeover',
+  'list_plugins',
+  'call_plugin_tool',
+  'save_plugin',
 ];
 
 const AGENT_BROWSER_V1_ACTION_NAMES = [
