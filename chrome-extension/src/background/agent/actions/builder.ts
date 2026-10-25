@@ -107,6 +107,28 @@ const AGENT_BROWSER_V1_ALLOWED_ACTIONS = new Set([
   'cache_content',
 ]);
 
+// Needs chrome.debugger (CDP input, console and network telemetry, full-page capture, captcha frames) or is not
+// implemented by the content-script engine. Removed from the list there, as AGENT_BROWSER_V1_ALLOWED_ACTIONS does.
+const CONTENT_SCRIPT_UNSUPPORTED_ACTIONS = new Set([
+  'click_at',
+  'hover',
+  'drag',
+  'read_console_messages',
+  'read_network_requests',
+  'resize_viewport',
+  'screenshot',
+  'read_theme',
+  'audit_contrast',
+  'page_info',
+  'find_progress',
+  'wait_for_element',
+  'switch_frame',
+  'list_site_tools',
+  'call_site_tool',
+  'find_captcha',
+  'solve_captcha',
+]);
+
 export class ActionBuilder {
   private readonly context: AgentContext;
 
@@ -195,8 +217,12 @@ export class ActionBuilder {
       createMapSiteAction(context),
       createRunWorkflowAction(context, name => actions.find(action => action.name() === name)),
     ];
-    if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
+    const engine = this.context.browserContext.getEngineName();
+    if (engine === 'agent-browser-v1') {
       return actions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));
+    }
+    if (engine === 'content-script') {
+      return actions.filter(action => !CONTENT_SCRIPT_UNSUPPORTED_ACTIONS.has(action.name()));
     }
     return actions;
   }

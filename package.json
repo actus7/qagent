@@ -13,6 +13,8 @@
     "clean:install": "pnpm clean:node_modules && pnpm install --frozen-lockfile",
     "build": "pnpm clean:bundle && turbo ready && turbo build",
     "zip": "pnpm build && pnpm -F zipper zip",
+    "build:firefox": "cross-env __FIREFOX__=true pnpm build",
+    "zip:firefox": "cross-env __FIREFOX__=true pnpm zip",
     "dev": "bash scripts/dev.sh",
     "dev:watch": "turbo ready && cross-env __DEV__=true turbo watch dev --concurrency 20",
     "e2e": "pnpm build && node --test e2e/extension.test.mjs",

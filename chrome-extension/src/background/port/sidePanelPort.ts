@@ -6,6 +6,7 @@ import {
 } from '@extension/shared';
 import { sendOverlayMessage } from '../overlay/overlayMessaging';
 import { createLogger } from '../log';
+import { openAgentPanel } from '../services/agent-panel';
 import { browserContext, isAgentBrowserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 import { cancelActiveTask } from '../task/taskRunner';
@@ -15,6 +16,13 @@ const logger = createLogger('background');
 const SIDE_PANEL_URL = chrome.runtime.getURL('side-panel/index.html');
 
 export function setupSidePanelBehavior(): void {
+  if (!chrome.sidePanel) {
+    // Firefox has no side panel: the toolbar button opens the sidebar_action instead.
+    chrome.action.onClicked.addListener(tab => {
+      openAgentPanel(tab.windowId).catch(error => logger.warning('Could not open the sidebar', error));
+    });
+    return;
+  }
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(error => logger.error(error));
 }
 

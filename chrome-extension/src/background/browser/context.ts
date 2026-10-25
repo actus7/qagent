@@ -1,10 +1,5 @@
 import 'webextension-polyfill';
-import {
-  type BrowserContextConfig,
-  type BrowserState,
-  DEFAULT_BROWSER_CONTEXT_CONFIG,
-  type TabInfo,
-} from './views';
+import { type BrowserContextConfig, type BrowserState, DEFAULT_BROWSER_CONTEXT_CONFIG, type TabInfo } from './views';
 import Page, { build_initial_state } from './page';
 import { createLogger } from '@src/background/log';
 import { analytics } from '../services/analytics';
@@ -58,7 +53,12 @@ export default class BrowserContext implements BrowserContextLike {
       this._attachedPages.delete(tab.id);
     }
     logger.info('getOrCreatePage', tab.id, 'creating new page');
-    return new Page(tab.id, tab.url || '', tab.title || '', this._config);
+    return this.createPage(tab.id, tab.url || '', tab.title || '');
+  }
+
+  /** Engine hook: the content-script engine overrides this to hand out pages that never touch chrome.debugger. */
+  protected createPage(tabId: number, url: string, title: string): BrowserPageLike {
+    return new Page(tabId, url, title, this._config);
   }
 
   public async cleanup(): Promise<void> {

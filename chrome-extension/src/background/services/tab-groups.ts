@@ -52,6 +52,8 @@ export class TaskTabGroups {
   }
 
   private enqueue(job: () => Promise<void>): Promise<void> {
+    // Firefox has no tab groups: there is nothing to keep in sync.
+    if (!chrome.tabGroups) return Promise.resolve();
     const run = this.queue.then(job).catch(error => {
       logger.warning('Tab group update skipped', error);
     });

@@ -91,7 +91,11 @@ export class Executor {
     context.taskFiles = indexFileAttachments(extraArgs?.attachments);
     this.tasks.push(task);
     this.reportStyle = reportStyleFor(task);
-    this.navigatorPrompt = new NavigatorPrompt(context.options.maxActionsPerStep, this.reportStyle);
+    this.navigatorPrompt = new NavigatorPrompt(
+      context.options.maxActionsPerStep,
+      this.reportStyle,
+      context.browserContext.getEngineName(),
+    );
     this.plannerPrompt = new PlannerPrompt(this.reportStyle);
 
     const actionBuilder = new ActionBuilder(context);

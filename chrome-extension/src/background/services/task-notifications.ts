@@ -3,6 +3,7 @@ import { t } from '@extension/i18n';
 import { ExecutionState } from '../agent/event/types';
 import { createLogger } from '../log';
 import { runtimeStore } from '../state/runtimeStore';
+import { openAgentPanel } from './agent-panel';
 
 const logger = createLogger('background');
 const NOTIFICATION_ICON = 'icon-128.png';
@@ -65,7 +66,7 @@ export function registerTaskNotificationClicks(): void {
       if (window.id === undefined) return;
       await chrome.windows.update(window.id, { focused: true });
       // Chrome may refuse opening the panel without a user gesture; the window is still focused then.
-      await chrome.sidePanel.open({ windowId: window.id }).catch(() => undefined);
+      await openAgentPanel(window.id).catch(() => undefined);
     })().catch(error => logger.error('Failed to handle the notification click:', error));
   });
 }

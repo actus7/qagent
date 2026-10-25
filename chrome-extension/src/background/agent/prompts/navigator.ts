@@ -8,6 +8,11 @@ import {
   NAVIGATOR_QA_DONE_RULES,
 } from './templates/navigator';
 import type { ReportStyle } from '../task-kind';
+import type { BrowserEngineName } from '../../browser/types';
+
+/** Only the content-script engine needs a note: its action list lacks the debugger-backed tools the template describes. */
+const CONTENT_SCRIPT_NOTE =
+  'This browser has no debugger. click_at, hover, drag, read_console_messages, read_network_requests, resize_viewport, screenshot, read_theme, audit_contrast, page_info, find_progress, wait_for_element, switch_frame, WebMCP tools and captcha tools are not available. Use click, fill, press, scroll, get_text and execute_javascript instead.';
 
 export class NavigatorPrompt extends BasePrompt {
   private systemMessage: SystemModelMessage;
@@ -15,6 +20,7 @@ export class NavigatorPrompt extends BasePrompt {
   constructor(
     private readonly maxActionsPerStep = 10,
     reportStyle: ReportStyle = 'qa',
+    browserEngine: BrowserEngineName = 'chrome-debugger',
   ) {
     super();
 
@@ -25,7 +31,13 @@ export class NavigatorPrompt extends BasePrompt {
       .replace('{{max_actions}}', this.maxActionsPerStep.toString())
       .replace('{{done_rules}}', doneRules)
       .trim();
-    this.systemMessage = systemMessage(formattedPrompt);
+    const withEngineNote =
+      browserEngine === 'content-script'
+        ? `${formattedPrompt}
+
+${CONTENT_SCRIPT_NOTE}`
+        : formattedPrompt;
+    this.systemMessage = systemMessage(withEngineNote);
   }
 
   getSystemMessage(): SystemModelMessage {

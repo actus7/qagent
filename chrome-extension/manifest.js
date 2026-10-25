@@ -27,12 +27,12 @@ function withSidePanel(manifest) {
 }
 
 /**
- * Adds Opera sidebar support using the sidebar_action API.
+ * Adds the sidebar_action API: Opera's sidebar, and Firefox's side panel (Firefox has no sidePanel).
  * This is compatible with Chrome extensions and won't break Chrome Web Store validation.
  */
-function withOperaSidebar(manifest) {
-  // Only add Opera sidebar_action if building specifically for Opera
-  if (isFirefox || !isOpera) {
+function withSidebarAction(manifest) {
+  // Chromium builds get neither sidebar_action nor its manifest key.
+  if (!isFirefox && !isOpera) {
     return manifest;
   }
 
@@ -49,7 +49,7 @@ function withOperaSidebar(manifest) {
  * After changing, please reload the extension at `chrome://extensions`
  * @type {chrome.runtime.ManifestV3}
  */
-const manifest = withOperaSidebar(
+const manifest = withSidebarAction(
   withSidePanel({
     manifest_version: 3,
     default_locale: 'pt_BR',

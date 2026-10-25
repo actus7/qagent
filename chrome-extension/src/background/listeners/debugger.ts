@@ -7,6 +7,8 @@ const logger = createLogger('background');
 // Listen for debugger detached event
 // if canceled_by_user, remove the tab from the browser context
 export function registerDebuggerListener(): void {
+  // Firefox has no chrome.debugger; the content-script engine never attaches one.
+  if (!chrome.debugger) return;
   chrome.debugger.onDetach.addListener(async (source, reason) => {
     if (isAgentBrowserContext(browserContext)) {
       return;

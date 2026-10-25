@@ -34,7 +34,8 @@ export interface RawChallenge {
   tiles: Array<{ label: number; x: number; y: number; width: number; height: number }>;
 }
 
-export type BrowserEngineName = 'chrome-debugger' | 'agent-browser-v1';
+// content-script: no chrome.debugger (Firefox). Pages are driven with chrome.scripting and chrome.tabs.
+export type BrowserEngineName = 'chrome-debugger' | 'agent-browser-v1' | 'content-script';
 
 export interface BrowserPageLike {
   tabId: number;

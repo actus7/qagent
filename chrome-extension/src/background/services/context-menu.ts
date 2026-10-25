@@ -7,6 +7,7 @@ import {
   type ContextPrefillPayload,
 } from '@extension/shared';
 import { createLogger } from '../log';
+import { openAgentPanel } from './agent-panel';
 
 const logger = createLogger('background');
 
@@ -21,7 +22,10 @@ interface ContextClickInfo {
 }
 
 /** Builds and validates the prefill. Returns null when the click has no usable tab. */
-export function buildContextPrefill(info: ContextClickInfo, tab: chrome.tabs.Tab | undefined): ContextPrefillPayload | null {
+export function buildContextPrefill(
+  info: ContextClickInfo,
+  tab: chrome.tabs.Tab | undefined,
+): ContextPrefillPayload | null {
   if (tab?.id === undefined) return null;
   const selection = info.selectionText?.trim();
   const payload: ContextPrefillPayload = {
@@ -55,7 +59,7 @@ async function handleAskClick(info: ContextClickInfo, tab: chrome.tabs.Tab | und
   }
   // sidePanel.open needs the user gesture, so it is called before any other await.
   if (tab?.windowId !== undefined) {
-    chrome.sidePanel.open({ windowId: tab.windowId }).catch(error => logger.warning('Ask QAgent: open failed', error));
+    openAgentPanel(tab.windowId).catch(error => logger.warning('Ask QAgent: open failed', error));
   }
   try {
     await deliverContextPrefill(payload);
