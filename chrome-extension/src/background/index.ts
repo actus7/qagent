@@ -14,6 +14,8 @@ import { loadManagedPolicy, registerManagedPolicyListener } from './services/man
 import { registerMcpBridge } from './services/mcpBridge/client';
 import { registerScheduleListeners } from './services/scheduling/register';
 import { registerWorkflowRecording } from './services/workflowRecording';
+import { registerDownloadListeners } from './services/downloads';
+import { registerMonitorListeners } from './services/monitors';
 
 // Service-worker composition root. Chrome requires listeners to be registered synchronously at
 // top level, so every register* call below runs during evaluation, never inside an async callback.
@@ -33,6 +35,8 @@ registerSidePanelPortListener();
 registerContextMenu();
 registerScheduleListeners();
 registerWorkflowRecording();
+registerDownloadListeners();
+registerMonitorListeners();
 
 registerTaskNotificationClicks();
 

@@ -28,7 +28,11 @@ export function createPageInfoAction(context: AgentContext) {
       const msg = t('act_pageInfo_ok');
       context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
       const text = formatPageInfo(facts, { maxPerKind: input.max_per_kind, geometry: input.geometry });
-      return new ActionResult({ extractedContent: wrapUntrustedContent(text), includeInMemory: true });
+      // Site tools are only counted here; list_site_tools gives their names and schemas.
+      const site = page.listSiteTools ? await page.listSiteTools().catch(() => null) : null;
+      const siteNote =
+        site && site.tools.length > 0 ? `\nSite tools (WebMCP): ${site.tools.length}; see list_site_tools` : '';
+      return new ActionResult({ extractedContent: wrapUntrustedContent(text + siteNote), includeInMemory: true });
     } catch (error) {
       return actionFailedResult(context, error);
     }

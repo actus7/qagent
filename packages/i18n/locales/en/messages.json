@@ -1907,6 +1907,144 @@
       "url": { "content": "$2", "example": "https://example.com/embed" }
     }
   },
+  "act_screenshot_start": { "message": "Capturing the full page" },
+  "act_screenshot_ok": {
+    "message": "Full-page screenshot $WIDTH$ x $HEIGHT$ px ($METHOD$), saved to the report",
+    "placeholders": {
+      "width": { "content": "$1", "example": "1280" },
+      "height": { "content": "$2", "example": "3000" },
+      "method": { "content": "$3", "example": "cdp" }
+    }
+  },
+  "act_screenshot_cut": { "message": "The page is taller than the capture limit, so its bottom part is missing." },
+  "act_theme_start": { "message": "Reading the page theme" },
+  "act_theme_ok": { "message": "Theme read" },
+  "act_contrast_start": { "message": "Checking text contrast" },
+  "act_contrast_ok": {
+    "message": "Checked $CHECKED$ text elements; $FAILING$ below WCAG AA",
+    "placeholders": {
+      "checked": { "content": "$1", "example": "120" },
+      "failing": { "content": "$2", "example": "3" }
+    }
+  },
+  "act_download_start": {
+    "message": "Clicking $TARGET$ and waiting for the download",
+    "placeholders": {
+      "target": { "content": "$1", "example": "Get CSV" }
+    }
+  },
+  "act_download_ok": {
+    "message": "Downloaded $FILE$",
+    "placeholders": {
+      "file": { "content": "$1", "example": "report.csv" }
+    }
+  },
+  "act_download_none": {
+    "message": "No download finished within $SECONDS$ s",
+    "placeholders": {
+      "seconds": { "content": "$1", "example": "30" }
+    }
+  },
+  "act_download_interrupted": {
+    "message": "The download of $FILE$ was interrupted",
+    "placeholders": {
+      "file": { "content": "$1", "example": "report.csv" }
+    }
+  },
+  "act_listDownloads_start": { "message": "Listing downloads" },
+  "act_listDownloads_none": { "message": "No downloads yet" },
+  "act_listDownloads_ok": {
+    "message": "$COUNT$ recent downloads",
+    "placeholders": {
+      "count": { "content": "$1", "example": "2" }
+    }
+  },
+  "act_uploadFile_path_ok": {
+    "message": "Attached the local file $PATH$ to element $INDEX$",
+    "placeholders": {
+      "path": { "content": "$1", "example": "/tmp/report.csv" },
+      "index": { "content": "$2", "example": "3" }
+    }
+  },
+  "act_siteTools_start": { "message": "Reading the site tools" },
+  "act_siteTools_none": { "message": "This page registers no site tools" },
+  "act_siteTools_ok": {
+    "message": "$COUNT$ site tools ($API$)",
+    "placeholders": {
+      "count": { "content": "$1", "example": "1" },
+      "api": { "content": "$2", "example": "navigator.modelContext" }
+    }
+  },
+  "act_siteToolCall_start": {
+    "message": "Calling site tool $NAME$",
+    "placeholders": {
+      "name": { "content": "$1", "example": "add_item" }
+    }
+  },
+  "act_siteToolCall_ok": {
+    "message": "Site tool $NAME$ returned",
+    "placeholders": {
+      "name": { "content": "$1", "example": "add_item" }
+    }
+  },
+  "act_captcha_start": { "message": "Looking for a captcha" },
+  "act_captcha_none": { "message": "No captcha widget on this page" },
+  "act_captcha_found": {
+    "message": "$COUNT$ captcha widget(s) found",
+    "placeholders": {
+      "count": { "content": "$1", "example": "1" }
+    }
+  },
+  "act_solveCaptcha_start": { "message": "Solving the captcha" },
+  "act_solveCaptcha_ok": {
+    "message": "Captcha $STATUS$ after $ROUNDS$ round(s). $NOTE$",
+    "placeholders": {
+      "status": { "content": "$1", "example": "solved" },
+      "rounds": { "content": "$2", "example": "0" },
+      "note": { "content": "$3", "example": "Captcha solved" }
+    }
+  },
+  "act_monitor_start": {
+    "message": "Watching $SELECTOR$ for changes",
+    "placeholders": {
+      "selector": { "content": "$1", "example": "#feed" }
+    }
+  },
+  "act_monitor_started": {
+    "message": "Monitor $ID$ is watching $SELECTOR$",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" },
+      "selector": { "content": "$2", "example": "#feed" }
+    }
+  },
+  "act_monitor_none": { "message": "No monitors" },
+  "act_monitor_status_start": { "message": "Checking monitors" },
+  "act_monitor_status_ok": { "message": "Monitor state read" },
+  "act_monitor_await_start": {
+    "message": "Waiting for monitor $ID$",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" }
+    }
+  },
+  "act_monitor_unknown": {
+    "message": "No monitor with id $ID$",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" }
+    }
+  },
+  "act_monitor_stop_start": {
+    "message": "Stopping monitor $ID$",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" }
+    }
+  },
+  "act_monitor_stop_ok": {
+    "message": "Monitor $ID$ stopped",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" }
+    }
+  },
+  "bg_notify_monitorTitle": { "message": "Page changed" },
   "act_getText_chunk": {
     "message": "[text $FROM$-$TO$ of $TOTAL$ characters]",
     "placeholders": {

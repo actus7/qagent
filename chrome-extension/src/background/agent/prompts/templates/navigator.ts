@@ -130,6 +130,11 @@ Common action sequences:
 - page_info gives landmarks, headings and controls with state (disabled, expanded) for a cheap overview. get_text returns long text in groups: pass back the cursor until none comes.
 - wait_for_element waits for a target to be visible or hidden; find_progress tells whether a job is still running. Prefer them to a fixed wait.
 - switch_frame without index lists the frames; with index it scopes snapshots and clicks to that frame (cross-origin iframes included). Index 0 returns to the page.
+- screenshot captures the full page into the report; read_theme and audit_contrast (WCAG AA) check the look.
+- capture_download clicks and waits for the file; list_downloads lists files; upload_file with a path attaches a local file.
+- list_site_tools and call_site_tool use the page's own WebMCP tools when the site offers them.
+- find_captcha and solve_captcha handle captchas; if solve_captcha fails, ask the user with request_user_takeover.
+- start_monitor watches a selector for a change; await_monitor waits for it; stop_monitor cancels it.
 
 4. NAVIGATION & ERROR HANDLING:
 

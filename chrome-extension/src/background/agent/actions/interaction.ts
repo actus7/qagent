@@ -353,6 +353,21 @@ export function createUploadFileAction(context: AgentContext) {
         return new ActionResult({ error: msg, includeInMemory: true });
       }
       if (!page.getDomElementBySelector(`@e${input.index}`)) return elementNotExistResult(context, input.index);
+      // A local path (e.g. a download) is handed to the browser as is; no bytes pass through the extension.
+      if (input.path) {
+        const msg = t('act_uploadFile_path_ok', [input.path, input.index.toString()]);
+        try {
+          if (!page.uploadFileByPath)
+            return new ActionResult({ error: t('act_uploadFile_unsupported'), includeInMemory: true });
+          await page.uploadFileByPath(`@e${input.index}`, input.path);
+        } catch (error) {
+          const failed = t('act_uploadFile_fail', [input.path, error instanceof Error ? error.message : String(error)]);
+          context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, failed);
+          return new ActionResult({ error: failed, includeInMemory: true });
+        }
+        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
+        return new ActionResult({ extractedContent: msg, includeInMemory: true });
+      }
       // Binary attachments come from the user's task files; text content is the fallback
       const attached = input.attachment ? context.taskFiles.get(input.attachment) : undefined;
       const fileName = input.attachment || input.file_name;

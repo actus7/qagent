@@ -6,6 +6,10 @@ import type { EvaluationOutcome } from './page-script';
 import type { PageFacts, PageInfoOptions } from './page-info';
 import type { ProgressReport } from './progress';
 import type { TargetSpec, TargetState } from './target-resolver';
+import type { ContrastFinding } from './contrast';
+import type { CaptchaWidgetView } from '../services/captcha-solver';
+import type { ThemeReport } from './page-visual';
+import type { SiteToolDescriptor } from './site-tools';
 
 export interface FrameSummary {
   index: number;
@@ -13,6 +17,21 @@ export interface FrameSummary {
   name: string;
   crossOrigin: boolean;
   focused: boolean;
+}
+
+export interface FullPageCapture {
+  base64: string;
+  width: number;
+  height: number;
+  method: 'cdp' | 'tiles';
+  truncated: boolean;
+}
+
+export interface RawChallenge {
+  /** Base64 PNG of the challenge frame. */
+  image: string;
+  instruction: string;
+  tiles: Array<{ label: number; x: number; y: number; width: number; height: number }>;
 }
 
 export type BrowserEngineName = 'chrome-debugger' | 'agent-browser-v1';
@@ -83,6 +102,18 @@ export interface BrowserPageLike {
   waitForTarget?(target: TargetSpec, state: TargetState, timeoutMs: number): Promise<number>;
   listFrames?(): Promise<FrameSummary[]>;
   focusFrame?(index: number): Promise<FrameSummary>;
+  // Screenshot, WebMCP, theme, contrast, captcha and file upload. Chrome-debugger engine only.
+  captureFullPage?(): Promise<FullPageCapture>;
+  listSiteTools?(): Promise<{ api: string | null; tools: SiteToolDescriptor[] }>;
+  callSiteTool?(name: string, args: Record<string, unknown>, timeoutMs: number): Promise<string>;
+  readTheme?(): Promise<ThemeReport>;
+  auditContrast?(maxSamples: number): Promise<{ checked: number; failures: ContrastFinding[] }>;
+  captchaWidgets?(): Promise<CaptchaWidgetView[]>;
+  captchaSolved?(): Promise<boolean>;
+  clickCaptchaCheckbox?(frameIndex: number): Promise<void>;
+  captchaChallenge?(): Promise<RawChallenge | null>;
+  submitCaptchaTiles?(labels: number[]): Promise<void>;
+  uploadFileByPath?(selector: string, filePath: string): Promise<void>;
 }
 
 export interface BrowserContextLike {

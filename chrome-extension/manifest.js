@@ -72,6 +72,7 @@ const manifest = withOperaSidebar(
       'webNavigation',
       'notifications',
       'alarms',
+      'downloads',
     ],
     // Enterprise policy keys (chrome.storage.managed); see public/managed-schema.json.
     storage: {

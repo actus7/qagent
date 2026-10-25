@@ -60,6 +60,19 @@ const DEFAULT_ACTION_NAMES = [
   'web_fetch',
   'ask_user',
   'todo_write',
+  'screenshot',
+  'read_theme',
+  'audit_contrast',
+  'capture_download',
+  'list_downloads',
+  'list_site_tools',
+  'call_site_tool',
+  'find_captcha',
+  'solve_captcha',
+  'start_monitor',
+  'monitor_status',
+  'await_monitor',
+  'stop_monitor',
 ];
 
 const AGENT_BROWSER_V1_ACTION_NAMES = [

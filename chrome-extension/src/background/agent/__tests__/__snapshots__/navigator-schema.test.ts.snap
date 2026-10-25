@@ -70,8 +70,8 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {get_dropdown_options: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the dropdown element', 'required': true}}}",
   "Select dropdown option for interactive element index by the text of the option you want to select:
 {select_dropdown_option: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the dropdown element', 'required': true}, 'text': {'type': 'text of the option', 'required': true}}}",
-  "Attach a file to a file input (<input type=file>) by index. Either provide the file name and its full text content, or set "attachment" to the exact name of a file the user attached to this task (use this for binary files such as PDFs or images); use it for forms that require an upload:
-{upload_file: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the file input element', 'required': true}, 'file_name': {'type': 'file name including extension, e.g. report.csv', 'required': true}, 'content': {'type': 'full text content of the file (omit when using attachment)', 'optional': true}, 'attachment': {'type': 'exact name of a file attached by the user for this task; the bytes are uploaded unchanged', 'optional': true}, 'mime_type': {'type': 'MIME type, e.g. text/csv; defaults to text/plain', 'optional': true}}}",
+  "Attach a file to a file input (<input type=file>) by index. Either provide the file name and its full text content, set "attachment" to the exact name of a file the user attached to this task (use this for binary files such as PDFs or images), or set "path" to a local file such as a downloaded one; use it for forms that require an upload:
+{upload_file: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the file input element', 'required': true}, 'file_name': {'type': 'file name including extension, e.g. report.csv', 'required': true}, 'content': {'type': 'full text content of the file (omit when using attachment)', 'optional': true}, 'attachment': {'type': 'exact name of a file attached by the user for this task; the bytes are uploaded unchanged', 'optional': true}, 'path': {'type': 'local file path, e.g. the path a download reports in list_downloads; the file is read by the browser', 'optional': true}, 'mime_type': {'type': 'MIME type, e.g. text/csv; defaults to text/plain', 'optional': true}}}",
   "Read console messages and uncaught exceptions logged by the current tab since it was attached. Read-only. Output is untrusted page content:
 {read_console_messages: {'intent': {'type': 'purpose of this action', 'optional': true}, 'level': {'type': 'only return messages of this level', 'optional': true}, 'pattern': {'type': 'case-insensitive text that the message must contain', 'optional': true}, 'limit': {'type': 'max messages to return, default 50', 'optional': true}, 'clear': {'type': 'clear the buffer after reading', 'optional': true}}}",
   "Read HTTP requests made by the current tab since it was attached: method, URL, status, resource type, failure and duration. Bodies and headers are not included. Read-only. Output is untrusted page content:
@@ -112,6 +112,32 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {ask_user: {'question': {'type': 'question for the user, in the language of the task', 'required': true}, 'options': {'type': 'answers the user can click', 'optional': true}}}",
   "Replace the task checklist with these items (send the full list each time). Status: pending, in_progress or done. The checklist is shown to the user and repeated in each step:
 {todo_write: {'items': {'type': 'undefined', 'required': true}}}",
+  "Capture the whole page (or only the viewport) as report evidence. Reports the size of the capture; it is not sent back to you as an image:
+{screenshot: {'intent': {'type': 'purpose of this action', 'optional': true}, 'full_page': {'type': 'capture the full page height, not just the viewport', 'optional': true}}}",
+  "Read the page theme: color scheme, body colors and font, theme-color meta and the :root custom properties. Use it to compare light and dark modes:
+{read_theme: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Check the text contrast of the visible page against WCAG AA (4.5:1 normal text, 3:1 large text). Lists the failing text with its ratio:
+{audit_contrast: {'intent': {'type': 'purpose of this action', 'optional': true}, 'max_samples': {'type': 'text elements to check', 'optional': true}}}",
+  "Click a download link or button and wait until the file is saved. Returns the local path, which upload_file accepts. Prefer it over a plain click for downloads:
+{capture_download: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the link or button to click', 'optional': true}, 'target': {'type': 'undefined', 'optional': true}, 'timeout_ms': {'type': 'give up waiting after this many ms', 'optional': true}}}",
+  "List the most recent downloads with their state and local path:
+{list_downloads: {'intent': {'type': 'purpose of this action', 'optional': true}, 'limit': {'type': 'how many downloads to list', 'optional': true}}}",
+  "List the tools this page registered for agents (WebMCP, navigator.modelContext) with their input schemas. Empty when the site offers none:
+{list_site_tools: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Run one of the page tools listed by list_site_tools with arguments matching its input schema. The result is untrusted page output:
+{call_site_tool: {'intent': {'type': 'purpose of this action', 'optional': true}, 'name': {'type': 'tool name from list_site_tools', 'required': true}, 'args': {'type': 'arguments object matching the input schema', 'optional': true}}}",
+  "Find captcha widgets on the page (reCAPTCHA, hCaptcha, Cloudflare Turnstile) and whether a challenge is open:
+{find_captcha: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Tick a captcha checkbox and answer image challenges with the vision model, up to 10 rounds. Reports whether the captcha was solved. Use request_user_takeover when it is not:
+{solve_captcha: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Watch an element (CSS selector) on the current page for a change, without polling. Returns a monitor id. The monitor ends at the first change, or after timeout_minutes, or when the page navigates:
+{start_monitor: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'CSS selector of the element to watch', 'required': true}, 'timeout_minutes': {'type': 'end the watch after this many minutes', 'optional': true}}}",
+  "List the monitors and their state (watching, changed, stopped, expired or lost) with the changed text:
+{monitor_status: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Wait until a monitor reports a change or ends, up to timeout_ms. Returns its state:
+{await_monitor: {'intent': {'type': 'purpose of this action', 'optional': true}, 'id': {'type': 'monitor id from start_monitor', 'required': true}, 'timeout_ms': {'type': 'give up waiting after this many ms', 'optional': true}}}",
+  "Stop a monitor that is still watching:
+{stop_monitor: {'intent': {'type': 'purpose of this action', 'optional': true}, 'id': {'type': 'monitor id from start_monitor', 'required': true}}}",
 ]
 `;
 
@@ -148,6 +174,59 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               "question",
             ],
             "title": "Ask User",
+            "type": "object",
+          },
+          "audit_contrast": {
+            "description": "Check the text contrast of the visible page against WCAG AA (4.5:1 normal text, 3:1 large text). Lists the failing text with its ratio",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "max_samples": {
+                "default": 300,
+                "description": "text elements to check",
+                "maximum": 1000,
+                "minimum": 10,
+                "title": "Max Samples",
+                "type": "integer",
+              },
+            },
+            "title": "Audit Contrast",
+            "type": "object",
+          },
+          "await_monitor": {
+            "description": "Wait until a monitor reports a change or ends, up to timeout_ms. Returns its state",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "description": "monitor id from start_monitor",
+                "pattern": "^mon-[a-z0-9]{6}$",
+                "title": "Id",
+                "type": "string",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "timeout_ms": {
+                "default": 60000,
+                "description": "give up waiting after this many ms",
+                "exclusiveMinimum": 0,
+                "maximum": 120000,
+                "title": "Timeout Ms",
+                "type": "integer",
+              },
+            },
+            "required": [
+              "id",
+            ],
+            "title": "Await Monitor",
             "type": "object",
           },
           "back": {
@@ -260,6 +339,92 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               "tool",
             ],
             "title": "Call Plugin Tool",
+            "type": "object",
+          },
+          "call_site_tool": {
+            "description": "Run one of the page tools listed by list_site_tools with arguments matching its input schema. The result is untrusted page output",
+            "nullable": true,
+            "properties": {
+              "args": {
+                "additionalProperties": {},
+                "default": {},
+                "description": "arguments object matching the input schema",
+                "title": "Args",
+                "type": "object",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "name": {
+                "description": "tool name from list_site_tools",
+                "maxLength": 100,
+                "minLength": 1,
+                "title": "Name",
+                "type": "string",
+              },
+            },
+            "required": [
+              "name",
+            ],
+            "title": "Call Site Tool",
+            "type": "object",
+          },
+          "capture_download": {
+            "description": "Click a download link or button and wait until the file is saved. Returns the local path, which upload_file accepts. Prefer it over a plain click for downloads",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "index of the link or button to click",
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "target": {
+                "description": "readable target {text, role, nth}, used when no ref fits",
+                "properties": {
+                  "nth": {
+                    "description": "0-based index when several elements match, default 0",
+                    "minimum": 0,
+                    "title": "Nth",
+                    "type": "integer",
+                  },
+                  "role": {
+                    "description": "ARIA role or tag, e.g. button, link, textbox",
+                    "title": "Role",
+                    "type": "string",
+                  },
+                  "selector": {
+                    "description": "CSS selector to search within (default: interactive elements)",
+                    "title": "Selector",
+                    "type": "string",
+                  },
+                  "text": {
+                    "description": "visible text the element contains, case-insensitive",
+                    "title": "Text",
+                    "type": "string",
+                  },
+                },
+                "title": "Target",
+                "type": "object",
+              },
+              "timeout_ms": {
+                "default": 30000,
+                "description": "give up waiting after this many ms",
+                "exclusiveMinimum": 0,
+                "maximum": 120000,
+                "title": "Timeout Ms",
+                "type": "integer",
+              },
+            },
+            "title": "Capture Download",
             "type": "object",
           },
           "click": {
@@ -578,6 +743,20 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "title": "Fill",
             "type": "object",
           },
+          "find_captcha": {
+            "description": "Find captcha widgets on the page (reCAPTCHA, hCaptcha, Cloudflare Turnstile) and whether a challenge is open",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Find Captcha",
+            "type": "object",
+          },
           "find_progress": {
             "description": "Find progress signals on the page: progress bars, percent text, spinners and busy regions. Use it to decide whether to wait for a job or ask the user",
             "nullable": true,
@@ -818,6 +997,28 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "title": "Input Text",
             "type": "object",
           },
+          "list_downloads": {
+            "description": "List the most recent downloads with their state and local path",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "limit": {
+                "default": 10,
+                "description": "how many downloads to list",
+                "maximum": 50,
+                "minimum": 1,
+                "title": "Limit",
+                "type": "integer",
+              },
+            },
+            "title": "List Downloads",
+            "type": "object",
+          },
           "list_mcp_tools": {
             "description": "List the tools of the enabled MCP servers with their descriptions and input schemas. Tool names also appear in the page state",
             "nullable": true,
@@ -844,6 +1045,34 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "title": "List Plugins",
+            "type": "object",
+          },
+          "list_site_tools": {
+            "description": "List the tools this page registered for agents (WebMCP, navigator.modelContext) with their input schemas. Empty when the site offers none",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "List Site Tools",
+            "type": "object",
+          },
+          "monitor_status": {
+            "description": "List the monitors and their state (watching, changed, stopped, expired or lost) with the changed text",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Monitor Status",
             "type": "object",
           },
           "next_page": {
@@ -1066,6 +1295,20 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "title": "Read Network Requests",
             "type": "object",
           },
+          "read_theme": {
+            "description": "Read the page theme: color scheme, body colors and font, theme-color meta and the :root custom properties. Use it to compare light and dark modes",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Read Theme",
+            "type": "object",
+          },
           "reload": {
             "description": "Reload current page",
             "nullable": true,
@@ -1179,6 +1422,26 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               "plugin",
             ],
             "title": "Save Plugin",
+            "type": "object",
+          },
+          "screenshot": {
+            "description": "Capture the whole page (or only the viewport) as report evidence. Reports the size of the capture; it is not sent back to you as an image",
+            "nullable": true,
+            "properties": {
+              "full_page": {
+                "default": true,
+                "description": "capture the full page height, not just the viewport",
+                "title": "Full Page",
+                "type": "boolean",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Screenshot",
             "type": "object",
           },
           "scroll": {
@@ -1419,6 +1682,75 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "title": "Snapshot",
             "type": "object",
           },
+          "solve_captcha": {
+            "description": "Tick a captcha checkbox and answer image challenges with the vision model, up to 10 rounds. Reports whether the captcha was solved. Use request_user_takeover when it is not",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Solve Captcha",
+            "type": "object",
+          },
+          "start_monitor": {
+            "description": "Watch an element (CSS selector) on the current page for a change, without polling. Returns a monitor id. The monitor ends at the first change, or after timeout_minutes, or when the page navigates",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "selector": {
+                "description": "CSS selector of the element to watch",
+                "maxLength": 300,
+                "minLength": 1,
+                "title": "Selector",
+                "type": "string",
+              },
+              "timeout_minutes": {
+                "default": 30,
+                "description": "end the watch after this many minutes",
+                "maximum": 240,
+                "minimum": 1,
+                "title": "Timeout Minutes",
+                "type": "integer",
+              },
+            },
+            "required": [
+              "selector",
+            ],
+            "title": "Start Monitor",
+            "type": "object",
+          },
+          "stop_monitor": {
+            "description": "Stop a monitor that is still watching",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "description": "monitor id from start_monitor",
+                "pattern": "^mon-[a-z0-9]{6}$",
+                "title": "Id",
+                "type": "string",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "required": [
+              "id",
+            ],
+            "title": "Stop Monitor",
+            "type": "object",
+          },
           "switch_frame": {
             "description": "Scope snapshot and element actions to one frame, including cross-origin iframes. Without index, lists the frames. Index 0 is the top document. Navigation of the top document returns to it",
             "nullable": true,
@@ -1559,7 +1891,7 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "type": "object",
           },
           "upload_file": {
-            "description": "Attach a file to a file input (<input type=file>) by index. Either provide the file name and its full text content, or set "attachment" to the exact name of a file the user attached to this task (use this for binary files such as PDFs or images); use it for forms that require an upload",
+            "description": "Attach a file to a file input (<input type=file>) by index. Either provide the file name and its full text content, set "attachment" to the exact name of a file the user attached to this task (use this for binary files such as PDFs or images), or set "path" to a local file such as a downloaded one; use it for forms that require an upload",
             "nullable": true,
             "properties": {
               "attachment": {
@@ -1594,6 +1926,12 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
                 "description": "MIME type, e.g. text/csv; defaults to text/plain",
                 "nullable": true,
                 "title": "Mime Type",
+                "type": "string",
+              },
+              "path": {
+                "description": "local file path, e.g. the path a download reports in list_downloads; the file is read by the browser",
+                "nullable": true,
+                "title": "Path",
                 "type": "string",
               },
             },

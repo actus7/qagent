@@ -8,7 +8,7 @@ const logger = createLogger('background');
 const NOTIFICATION_ICON = 'icon-128.png';
 const MAX_BODY_CHARS = 160;
 
-export type TaskAttentionEvent = 'completed' | 'failed';
+export type TaskAttentionEvent = 'completed' | 'failed' | 'monitor';
 
 export interface NotificationDecision {
   enabled: boolean;
@@ -34,6 +34,7 @@ export function attentionEventForState(state: string): TaskAttentionEvent | null
 const TITLE_KEYS = {
   completed: 'bg_notify_completedTitle',
   failed: 'bg_notify_failedTitle',
+  monitor: 'bg_notify_monitorTitle',
 } as const satisfies Record<TaskAttentionEvent, string>;
 
 export async function notifyTaskAttention(event: TaskAttentionEvent, details: string): Promise<void> {

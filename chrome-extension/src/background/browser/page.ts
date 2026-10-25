@@ -58,7 +58,22 @@ import {
 } from './target-resolver';
 import { collectPageFacts, PAGE_INFO_MAX_HEADINGS, type PageFacts, type PageInfoOptions } from './page-info';
 import { collectProgressSignals, type ProgressReport } from './progress';
-import type { FrameSummary } from './types';
+import type { FrameSummary, FullPageCapture, RawChallenge } from './types';
+import { CAPTCHA_VENDORS, inspectCaptchaFrame, matchCaptchaVendor, type CaptchaVendor } from './captcha-vendors';
+import { auditContrastSamples, type ContrastSample } from './contrast';
+import { captureHeightFor, planScreenshotTiles } from './screenshot-tiles';
+import { stitchTiles } from './screenshot-stitch';
+import {
+  collectContrastSamplesInPage,
+  CONTRAST_SCAN_LIMIT,
+  readThemeInPage,
+  THEME_VARIABLE_LIMIT,
+  toContrastSamples,
+  type ThemeReport,
+} from './page-visual';
+import { captchaTokenInPage, readChallengeTilesInPage } from './page-captcha';
+import { callSiteToolInPage, parseSiteToolList, readSiteToolsInPage, type SiteToolDescriptor } from './site-tools';
+import type { CaptchaWidgetView } from '../services/captcha-solver';
 
 const TARGET_POLL_MS = 250;
 const PROGRESS_TEXT_CHARS = 80;
@@ -78,6 +93,11 @@ const logger = createLogger('Page');
 interface InputTextBySelectorOptions {
   clearBeforeTyping?: boolean;
 }
+
+type ContrastAudit = ReturnType<typeof auditContrastSamples>;
+
+const OVERLAY_HOST_ID = 'qagent-overlay-host';
+const CAPTURE_SETTLE_MS = 120;
 
 export default class Page {
   private _tabId: number;
@@ -162,7 +182,8 @@ export default class Page {
       this._puppeteerPage = page;
       page.on('dialog', dialog => this._handleDialog(dialog));
       page.on('framenavigated', frame => {
-        if (frame === page.mainFrame()) this._focusedFrame = null;
+        // The focused frame loading new content is a different document: the agent must re-select it.
+        if (frame === page.mainFrame() || frame === this._focusedFrame) this._focusedFrame = null;
       });
       this._telemetry.attach(page);
 
@@ -1293,6 +1314,188 @@ export default class Page {
     } finally {
       await page.mouse.up();
     }
+  }
+
+  /**
+   * Whole-page screenshot. CDP captureBeyondViewport first (one image, no scrolling); when the debugger refuses,
+   * the page is scrolled through viewport tiles and stitched. The agent overlay is hidden for the capture.
+   */
+  async captureFullPage(): Promise<FullPageCapture> {
+    const page = this._requirePuppeteerPage();
+    const metrics = await page.evaluate(() => ({
+      width: document.documentElement.scrollWidth,
+      height: document.documentElement.scrollHeight,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      scrollY: window.scrollY,
+    }));
+    const { height, truncated } = captureHeightFor(metrics.height);
+    await this._setOverlayHidden(true);
+    try {
+      try {
+        const shot = (await chrome.debugger.sendCommand({ tabId: this._tabId }, 'Page.captureScreenshot', {
+          format: 'png',
+          captureBeyondViewport: true,
+          clip: { x: 0, y: 0, width: metrics.width, height, scale: 1 },
+        })) as { data?: string };
+        if (!shot.data) throw new Error('empty capture');
+        return { base64: shot.data, width: metrics.width, height, method: 'cdp', truncated };
+      } catch (error) {
+        logger.warning('CDP full-page capture failed, stitching viewport tiles:', error);
+      }
+      const tiles = planScreenshotTiles(height, metrics.viewportHeight);
+      const base64 = await stitchTiles(
+        tiles,
+        {
+          grab: async scrollY => {
+            await page.evaluate(y => window.scrollTo(0, y), scrollY);
+            await new Promise(resolve => setTimeout(resolve, CAPTURE_SETTLE_MS));
+            return (await page.screenshot({ encoding: 'base64', type: 'png' })) as string;
+          },
+        },
+        { width: metrics.width, height, viewportWidth: metrics.viewportWidth },
+      );
+      await page.evaluate(y => window.scrollTo(0, y), metrics.scrollY);
+      return { base64, width: metrics.width, height, method: 'tiles', truncated };
+    } finally {
+      await this._setOverlayHidden(false);
+    }
+  }
+
+  private async _setOverlayHidden(hidden: boolean): Promise<void> {
+    await this._requirePuppeteerPage()
+      .evaluate(
+        (id, isHidden) => {
+          const host = document.getElementById(id);
+          if (host) host.style.display = isHidden ? 'none' : '';
+        },
+        OVERLAY_HOST_ID,
+        hidden,
+      )
+      .catch(() => undefined);
+  }
+
+  /** Tools the page registered through navigator.modelContext (WebMCP). Runs in the MAIN world. */
+  async listSiteTools(): Promise<{ api: string | null; tools: SiteToolDescriptor[] }> {
+    const [injected] = await chrome.scripting.executeScript({
+      target: { tabId: this._tabId },
+      world: 'MAIN',
+      func: readSiteToolsInPage,
+    });
+    const value = injected?.result;
+    if (!value) throw new Error('The page did not return its tool list');
+    if ('error' in value) throw new Error(value.error);
+    return { api: value.api, tools: parseSiteToolList(JSON.parse(value.json) as unknown) };
+  }
+
+  /** Runs one site tool. Resolves to the tool's JSON result text. */
+  async callSiteTool(name: string, args: Record<string, unknown>, timeoutMs: number): Promise<string> {
+    const [injected] = await chrome.scripting.executeScript({
+      target: { tabId: this._tabId },
+      world: 'MAIN',
+      func: callSiteToolInPage,
+      args: [name, args, timeoutMs],
+    });
+    const value = injected?.result;
+    if (!value) throw new Error('The page did not return a result');
+    if (!value.ok) throw new Error(value.error);
+    return value.json;
+  }
+
+  async readTheme(): Promise<ThemeReport> {
+    return this._requirePuppeteerPage().evaluate(readThemeInPage, THEME_VARIABLE_LIMIT);
+  }
+
+  /** Text elements whose color pair fails WCAG AA. Colors are composited in Node, see page-visual.ts. */
+  async auditContrast(maxSamples: number): Promise<ContrastAudit> {
+    const raw = await this._requirePuppeteerPage().evaluate(
+      collectContrastSamplesInPage,
+      maxSamples,
+      CONTRAST_SCAN_LIMIT,
+    );
+    const samples: ContrastSample[] = toContrastSamples(raw);
+    return auditContrastSamples(samples);
+  }
+
+  /** Captcha widgets in the page: one per vendor frame that holds a checkbox. */
+  async captchaWidgets(): Promise<CaptchaWidgetView[]> {
+    const views: CaptchaWidgetView[] = [];
+    for (const [frameIndex, frame] of this._frameList().entries()) {
+      const spec = matchCaptchaVendor(frame.url());
+      if (!spec) continue;
+      const facts = await frame.evaluate(inspectCaptchaFrame, spec.checkboxSelector).catch(() => null);
+      if (!facts) continue;
+      const challengeOpen = await this._challengeFrameVisible(spec.vendor);
+      views.push({ frameIndex, vendor: spec.vendor, checkbox: facts.checkbox, checked: facts.checked, challengeOpen });
+    }
+    return views;
+  }
+
+  private async _challengeFrameVisible(vendor: CaptchaVendor): Promise<boolean> {
+    const challenge = CAPTCHA_VENDORS.find(item => item.vendor === vendor)?.challengeFrameUrl;
+    if (!challenge) return false;
+    const frame = this._frameList().find(item => challenge.test(item.url()));
+    const element = frame ? await frame.frameElement() : null;
+    const box = element ? await element.boundingBox() : null;
+    return box !== null && box.width > 0 && box.height > 0;
+  }
+
+  async captchaSolved(): Promise<boolean> {
+    if (await this._requirePuppeteerPage().evaluate(captchaTokenInPage)) return true;
+    return (await this.captchaWidgets()).some(widget => widget.checked);
+  }
+
+  /** Clicks a widget's checkbox through CDP, so the click is trusted. */
+  async clickCaptchaCheckbox(frameIndex: number): Promise<void> {
+    const frame = this._frameList()[frameIndex];
+    const spec = frame ? matchCaptchaVendor(frame.url()) : null;
+    if (!frame || !spec) throw new Error(`Frame ${frameIndex} is not a captcha widget`);
+    const box = await frame.$(spec.checkboxSelector);
+    if (!box) throw new Error(`The ${spec.vendor} checkbox is not in frame ${frameIndex}`);
+    await box.click();
+  }
+
+  /** The open reCAPTCHA image challenge, if any: a screenshot of its frame and the tile boxes inside it. */
+  async captchaChallenge(): Promise<RawChallenge | null> {
+    const frame = this._challengeFrame('recaptcha');
+    if (!frame || !(await this._challengeFrameVisible('recaptcha'))) return null;
+    const element = await frame.frameElement();
+    if (!element) return null;
+    const image = (await element.screenshot({ encoding: 'base64', type: 'png' })) as string;
+    const { instruction, tiles } = await frame.evaluate(readChallengeTilesInPage);
+    return { image, instruction, tiles: tiles.map((tile, index) => ({ label: index + 1, ...tile })) };
+  }
+
+  /** Clicks the tiles with these 1-based labels, then presses reCAPTCHA's verify button. */
+  async submitCaptchaTiles(labels: number[]): Promise<void> {
+    const frame = this._challengeFrame('recaptcha');
+    if (!frame) throw new Error('No captcha challenge is open');
+    const tiles = await frame.$$('.rc-imageselect-tile');
+    for (const label of labels) {
+      const tile = tiles[label - 1];
+      if (!tile) throw new Error(`Tile ${label} does not exist`);
+      await tile.click();
+    }
+    const verify = await frame.$('#recaptcha-verify-button');
+    if (!verify) throw new Error('The verify button is missing from the challenge');
+    await verify.click();
+  }
+
+  private _challengeFrame(vendor: CaptchaVendor): Frame | undefined {
+    const challenge = CAPTCHA_VENDORS.find(item => item.vendor === vendor)?.challengeFrameUrl;
+    return challenge ? this._frameList().find(item => challenge.test(item.url())) : undefined;
+  }
+
+  /** Attaches a file from a local path through CDP DOM.setFileInputFiles, e.g. a path from list_downloads. */
+  async uploadFileByPath(selector: string, filePath: string): Promise<void> {
+    const element = await this.getElementBySelector(selector);
+    if (!element) throw new Error(`Element not found for selector: ${selector}`);
+    const isFileInput = await element.evaluate(el => el instanceof HTMLInputElement && el.type === 'file');
+    if (!isFileInput) throw new Error(`Element ${selector} is not a file input`);
+    await chrome.debugger.sendCommand({ tabId: this._tabId }, 'DOM.setFileInputFiles', {
+      files: [filePath],
+      objectId: element.remoteObject().objectId,
+    });
   }
 
   private _requirePuppeteerPage(): PuppeteerPage {

@@ -59,6 +59,16 @@ import { createCallMcpToolAction, createListMcpToolsAction } from './mcp';
 import { createWebFetchAction } from './web-fetch';
 import { createAskUserAction } from './ask-user';
 import { createTodoWriteAction } from './todo';
+import { createScreenshotAction, createReadThemeAction, createAuditContrastAction } from './visual';
+import { createCaptureDownloadAction, createListDownloadsAction } from './downloads';
+import { createListSiteToolsAction, createCallSiteToolAction } from './site-tools';
+import { createFindCaptchaAction, createSolveCaptchaAction } from './captcha';
+import {
+  createAwaitMonitorAction,
+  createMonitorStatusAction,
+  createStartMonitorAction,
+  createStopMonitorAction,
+} from './monitor';
 
 export { Action, InvalidInputError, buildDynamicActionSchema } from './action';
 
@@ -152,6 +162,19 @@ export class ActionBuilder {
       createWebFetchAction(context),
       createAskUserAction(context),
       createTodoWriteAction(context),
+      createScreenshotAction(context),
+      createReadThemeAction(context),
+      createAuditContrastAction(context),
+      createCaptureDownloadAction(context),
+      createListDownloadsAction(context),
+      createListSiteToolsAction(context),
+      createCallSiteToolAction(context),
+      createFindCaptchaAction(context),
+      createSolveCaptchaAction(context),
+      createStartMonitorAction(context),
+      createMonitorStatusAction(context),
+      createAwaitMonitorAction(context),
+      createStopMonitorAction(context),
     ];
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
       return actions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));

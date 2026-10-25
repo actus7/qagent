@@ -55,6 +55,24 @@ const frameHostPage = origin => `<!doctype html><title>Frame host</title><h1 id=
 const INNER_PAGE = `<!doctype html><title>Inner frame</title>
 <button id="inner-go" onclick="this.textContent='inner clicked'">Inner go</button>`;
 
+// A page three times the viewport height, so a viewport-only capture would miss the bottom marker.
+const TALL_PAGE = `<!doctype html><title>Tall page</title><h1>Top</h1>
+<div style="height:3000px;background:linear-gradient(#fff,#9cf)">Bottom marker</div>`;
+// The link downloads a CSV from the server; the test checks the saved file name.
+const DOWNLOAD_PAGE = `<!doctype html><title>Download page</title><h1>Reports</h1>
+<a href="/file/report-e2e.csv">Get CSV</a>`;
+// A page that registers WebMCP tools on navigator.modelContext, with one tool that echoes its input.
+const SITE_TOOLS_PAGE = `<!doctype html><title>Site tools page</title><h1>Items</h1>
+<script>
+  navigator.modelContext = {
+    getTools: () => [{ name: 'add_item', description: 'Adds an item', inputSchema: { type: 'object' } }],
+    executeTool: (name, args) => ({ added: args.name, tool: name }),
+  };
+</script>`;
+// The watched text changes once, 1.5 s after load, which a monitor must report.
+const MONITOR_PAGE = `<!doctype html><title>Monitor page</title><div id="feed">v1</div>
+<script>setTimeout(() => (document.getElementById('feed').textContent = 'v2'), 1500);</script>`;
+
 // Index of the "Go" button in the snapshot the navigator receives.
 const goButtonIndex = prompt => Number(prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<button[^>]*>Go \/>/)?.[1]);
 
@@ -192,6 +210,29 @@ describe('extension e2e', { timeout: 300_000 }, () => {
   before(async () => {
     server = http.createServer((req, res) => {
       if (req.method === 'GET') {
+        if (req.url.startsWith('/file/report-e2e.csv')) {
+          res.writeHead(200, {
+            'content-type': 'text/csv',
+            'content-disposition': 'attachment; filename="report-e2e.csv"',
+          });
+          return res.end('name,total\nada,2\n');
+        }
+        if (req.url.startsWith('/tall')) {
+          res.writeHead(200, { 'content-type': 'text/html' });
+          return res.end(TALL_PAGE);
+        }
+        if (req.url.startsWith('/download-page')) {
+          res.writeHead(200, { 'content-type': 'text/html' });
+          return res.end(DOWNLOAD_PAGE);
+        }
+        if (req.url.startsWith('/site-tools')) {
+          res.writeHead(200, { 'content-type': 'text/html' });
+          return res.end(SITE_TOOLS_PAGE);
+        }
+        if (req.url.startsWith('/monitor')) {
+          res.writeHead(200, { 'content-type': 'text/html' });
+          return res.end(MONITOR_PAGE);
+        }
         if (req.url.startsWith('/missing-api')) {
           res.writeHead(404, { 'content-type': 'text/plain' });
           return res.end('not found');
@@ -981,6 +1022,128 @@ describe('extension e2e', { timeout: 300_000 }, () => {
     const inner = target.frames().find(frame => frame.url().includes('/inner'));
     assert.ok(inner, 'cross-origin frame not found');
     assert.equal(await inner.locator('#inner-go').textContent(), 'inner clicked');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('captures a full-page screenshot taller than the viewport', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      { screenshot: { intent: 'capture the page', full_page: true } },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/tall`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/tall` })).at(-1)?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'tall tab not found');
+
+    const seen = await runTask(panel, tabId, 'Capture the whole page', 'e2e-shot-task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    // screenshot is the first action, so its result arrives in the second prompt; the capture is ~3000 px tall
+    assert.match(prompts[1] ?? '', /\d+ x 3\d{3} px/, 'full-page capture height was not reported');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('captures a download link to completion and lists the saved file', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      {
+        capture_download: {
+          intent: 'download the csv',
+          target: { role: 'link', text: 'Get CSV' },
+          timeout_ms: 20000,
+        },
+      },
+      { list_downloads: { intent: 'list downloads' } },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/download-page`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/download-page` })).at(-1)?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'download tab not found');
+
+    const seen = await runTask(panel, tabId, 'Download the CSV report', 'e2e-download-task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.ok(seen.includes('navigator:act.ok'), 'capture_download did not finish ok');
+    // Playwright renames downloads to GUID file names, so the URL is what identifies the file.
+    assert.ok(prompts[2]?.includes('report-e2e.csv'), 'list_downloads did not list the captured file');
+    assert.ok(prompts[2]?.includes('complete'), 'list_downloads did not report the download as complete');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('lists the WebMCP tools of a page and calls one with call_site_tool', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      { list_site_tools: { intent: 'list the site tools' } },
+      { call_site_tool: { intent: 'add an item', name: 'add_item', args: { name: 'milk' } } },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/site-tools`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/site-tools` })).at(-1)?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'site tools tab not found');
+
+    const seen = await runTask(panel, tabId, 'Add milk with the page tool', 'e2e-webmcp-task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.ok(prompts[1]?.includes('add_item'), 'the page tool was not listed');
+    assert.ok(prompts[2]?.includes('milk'), 'the page tool result did not reach the model');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('reports a text change on a watched element through a monitor', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      { start_monitor: { intent: 'watch the feed', selector: '#feed', timeout_minutes: 5 } },
+      // The monitor id comes from the start_monitor result, which is in the prompt of this step.
+      prompt => ({
+        await_monitor: {
+          intent: 'wait for the change',
+          id: prompt.match(/mon-[a-z0-9]{6}/)?.[0] ?? '',
+          timeout_ms: 15000,
+        },
+      }),
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/monitor`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/monitor` })).at(-1)?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'monitor tab not found');
+
+    const seen = await runTask(panel, tabId, 'Tell me when the feed changes', 'e2e-monitor-task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.ok(prompts[2]?.includes('[changed]'), 'the monitor did not report the change');
+    assert.ok(prompts[2]?.includes('v2'), 'the changed text was not reported');
     assert.deepEqual(pageErrors, []);
   });
 });

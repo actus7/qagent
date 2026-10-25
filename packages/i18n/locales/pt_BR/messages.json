@@ -1907,6 +1907,144 @@
       "url": { "content": "$2", "example": "https://example.com/embed" }
     }
   },
+  "act_screenshot_start": { "message": "Capturando a página inteira" },
+  "act_screenshot_ok": {
+    "message": "Captura da página inteira $WIDTH$ x $HEIGHT$ px ($METHOD$), salva no relatório",
+    "placeholders": {
+      "width": { "content": "$1", "example": "1280" },
+      "height": { "content": "$2", "example": "3000" },
+      "method": { "content": "$3", "example": "cdp" }
+    }
+  },
+  "act_screenshot_cut": { "message": "A página é mais alta que o limite de captura, então a parte de baixo está faltando." },
+  "act_theme_start": { "message": "Lendo o tema da página" },
+  "act_theme_ok": { "message": "Tema lido" },
+  "act_contrast_start": { "message": "Verificando o contraste do texto" },
+  "act_contrast_ok": {
+    "message": "$CHECKED$ elementos de texto verificados; $FAILING$ abaixo do WCAG AA",
+    "placeholders": {
+      "checked": { "content": "$1", "example": "120" },
+      "failing": { "content": "$2", "example": "3" }
+    }
+  },
+  "act_download_start": {
+    "message": "Clicando em $TARGET$ e aguardando o download",
+    "placeholders": {
+      "target": { "content": "$1", "example": "Baixar CSV" }
+    }
+  },
+  "act_download_ok": {
+    "message": "Baixado $FILE$",
+    "placeholders": {
+      "file": { "content": "$1", "example": "relatorio.csv" }
+    }
+  },
+  "act_download_none": {
+    "message": "Nenhum download terminou em $SECONDS$ s",
+    "placeholders": {
+      "seconds": { "content": "$1", "example": "30" }
+    }
+  },
+  "act_download_interrupted": {
+    "message": "O download de $FILE$ foi interrompido",
+    "placeholders": {
+      "file": { "content": "$1", "example": "relatorio.csv" }
+    }
+  },
+  "act_listDownloads_start": { "message": "Listando downloads" },
+  "act_listDownloads_none": { "message": "Nenhum download ainda" },
+  "act_listDownloads_ok": {
+    "message": "$COUNT$ downloads recentes",
+    "placeholders": {
+      "count": { "content": "$1", "example": "2" }
+    }
+  },
+  "act_uploadFile_path_ok": {
+    "message": "Arquivo local $PATH$ anexado ao elemento $INDEX$",
+    "placeholders": {
+      "path": { "content": "$1", "example": "/tmp/relatorio.csv" },
+      "index": { "content": "$2", "example": "3" }
+    }
+  },
+  "act_siteTools_start": { "message": "Lendo as ferramentas do site" },
+  "act_siteTools_none": { "message": "Esta página não registra ferramentas do site" },
+  "act_siteTools_ok": {
+    "message": "$COUNT$ ferramentas do site ($API$)",
+    "placeholders": {
+      "count": { "content": "$1", "example": "1" },
+      "api": { "content": "$2", "example": "navigator.modelContext" }
+    }
+  },
+  "act_siteToolCall_start": {
+    "message": "Chamando a ferramenta do site $NAME$",
+    "placeholders": {
+      "name": { "content": "$1", "example": "add_item" }
+    }
+  },
+  "act_siteToolCall_ok": {
+    "message": "A ferramenta do site $NAME$ retornou",
+    "placeholders": {
+      "name": { "content": "$1", "example": "add_item" }
+    }
+  },
+  "act_captcha_start": { "message": "Procurando um captcha" },
+  "act_captcha_none": { "message": "Nenhum captcha nesta página" },
+  "act_captcha_found": {
+    "message": "$COUNT$ captcha(s) encontrado(s)",
+    "placeholders": {
+      "count": { "content": "$1", "example": "1" }
+    }
+  },
+  "act_solveCaptcha_start": { "message": "Resolvendo o captcha" },
+  "act_solveCaptcha_ok": {
+    "message": "Captcha $STATUS$ após $ROUNDS$ rodada(s). $NOTE$",
+    "placeholders": {
+      "status": { "content": "$1", "example": "solved" },
+      "rounds": { "content": "$2", "example": "0" },
+      "note": { "content": "$3", "example": "Captcha resolvido" }
+    }
+  },
+  "act_monitor_start": {
+    "message": "Observando $SELECTOR$ por mudanças",
+    "placeholders": {
+      "selector": { "content": "$1", "example": "#feed" }
+    }
+  },
+  "act_monitor_started": {
+    "message": "O monitor $ID$ observa $SELECTOR$",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" },
+      "selector": { "content": "$2", "example": "#feed" }
+    }
+  },
+  "act_monitor_none": { "message": "Nenhum monitor" },
+  "act_monitor_status_start": { "message": "Verificando monitores" },
+  "act_monitor_status_ok": { "message": "Estado dos monitores lido" },
+  "act_monitor_await_start": {
+    "message": "Aguardando o monitor $ID$",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" }
+    }
+  },
+  "act_monitor_unknown": {
+    "message": "Nenhum monitor com o id $ID$",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" }
+    }
+  },
+  "act_monitor_stop_start": {
+    "message": "Parando o monitor $ID$",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" }
+    }
+  },
+  "act_monitor_stop_ok": {
+    "message": "Monitor $ID$ parado",
+    "placeholders": {
+      "id": { "content": "$1", "example": "mon-abc123" }
+    }
+  },
+  "bg_notify_monitorTitle": { "message": "Página alterada" },
   "act_getText_chunk": {
     "message": "[texto $FROM$-$TO$ de $TOTAL$ caracteres]",
     "placeholders": {
