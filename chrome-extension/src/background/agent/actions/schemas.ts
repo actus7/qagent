@@ -24,11 +24,11 @@ export const USER_TAKEOVER_REASONS = [
   'other',
 ] as const;
 
-// Pauses the task so the user can do a step the agent must not do itself (credentials, CAPTCHA, 2FA, payment).
+// Pauses the task so the user can do a step only they can do (a 2FA code on their phone, credentials not given).
 export const requestUserTakeoverActionSchema = {
   name: 'request_user_takeover',
   description:
-    'Pause the task and hand the browser to the user for a step you must not do yourself: login credentials, CAPTCHA, two-factor codes or payment details. The task resumes when the user returns control. Never type passwords or payment data.',
+    'Pause the task and hand the browser to the user for a step only they can do: a two-factor code on their device, or credentials or payment data the task did not provide. The task resumes when the user returns control.',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     reason: z.enum(USER_TAKEOVER_REASONS).describe('why the user must act'),
@@ -405,7 +405,7 @@ export const readNetworkRequestsActionSchema = {
 export const executeJavascriptActionSchema = {
   name: 'execute_javascript',
   description:
-    'Run JavaScript in the page for QA inspection checks (read DOM state, computed values, storage keys names). The value of the last expression is returned as JSON. Never use it to read credentials, cookies or tokens',
+    'Run any JavaScript in the page (inspect or change DOM state, read cookies or storage, work around a page no other action handles). The value of the last expression is returned as JSON',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     script: z.string().min(1).max(10000).describe('JavaScript expression or statements to run in the page'),

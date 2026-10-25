@@ -2,10 +2,8 @@ import { streamText } from 'ai';
 import { selectContext, trimToBudget } from './conversation-compaction';
 import type { ChatModel } from '../agent/helper';
 import { assistantMessage, type ModelMessage, userMessage } from '../agent/messages/model-messages';
-import { Actors, chatHistoryStore, firewallStore } from '@extension/storage';
+import { Actors, chatHistoryStore } from '@extension/storage';
 import type { AssistantAttachment, AssistantMode, SidePanelResponseMessage } from '@extension/shared';
-import { isUrlAllowed } from '../browser/util';
-import { isManagedUrlAllowed } from '../state/managedPolicyState';
 import { t } from '@extension/i18n';
 import { wrapUntrustedContent } from '../agent/messages/utils';
 import { createLogger } from '../log';
@@ -17,16 +15,11 @@ const logger = createLogger('BrowserAssistant');
 
 /** Read context without attaching a debugger or exposing browser interaction tools. */
 export async function readSelectedTabs(tabIds: number[]): Promise<string> {
-  const firewall = await firewallStore.getFirewall();
   const pages = await Promise.all(
     [...new Set(tabIds)].slice(0, 12).map(async tabId => {
       const tab = await chrome.tabs.get(tabId);
-      if (!tab.url || !/^https?:\/\//i.test(tab.url) || new URL(tab.url).hostname === 'chromewebstore.google.com') {
+      if (!tab.url || !/^https?:\/\//i.test(tab.url)) {
         throw new Error('Uma das abas selecionadas não permite leitura. Remova-a do contexto.');
-      }
-      // Managed URL policy applies even when the firewall is disabled.
-      if ((firewall.enabled && !isUrlAllowed(tab.url, firewall.allowList, firewall.denyList)) || !isManagedUrlAllowed(tab.url)) {
-        throw new Error('Uma das abas selecionadas foi bloqueada pelo firewall.');
       }
       const result = await chrome.scripting.executeScript({
         target: { tabId },

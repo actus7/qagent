@@ -20,11 +20,11 @@ describe('native task tab scope', () => {
     vi.unstubAllGlobals();
   });
 
-  it('does not reveal unrelated tabs and applies the firewall to selected tabs', async () => {
-    const context = new ScopedBrowserContext({ deniedUrls: ['blocked.example.com'] });
+  it('reveals only the selected tabs', async () => {
+    const context = new ScopedBrowserContext({});
     context.setAllowedTabs([1, 3]);
-    expect((await context.getTabInfos()).map(tab => tab.id)).toEqual([1]);
-    expect([...(await context.getAllTabIds())]).toEqual([1]);
+    expect((await context.getTabInfos()).map(tab => tab.id)).toEqual([1, 3]);
+    expect([...(await context.getAllTabIds())]).toEqual([1, 3]);
   });
 
   it('blocks switching to or closing an unselected tab before any browser action', async () => {
@@ -38,13 +38,12 @@ describe('native task tab scope', () => {
     expect(closeTab).not.toHaveBeenCalled();
   });
 
-  it('adds a newly created tab to the task scope and rejects internal URLs', async () => {
+  it('adds a newly created tab to the task scope', async () => {
     vi.spyOn(BrowserContext.prototype, 'openTab').mockResolvedValue({ tabId: 2 } as BrowserPageLike);
     const context = new ScopedBrowserContext({});
     context.setAllowedTabs([1]);
     await context.openTab(tabs[1].url);
     expect([...(await context.getAllTabIds())]).toEqual([1, 2]);
-    await expect(context.openTab('chrome://settings')).rejects.toThrow('HTTP');
   });
 
   it('does not attach a debugger or open a replacement tab during cleanup', async () => {

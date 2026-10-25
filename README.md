@@ -69,29 +69,11 @@ Segurança do companion: ele só aceita conexões da extensão (`Origin: chrome-
 
 ## Política gerenciada (organizações)
 
-Administradores podem restringir o AQgent pela política gerenciada do Chrome (`chrome.storage.managed`). O esquema está em `chrome-extension/public/managed-schema.json`. Todas as chaves são opcionais; sem política gerenciada não há restrições.
+Administradores podem limitar quais provedores de LLM o AQgent usa pela política gerenciada do Chrome (`chrome.storage.managed`, esquema em `chrome-extension/public/managed-schema.json`). A política não restringe as ações do agente.
 
 | Chave | Tipo | Efeito |
 |---|---|---|
-| `blockedUrlPatterns` | `string[]` | URLs que o AQgent nunca acessa. Vale também sem firewall ativo. |
-| `allowedUrlPatterns` | `string[]` | Se definida, só essas URLs podem ser acessadas. |
-| `disableJavascriptTool` | `boolean` | Desativa a ação `execute_javascript`. |
-| `disableFileUpload` | `boolean` | Desativa as ações de envio de arquivo. |
 | `allowedProviders` | `string[]` | Provedores permitidos (id ou tipo, ex.: `openai`, `anthropic`, `ollama`). Outros são recusados. |
-
-Padrões de URL aceitam `*` como coringa. `exemplo.com` cobre o host e os subdomínios; `*.exemplo.com` é equivalente; `intranet.acme.com/app/*` restringe o caminho. Um esquema (`https://`) é opcional.
-
-Exemplo (`managed-policy.json`, para publicação via gerenciamento de políticas do Chrome):
-
-```json
-{
-  "blockedUrlPatterns": ["bank.example.com", "*.payments.example.com/*"],
-  "allowedUrlPatterns": [],
-  "disableJavascriptTool": true,
-  "disableFileUpload": false,
-  "allowedProviders": ["anthropic", "ollama"]
-}
-```
 
 Quando alguma restrição está ativa, o painel lateral mostra "Gerenciado pela sua organização".
 
@@ -106,7 +88,7 @@ Ferramentas expostas:
 - `qagent_get_status`: mostra se há conexão, tarefa em andamento e painel aberto.
 - `qagent_cancel_task`: cancela a tarefa em andamento.
 
-Segurança: o servidor só escuta em loopback, recusa conexões sem `Origin` e sem `chrome-extension://` (e, com `QAGENT_MCP_EXTENSION_ID`, aceita só essa extensão). A autenticação é mútua, por HMAC-SHA256 sobre um token compartilhado: o servidor prova que conhece o token antes de a extensão enviar a sua prova, e o token bruto nunca trafega pelo socket. Sem token de pelo menos 32 caracteres, o servidor não inicia e a extensão não conecta. Um processo local que ocupe a porta sem o token não consegue receber tarefas. Cada tarefa passa pelo mesmo pipeline do painel, com as mesmas regras de política e firewall. Por padrão, clientes MCP que pedem o modo `auto` são tratados como `ask`; para liberar, ative **Permitir que clientes MCP usem 'Agir automaticamente'** nas opções. No modo `ask`, as aprovações aparecem no painel lateral, que precisa estar aberto.
+Segurança: o servidor só escuta em loopback, recusa conexões sem `Origin` e sem `chrome-extension://` (e, com `QAGENT_MCP_EXTENSION_ID`, aceita só essa extensão). A autenticação é mútua, por HMAC-SHA256 sobre um token compartilhado: o servidor prova que conhece o token antes de a extensão enviar a sua prova, e o token bruto nunca trafega pelo socket. Sem token de pelo menos 32 caracteres, o servidor não inicia e a extensão não conecta. Um processo local que ocupe a porta sem o token não consegue receber tarefas. Cada tarefa passa pelo mesmo pipeline do painel.
 
 Gerar o token (32 bytes em hex, 64 caracteres):
 

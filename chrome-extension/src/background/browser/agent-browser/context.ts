@@ -3,10 +3,8 @@ import {
   type BrowserState,
   DEFAULT_BROWSER_CONTEXT_CONFIG,
   type TabInfo,
-  URLNotAllowedError,
 } from '../views';
 import { createLogger } from '@src/background/log';
-import { isUrlAllowed } from '../util';
 import type { BrowserContextLike, BrowserEngineName, BrowserPageLike } from '../types';
 import type { AgentBrowserCompanionClient } from './client';
 import AgentBrowserPage from './page';
@@ -101,17 +99,10 @@ export default class AgentBrowserContext implements BrowserContextLike {
   }
 
   async navigateTo(url: string): Promise<void> {
-    if (!isUrlAllowed(url, this.config.allowedUrls, this.config.deniedUrls)) {
-      throw new URLNotAllowedError(`URL: ${url} is not allowed`);
-    }
     await this.page.navigateTo(url);
   }
 
   async openTab(url: string): Promise<BrowserPageLike> {
-    if (!isUrlAllowed(url, this.config.allowedUrls, this.config.deniedUrls)) {
-      throw new URLNotAllowedError(`Open tab failed. URL: ${url} is not allowed`);
-    }
-
     const response = await this.companionClient.request(this.sessionId, this.sessionId, {
       action: 'tab_new',
       url,

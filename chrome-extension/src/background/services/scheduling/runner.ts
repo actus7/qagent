@@ -1,8 +1,7 @@
-import { Actors, chatHistoryStore, computeNextRunAt, firewallStore, scheduledTasksStore } from '@extension/storage';
+import { Actors, chatHistoryStore, computeNextRunAt, scheduledTasksStore } from '@extension/storage';
 import type { ScheduledTask, ScheduleRun, ScheduleRunOutcome } from '@extension/storage';
 import type { SidePanelTaskCommand } from '@extension/shared';
 import { ExecutionState } from '../../agent/event/types';
-import { isUrlAllowed } from '../../browser/util';
 import { createLogger } from '../../log';
 import { prepareManagedTask } from '../managedPolicy';
 import { isAssistantTaskRunning, runAssistantTask } from '../../task/taskRunner';
@@ -18,8 +17,6 @@ export interface ScheduleRunDeps {
   saveTask: (task: ScheduledTask) => Promise<void>;
   appendRun: (id: string, run: ScheduleRun) => Promise<void>;
   isBusy: () => boolean;
-  /** URL verdict for a start URL: managed patterns always apply, the firewall lists when it is enabled. */
-  isUrlAllowed: (url: string) => Promise<boolean>;
   /** Creates the chat session that holds the run and stores the prompt as its first user message. */
   createSession: (title: string, prompt: string) => Promise<string>;
   openStartTab: (url: string) => Promise<number>;
@@ -39,8 +36,7 @@ export function outcomeForState(state: string | null): { outcome: ScheduleRunOut
 /** Runs one schedule now. Skipped and blocked runs are recorded and the schedule still advances. */
 export async function runScheduledTaskWith(id: string, deps: ScheduleRunDeps): Promise<void> {
   const task = await deps.getTask(id);
-  const allowed = task?.startUrl ? await deps.isUrlAllowed(task.startUrl) : true;
-  const decision = decideScheduledRun({ task, busy: deps.isBusy(), isUrlAllowed: () => allowed });
+  const decision = decideScheduledRun({ task, busy: deps.isBusy() });
   if (!task || decision.action === 'ignore') return;
 
   if (decision.action !== 'run') {
@@ -109,10 +105,6 @@ export function defaultScheduleRunDeps(): ScheduleRunDeps {
     saveTask: task => scheduledTasksStore.saveTask(task),
     appendRun: (id, run) => scheduledTasksStore.appendRun(id, run),
     isBusy: () => isAssistantTaskRunning(),
-    isUrlAllowed: async url => {
-      const firewall = await firewallStore.getFirewall();
-      return isUrlAllowed(url, firewall.enabled ? firewall.allowList : [], firewall.enabled ? firewall.denyList : []);
-    },
     createSession: async (title, prompt) => {
       const session = await chatHistoryStore.createSession(title);
       await chatHistoryStore.addMessage(session.id, { actor: Actors.USER, content: prompt, timestamp: Date.now() });

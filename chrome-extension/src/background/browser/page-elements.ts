@@ -2,7 +2,6 @@ import type { Page as PuppeteerPage, ElementHandle, Frame } from 'puppeteer-core
 import type { DOMElementNode } from './dom/views';
 import { createLogger } from '@src/background/log';
 import { scrollIntoViewIfNeeded } from './page-scroll';
-import { URLNotAllowedError } from './views';
 
 const logger = createLogger('Page');
 
@@ -271,31 +270,18 @@ export async function queryElementBySelectorOnPage(
 
 /**
  * Click with Puppeteer (2s timeout), falling back to a DOM `el.click()`.
- * `afterClick` runs after either path so URL allow-list checks cover the fallback too.
  */
-export async function clickWithFallback(
-  element: ElementHandle,
-  afterClick: () => Promise<void>,
-  errorPrefix: string,
-): Promise<void> {
+export async function clickWithFallback(element: ElementHandle, errorPrefix: string): Promise<void> {
   try {
     await Promise.race([
       element.click(),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Click timeout')), 2000)),
     ]);
-    await afterClick();
   } catch (error) {
-    if (error instanceof URLNotAllowedError) {
-      throw error;
-    }
     logger.info('Failed to click element, trying again', error);
     try {
       await element.evaluate(el => (el as HTMLElement).click());
-      await afterClick();
     } catch (secondError) {
-      if (secondError instanceof URLNotAllowedError) {
-        throw secondError;
-      }
       throw new Error(`${errorPrefix}: ${secondError instanceof Error ? secondError.message : String(secondError)}`, {
         cause: secondError,
       });

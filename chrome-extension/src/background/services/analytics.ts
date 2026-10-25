@@ -21,7 +21,6 @@ class AnalyticsService {
     ChatModelBadRequestError: 'llm_bad_request_error',
     ChatModelForbiddenError: 'llm_forbidden_error',
     ResponseParseError: 'llm_response_parse_error',
-    URLNotAllowedError: 'url_blocked_error',
     RequestCancelledError: 'request_cancelled_error',
     LLMTimeoutError: 'timeout',
     ExtensionConflictError: 'extension_conflict_error',

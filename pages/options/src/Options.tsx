@@ -2,9 +2,9 @@ import { lazy, Suspense, useState } from 'react';
 import { Button } from '@extension/ui';
 import { useTheme, withErrorBoundary, withSuspense, useLanguage } from '@extension/shared';
 import { t } from '@extension/i18n';
-import { FiSettings, FiCpu, FiShield, FiClock } from 'react-icons/fi';
+import { FiSettings, FiCpu, FiClock } from 'react-icons/fi';
 
-type TabTypes = 'general' | 'models' | 'firewall' | 'schedules';
+type TabTypes = 'general' | 'models' | 'schedules';
 
 const GeneralSettingsTab = lazy(async () => {
   const module = await import('./components/GeneralSettings');
@@ -14,11 +14,6 @@ const GeneralSettingsTab = lazy(async () => {
 const ModelSettingsTab = lazy(async () => {
   const module = await import('./components/model-settings/ModelSettings');
   return { default: module.ModelSettings };
-});
-
-const FirewallSettingsTab = lazy(async () => {
-  const module = await import('./components/FirewallSettings');
-  return { default: module.FirewallSettings };
 });
 
 const ScheduledTasksTab = lazy(async () => {
@@ -34,7 +29,6 @@ const Options = () => {
   const tabs: { id: TabTypes; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
     { id: 'general', icon: FiSettings, label: t('options_tabs_general') },
     { id: 'models', icon: FiCpu, label: t('options_tabs_models') },
-    { id: 'firewall', icon: FiShield, label: t('options_tabs_firewall') },
     { id: 'schedules', icon: FiClock, label: t('options_tabs_schedules') },
   ];
 
@@ -48,8 +42,6 @@ const Options = () => {
         return <GeneralSettingsTab />;
       case 'models':
         return <ModelSettingsTab />;
-      case 'firewall':
-        return <FirewallSettingsTab />;
       case 'schedules':
         return <ScheduledTasksTab />;
       default:

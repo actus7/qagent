@@ -14,9 +14,6 @@
   "options_models_providers_errors_deleteFailed": {
     "message": "Could not delete the provider. Try again."
   },
-  "options_firewall_remove": {
-    "message": "Remove"
-  },
   "options_general_displayHighlights_visionLocked": {
     "message": "Always on while vision is enabled, because screenshots need the highlights."
   },
@@ -409,9 +406,6 @@
   "options_tabs_models": {
     "message": "Models"
   },
-  "options_tabs_firewall": {
-    "message": "Firewall"
-  },
   "options_tabs_help": {
     "message": "Help"
   },
@@ -636,42 +630,6 @@
         "example": "Custom OpenAI"
       }
     }
-  },
-  "options_firewall_header": {
-    "message": "firewall"
-  },
-  "options_firewall_enableToggle": {
-    "message": "Activate Firewall"
-  },
-  "options_firewall_toggleFirewall_a11y": {
-    "message": "Enable/Disable Firewall"
-  },
-  "options_firewall_allowList_header": {
-    "message": "Whitelist"
-  },
-  "options_firewall_allowList_empty": {
-    "message": "No domains are whitelisted. An empty whitelist means that all non-denied domains are allowed."
-  },
-  "options_firewall_denyList_header": {
-    "message": "List of Denials"
-  },
-  "options_firewall_denyList_empty": {
-    "message": "No domains in the deny list"
-  },
-  "options_firewall_placeholders_domainUrl": {
-    "message": "Enter domain or URL (ex: example.com, localhost, 127.0.0.1)"
-  },
-  "options_firewall_btnAdd": {
-    "message": "To add"
-  },
-  "options_firewall_btnRemove": {
-    "message": "Remove"
-  },
-  "options_firewall_howItWorks_header": {
-    "message": "How the Firewall Works"
-  },
-  "options_firewall_howItWorks": {
-    "message": "The firewall contains a deny list and an allow list.\nIf both lists are empty, all URLs are allowed\nThe deny list takes priority - if a URL matches any deny list entry, it will be blocked\nWhen the whitelist is empty, all non-denied URLs are allowed\nWhen the whitelist is not empty, only matching URLs are allowed\nWildcards are NOT supported yet\nAllow list is preferable to deny list"
   },
   "bg_errors_noTabId": {
     "message": "No tab ID provided"
@@ -1599,9 +1557,6 @@
   "bg_cmd_capture_notActive": {
     "message": "Only the visible tab of a window can be captured. Switch to the tab first."
   },
-  "bg_cmd_capture_blocked": {
-    "message": "The firewall blocks capturing this page."
-  },
   "bg_cmd_capture_failed": {
     "message": "The screenshot could not be captured."
   },
@@ -1730,9 +1685,6 @@
   },
   "options_mcp_enable_needs_token": {
     "message": "Set a token of at least 32 characters before enabling."
-  },
-  "bg_mcp_urlBlocked": {
-    "message": "URL blocked by the QAgent policy or the firewall."
   },
   "bg_mcp_noActiveTab": {
     "message": "No active tab available for the task."

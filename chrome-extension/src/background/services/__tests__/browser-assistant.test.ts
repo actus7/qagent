@@ -2,13 +2,11 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { streamText } from 'ai';
 import { fakeChatModel } from '../../__tests__/utils/fakeChatModel';
 const storage = vi.hoisted(() => ({
-  getFirewall: vi.fn(),
   getSession: vi.fn(),
   addMessage: vi.fn(),
 }));
 vi.mock('@extension/storage', () => ({
   Actors: { USER: 'user', ASSISTANT: 'assistant' },
-  firewallStore: { getFirewall: storage.getFirewall },
   chatHistoryStore: { getSession: storage.getSession, addMessage: storage.addMessage },
 }));
 vi.mock('ai', () => ({ streamText: vi.fn() }));
@@ -33,7 +31,6 @@ const streaming = (parts: Part[], between: () => void = () => {}) =>
 describe('read-only browser assistant', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    storage.getFirewall.mockResolvedValue({ enabled: false });
     storage.getSession.mockResolvedValue({ messages: [] });
     storage.addMessage.mockResolvedValue({});
     vi.stubGlobal('chrome', {
@@ -53,12 +50,6 @@ describe('read-only browser assistant', () => {
     expect(vi.mocked(chrome.scripting.executeScript).mock.calls.map(call => call[0].target.tabId)).toEqual([4, 9]);
     expect(context).toContain('nano_untrusted_content');
     expect(context).toContain('Page content');
-  });
-
-  it('honors the firewall before reading the page', async () => {
-    storage.getFirewall.mockResolvedValue({ enabled: true, allowList: [], denyList: ['example.com'] });
-    await expect(readSelectedTabs([4])).rejects.toThrow('firewall');
-    expect(chrome.scripting.executeScript).not.toHaveBeenCalled();
   });
 
   it('streams text and persists one finished answer with conversation context', async () => {

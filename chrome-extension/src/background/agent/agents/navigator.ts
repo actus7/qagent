@@ -25,7 +25,7 @@ import {
   RequestCancelledError,
 } from './errors';
 import { calcBranchPathHashSet } from '@src/background/browser/dom/views';
-import { type BrowserState, BrowserStateHistory, URLNotAllowedError } from '@src/background/browser/views';
+import { type BrowserState, BrowserStateHistory } from '@src/background/browser/views';
 import { repairJsonString } from '@src/background/utils';
 import { HistoryTreeProcessor } from '@src/background/browser/dom/history/service';
 import { AgentStepRecord } from '../history';
@@ -265,8 +265,6 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         throw error;
       } else if (isForbiddenError(error)) {
         throw new ChatModelForbiddenError(LLM_FORBIDDEN_ERROR_MESSAGE, error);
-      } else if (error instanceof URLNotAllowedError) {
-        throw error;
       }
 
       const errorString = `Navigation failed: ${errorMessage}`;
@@ -497,7 +495,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
           await new Promise(resolve => setTimeout(resolve, WAIT_BETWEEN_ACTIONS_MS));
         }
       } catch (error) {
-        if (error instanceof URLNotAllowedError || error instanceof RequestCancelledError || this.context.stopped) {
+        if (error instanceof RequestCancelledError || this.context.stopped) {
           throw error;
         }
         const errorMessage = error instanceof Error ? error.message : String(error);

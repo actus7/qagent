@@ -263,7 +263,8 @@ describe('extension e2e', { timeout: 300_000 }, () => {
           });
           port.postMessage({
             type: 'new_task',
-            task: 'Click the Go button',
+            // Two goals, so the planner runs (a single-goal task skips it); this test covers the planner path.
+            task: 'Click the Go button, then confirm it',
             taskId: 'e2e-task',
             tabId: targetTabId,
             options: { mode: 'act', tabIds: [targetTabId] },
@@ -307,7 +308,9 @@ describe('extension e2e', { timeout: 300_000 }, () => {
           });
           port.postMessage({
             type: 'new_task',
-            task: 'Click the Go button',
+            // Two goals: a simple task skips the planner, and the fake navigator only clicks on its first call,
+            // which the pause discards.
+            task: 'Click the Go button, then confirm it',
             taskId: 'e2e-pause-task',
             tabId: targetTabId,
             options: { mode: 'act', tabIds: [targetTabId] },

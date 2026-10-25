@@ -4,11 +4,9 @@ import {
   type BrowserState,
   DEFAULT_BROWSER_CONTEXT_CONFIG,
   type TabInfo,
-  URLNotAllowedError,
 } from './views';
 import Page, { build_initial_state } from './page';
 import { createLogger } from '@src/background/log';
-import { isUrlAllowed } from './util';
 import { analytics } from '../services/analytics';
 import type { BrowserContextLike, BrowserEngineName, BrowserPageLike } from './types';
 
@@ -299,10 +297,6 @@ export default class BrowserContext implements BrowserContextLike {
   }
 
   public async navigateTo(url: string): Promise<void> {
-    if (!isUrlAllowed(url, this._config.allowedUrls, this._config.deniedUrls)) {
-      throw new URLNotAllowedError(`URL: ${url} is not allowed`);
-    }
-
     // Track domain visit for analytics
     void analytics.trackDomainVisit(url);
 
@@ -329,10 +323,6 @@ export default class BrowserContext implements BrowserContextLike {
   }
 
   public async openTab(url: string): Promise<BrowserPageLike> {
-    if (!isUrlAllowed(url, this._config.allowedUrls, this._config.deniedUrls)) {
-      throw new URLNotAllowedError(`Open tab failed. URL: ${url} is not allowed`);
-    }
-
     // Create the new tab
     const tab = await chrome.tabs.create({ url, active: true });
     if (!tab.id) {

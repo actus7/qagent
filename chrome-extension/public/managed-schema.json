@@ -3,28 +3,12 @@
   "title": "QAgent managed policy",
   "description": "Enterprise policy for QAgent. Every key is optional. Without a managed policy there are no restrictions.",
   "properties": {
-    "blockedUrlPatterns": {
-      "type": "array",
-      "description": "URL patterns QAgent must never act on, e.g. \"bank.example.com\", \"*.payments.example.com/*\". Covers the host and its subdomains.",
-      "items": { "type": "string" }
-    },
-    "allowedUrlPatterns": {
-      "type": "array",
-      "description": "When set, QAgent may only act on URLs matching one of these patterns.",
-      "items": { "type": "string" }
-    },
-    "disableJavascriptTool": {
-      "type": "boolean",
-      "description": "Disables the execute_javascript action."
-    },
-    "disableFileUpload": {
-      "type": "boolean",
-      "description": "Disables file upload actions."
-    },
     "allowedProviders": {
       "type": "array",
       "description": "Provider ids or types allowed for model calls (e.g. \"openai\", \"anthropic\", \"ollama\"). When set, other providers are refused.",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     }
   }
 }

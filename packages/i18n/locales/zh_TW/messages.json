@@ -14,9 +14,6 @@
   "options_models_providers_errors_deleteFailed": {
     "message": "無法刪除供應商，請再試一次。"
   },
-  "options_firewall_remove": {
-    "message": "移除"
-  },
   "options_general_displayHighlights_visionLocked": {
     "message": "啟用視覺時會固定開啟，因為截圖需要標示框。"
   },
@@ -406,9 +403,6 @@
   "options_tabs_models": {
     "message": "模型"
   },
-  "options_tabs_firewall": {
-    "message": "防火牆"
-  },
   "options_tabs_help": {
     "message": "說明"
   },
@@ -633,42 +627,6 @@
         "example": "Custom OpenAI"
       }
     }
-  },
-  "options_firewall_header": {
-    "message": "防火牆"
-  },
-  "options_firewall_enableToggle": {
-    "message": "啟用防火牆"
-  },
-  "options_firewall_toggleFirewall_a11y": {
-    "message": "切換防火牆"
-  },
-  "options_firewall_allowList_header": {
-    "message": "允許清單"
-  },
-  "options_firewall_allowList_empty": {
-    "message": "允許清單中沒有網域。若允許清單為空，則表示所有未在拒絕清單中的網域都將被允許。"
-  },
-  "options_firewall_denyList_header": {
-    "message": "拒絕清單"
-  },
-  "options_firewall_denyList_empty": {
-    "message": "拒絕清單中沒有網域"
-  },
-  "options_firewall_placeholders_domainUrl": {
-    "message": "請輸入網域或 URL (例如 example.com, localhost, 127.0.0.1)"
-  },
-  "options_firewall_btnAdd": {
-    "message": "新增"
-  },
-  "options_firewall_btnRemove": {
-    "message": "移除"
-  },
-  "options_firewall_howItWorks_header": {
-    "message": "防火牆運作原理"
-  },
-  "options_firewall_howItWorks": {
-    "message": "防火牆包含一個拒絕清單和一個允許清單。\n- 如果兩個清單都為空，則允許所有 URL。\n- 拒絕清單具有較高優先順序。如果一個 URL 符合任何拒絕清單中的項目，它將被封鎖。\n- 當允許清單為空時，所有未被拒絕的 URL 都會被允許。\n- 當允許清單不為空時，只有符合清單中項目的 URL 才被允許。\n- 目前尚不支援萬用字元。\n- 建議優先使用允許清單，而非拒絕清單。"
   },
   "bg_errors_noTabId": {
     "message": "未提供分頁 ID"
@@ -1599,9 +1557,6 @@
   "bg_cmd_capture_notActive": {
     "message": "只能擷取視窗中可見的頁籤，請先切換到該頁籤。"
   },
-  "bg_cmd_capture_blocked": {
-    "message": "防火牆已封鎖擷取此頁面。"
-  },
   "bg_cmd_capture_failed": {
     "message": "無法擷取螢幕截圖。"
   },
@@ -1730,9 +1685,6 @@
   },
   "options_mcp_enable_needs_token": {
     "message": "啟用前請設定至少 32 個字元的權杖。"
-  },
-  "bg_mcp_urlBlocked": {
-    "message": "URL 被 QAgent 政策或防火牆封鎖。"
   },
   "bg_mcp_noActiveTab": {
     "message": "沒有可用於任務的使用中分頁。"

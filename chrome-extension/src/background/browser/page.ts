@@ -16,13 +16,12 @@ import {
   getScrollInfo as _getScrollInfo,
 } from './dom/service';
 import type { DOMElementNode, DOMState } from './dom/views';
-import { type BrowserContextConfig, DEFAULT_BROWSER_CONTEXT_CONFIG, type PageState, URLNotAllowedError } from './views';
+import { type BrowserContextConfig, DEFAULT_BROWSER_CONTEXT_CONFIG, type PageState } from './views';
 import { createLogger } from '@src/background/log';
 import { ExtensionConflictError } from '../agent/agents/errors';
 import { showAgentPointer } from '../overlay/overlayMessaging';
 import { isDebuggerConflictError } from './debugger-conflict';
 import { ClickableElementProcessor } from './dom/clickable/service';
-import { isUrlAllowed } from './util';
 import { build_initial_state, CachedStateClickableElementsHashes, parseSelectorIndex } from './page-state';
 import { parseKeyCombination, convertKey, isMacUserAgent } from './page-keys';
 import { typeIntoElementNode, typeIntoSelectorElement } from './page-input';
@@ -431,19 +430,10 @@ export default class Page {
     }
     logger.info('navigateTo', url);
 
-    // Check if URL is allowed
-    if (!isUrlAllowed(url, this._config.allowedUrls, this._config.deniedUrls)) {
-      throw new URLNotAllowedError(`URL: ${url} is not allowed`);
-    }
-
     try {
       await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.goto(url)]);
       logger.info('navigateTo complete');
     } catch (error) {
-      if (error instanceof URLNotAllowedError) {
-        throw error;
-      }
-
       if (error instanceof Error && error.message.includes('timeout')) {
         logger.warning('Navigation timeout, but page might still be usable:', error);
         return;
@@ -461,10 +451,6 @@ export default class Page {
       await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.reload()]);
       logger.info('Page refresh complete');
     } catch (error) {
-      if (error instanceof URLNotAllowedError) {
-        throw error;
-      }
-
       if (error instanceof Error && error.message.includes('timeout')) {
         logger.warning('Refresh timeout, but page might still be usable:', error);
         return;
@@ -482,10 +468,6 @@ export default class Page {
       await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.goBack()]);
       logger.info('Navigation back completed');
     } catch (error) {
-      if (error instanceof URLNotAllowedError) {
-        throw error;
-      }
-
       if (error instanceof Error && error.message.includes('timeout')) {
         logger.warning('Back navigation timeout, but page might still be usable:', error);
         return;
@@ -503,10 +485,6 @@ export default class Page {
       await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.goForward()]);
       logger.info('Navigation forward completed');
     } catch (error) {
-      if (error instanceof URLNotAllowedError) {
-        throw error;
-      }
-
       if (error instanceof Error && error.message.includes('timeout')) {
         logger.warning('Forward navigation timeout, but page might still be usable:', error);
         return;
@@ -817,9 +795,8 @@ export default class Page {
       // Scroll element into view if needed
       await this._scrollIntoViewIfNeeded(element);
       await this._showAgentPointer(element);
-      await clickWithFallback(element, () => this._checkAndHandleNavigation(), 'Failed to click element');
+      await clickWithFallback(element, 'Failed to click element');
     } catch (error) {
-      if (error instanceof URLNotAllowedError) throw error;
       throw new Error(
         `Failed to click element: ${elementNode}. Error: ${error instanceof Error ? error.message : String(error)}`,
         { cause: error },
@@ -892,7 +869,7 @@ export default class Page {
 
     await this._scrollIntoViewIfNeeded(element);
     await this._showAgentPointer(element);
-    await clickWithFallback(element, () => this._checkAndHandleNavigation(), `Failed to click selector "${selector}"`);
+    await clickWithFallback(element, `Failed to click selector "${selector}"`);
   }
 
   async inputTextBySelector(
@@ -1042,15 +1019,7 @@ export default class Page {
     // Wait for page load
     try {
       await this._waitForStableNetwork();
-
-      // Check if the loaded URL is allowed
-      if (this._puppeteerPage) {
-        await this._checkAndHandleNavigation();
-      }
     } catch (error) {
-      if (error instanceof URLNotAllowedError) {
-        throw error;
-      }
       logger.warning('Page load failed, continuing...', error);
     }
 
@@ -1098,8 +1067,6 @@ export default class Page {
     } finally {
       await session.detach().catch(() => {});
     }
-    // A script can navigate (location.href = ...); the URL policy must still apply.
-    await this._checkAndHandleNavigation();
     return outcome;
   }
 
@@ -1157,8 +1124,6 @@ export default class Page {
         await page.keyboard.up(key).catch(() => {});
       }
     }
-    // A click can navigate; enforce the URL policy like the other click paths do.
-    await this._checkAndHandleNavigation();
   }
 
   async hoverAt(point: Point): Promise<void> {
@@ -1177,7 +1142,6 @@ export default class Page {
     } finally {
       await page.mouse.up();
     }
-    await this._checkAndHandleNavigation();
   }
 
   private _requirePuppeteerPage(): PuppeteerPage {
@@ -1185,33 +1149,5 @@ export default class Page {
       throw new Error('Puppeteer page is not connected');
     }
     return this._puppeteerPage;
-  }
-
-  /**
-   * Check the current page URL and handle if it's not allowed
-   * @throws URLNotAllowedError if the current URL is not allowed
-   */
-  private async _checkAndHandleNavigation(): Promise<void> {
-    if (!this._puppeteerPage) {
-      return;
-    }
-
-    const currentUrl = this._puppeteerPage.url();
-    if (!isUrlAllowed(currentUrl, this._config.allowedUrls, this._config.deniedUrls)) {
-      const errorMessage = `URL: ${currentUrl} is not allowed`;
-      logger.error(errorMessage);
-
-      // about:blank is never blocked by the URL policy, unlike the configured home page
-      const safeUrl = 'about:blank';
-      logger.info(`Redirecting to safe URL: ${safeUrl}`);
-
-      try {
-        await this._puppeteerPage.goto(safeUrl);
-      } catch (error) {
-        logger.error(`Failed to redirect to safe URL: ${error instanceof Error ? error.message : String(error)}`);
-      }
-
-      throw new URLNotAllowedError(errorMessage);
-    }
   }
 }

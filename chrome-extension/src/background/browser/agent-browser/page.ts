@@ -1,8 +1,7 @@
 import { createLogger } from '@src/background/log';
-import { isUrlAllowed, sleep } from '../util';
+import { sleep } from '../util';
 import type { DOMElementNode } from '../dom/views';
 import type { BrowserContextConfig, PageState } from '../views';
-import { URLNotAllowedError } from '../views';
 import type { BrowserPageLike } from '../types';
 import type { AgentBrowserCompanionClient } from './client';
 import { buildPageStateFromSnapshot } from './snapshot';
@@ -125,9 +124,6 @@ export default class AgentBrowserPage implements BrowserPageLike {
   }
 
   async navigateTo(url: string): Promise<void> {
-    if (!isUrlAllowed(url, this.getConfigFn().allowedUrls, this.getConfigFn().deniedUrls)) {
-      throw new URLNotAllowedError(`URL: ${url} is not allowed`);
-    }
     const result = await this.call({ action: 'open', url, waitUntil: 'domcontentloaded' });
     this.updateMeta(result);
     await this.getState(false);

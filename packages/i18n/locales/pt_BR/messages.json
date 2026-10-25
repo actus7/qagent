@@ -14,9 +14,6 @@
   "options_models_providers_errors_deleteFailed": {
     "message": "Não foi possível excluir o provedor. Tente novamente."
   },
-  "options_firewall_remove": {
-    "message": "Remover"
-  },
   "options_general_displayHighlights_visionLocked": {
     "message": "Sempre ativo enquanto a visão estiver habilitada, pois as capturas precisam dos destaques."
   },
@@ -409,9 +406,6 @@
   "options_tabs_models": {
     "message": "Modelos"
   },
-  "options_tabs_firewall": {
-    "message": "Firewall"
-  },
   "options_tabs_help": {
     "message": "Ajuda"
   },
@@ -636,42 +630,6 @@
         "example": "Custom OpenAI"
       }
     }
-  },
-  "options_firewall_header": {
-    "message": "Firewall"
-  },
-  "options_firewall_enableToggle": {
-    "message": "Ativar Firewall"
-  },
-  "options_firewall_toggleFirewall_a11y": {
-    "message": "Ativar/Desativar Firewall"
-  },
-  "options_firewall_allowList_header": {
-    "message": "Lista de Permissões"
-  },
-  "options_firewall_allowList_empty": {
-    "message": "Nenhum domínio na lista de permissões. Uma lista de permissões vazia significa que todos os domínios não negados são permitidos."
-  },
-  "options_firewall_denyList_header": {
-    "message": "Lista de Negações"
-  },
-  "options_firewall_denyList_empty": {
-    "message": "Nenhum domínio na lista de negações"
-  },
-  "options_firewall_placeholders_domainUrl": {
-    "message": "Insira domínio ou URL (ex: example.com, localhost, 127.0.0.1)"
-  },
-  "options_firewall_btnAdd": {
-    "message": "Adicionar"
-  },
-  "options_firewall_btnRemove": {
-    "message": "Remover"
-  },
-  "options_firewall_howItWorks_header": {
-    "message": "Como o Firewall Funciona"
-  },
-  "options_firewall_howItWorks": {
-    "message": "O firewall contém uma lista de negações e uma lista de permissões.\nSe ambas as listas estiverem vazias, todos os URLs são permitidos\nA lista de negações tem prioridade - se um URL corresponder a qualquer entrada da lista de negações, ele será bloqueado\nQuando a lista de permissões está vazia, todos os URLs não negados são permitidos\nQuando a lista de permissões não está vazia, apenas os URLs correspondentes são permitidos\nCuringas ainda NÃO são suportados\nA lista de permissões é preferível à lista de negações"
   },
   "bg_errors_noTabId": {
     "message": "Nenhum ID de aba fornecido"
@@ -1599,9 +1557,6 @@
   "bg_cmd_capture_notActive": {
     "message": "Só é possível capturar a aba visível da janela. Ative a aba primeiro."
   },
-  "bg_cmd_capture_blocked": {
-    "message": "O firewall bloqueia a captura desta página."
-  },
   "bg_cmd_capture_failed": {
     "message": "Não foi possível capturar a tela."
   },
@@ -1730,9 +1685,6 @@
   },
   "options_mcp_enable_needs_token": {
     "message": "Defina um token com pelo menos 32 caracteres antes de ativar."
-  },
-  "bg_mcp_urlBlocked": {
-    "message": "URL bloqueada pela política do QAgent ou pelo firewall."
   },
   "bg_mcp_noActiveTab": {
     "message": "Nenhuma aba ativa disponível para a tarefa."

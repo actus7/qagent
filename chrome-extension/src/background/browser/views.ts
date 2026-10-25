@@ -48,18 +48,6 @@ export interface BrowserContextConfig {
   viewportExpansion: number;
 
   /**
-   * List of allowed domains that can be accessed. If None, all domains are allowed.
-   * @default null
-   */
-  allowedUrls: string[];
-
-  /**
-   * List of denied domains that can be accessed. If None, all domains are allowed.
-   * @default null
-   */
-  deniedUrls: string[];
-
-  /**
    * Include dynamic attributes in the CSS selector. If you want to reuse the css_selectors, it might be better to set this to False.
    * @default true
    */
@@ -85,8 +73,6 @@ export const DEFAULT_BROWSER_CONTEXT_CONFIG: BrowserContextConfig = {
   waitBetweenActions: 0.5,
   browserWindowSize: { width: 1280, height: 1100 },
   viewportExpansion: 0,
-  allowedUrls: [],
-  deniedUrls: [],
   includeDynamicAttributes: true,
   homePageUrl: 'about:blank',
   displayHighlights: true,
@@ -126,25 +112,5 @@ export class BrowserStateHistory {
     this.title = state.title;
     this.tabs = state.tabs;
     this.interactedElements = interactedElements ?? [];
-  }
-}
-
-class BrowserError extends Error {
-  /**
-   * Base class for all browser errors
-   */
-  constructor(message?: string) {
-    super(message);
-    this.name = 'BrowserError';
-  }
-}
-
-export class URLNotAllowedError extends BrowserError {
-  /**
-   * Error raised when a URL is not allowed
-   */
-  constructor(message?: string) {
-    super(message);
-    this.name = 'URLNotAllowedError';
   }
 }

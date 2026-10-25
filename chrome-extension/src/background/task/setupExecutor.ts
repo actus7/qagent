@@ -1,7 +1,6 @@
 import {
   agentModelStore,
   AgentNameEnum,
-  firewallStore,
   generalSettingsStore,
   llmProviderStore,
 } from '@extension/storage';
@@ -59,20 +58,6 @@ export async function setupExecutor(
     // Log the provider config being used for the planner
     const plannerProviderConfig = providers[plannerModel.provider];
     plannerLLM = createChatModel(plannerProviderConfig, plannerModel);
-  }
-
-  // Apply firewall settings to browser context
-  const firewall = await firewallStore.getFirewall();
-  if (firewall.enabled) {
-    browserContext.updateConfig({
-      allowedUrls: firewall.allowList,
-      deniedUrls: firewall.denyList,
-    });
-  } else {
-    browserContext.updateConfig({
-      allowedUrls: [],
-      deniedUrls: [],
-    });
   }
 
   const generalSettings = await generalSettingsStore.getSettings();

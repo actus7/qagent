@@ -1,7 +1,6 @@
 import { ActionResult, type AgentContext } from '@src/background/agent/types';
 import { t } from '@extension/i18n';
 import type { z } from 'zod';
-import { URLNotAllowedError } from '../../browser/views';
 import { Actors, ExecutionState } from '../event/types';
 import { Action } from './action';
 import { elementNotExistResult, logger } from './shared';
@@ -62,8 +61,6 @@ async function clickBySelector(context: AgentContext, selector: string, intent: 
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
     return new ActionResult({ extractedContent: msg, includeInMemory: true });
   } catch (error) {
-    // The firewall must abort the task, not turn into a regular action error
-    if (error instanceof URLNotAllowedError) throw error;
     const msg = t('act_errors_elementNoLongerAvailable', [normalizedSelector]);
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
     return new ActionResult({

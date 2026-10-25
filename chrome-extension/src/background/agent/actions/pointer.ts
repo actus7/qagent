@@ -3,7 +3,6 @@ import { t } from '@extension/i18n';
 import type { z } from 'zod';
 import type { BrowserPageLike } from '../../browser/types';
 import type { Point } from '../../browser/page-pointer';
-import { URLNotAllowedError } from '../../browser/views';
 import { Actors, ExecutionState } from '../event/types';
 import { Action } from './action';
 import { engineUnsupportedResult } from './shared';
@@ -72,7 +71,6 @@ export function createClickAtAction(context: AgentContext) {
         modifiers: input.modifiers ?? [],
       });
     } catch (error) {
-      if (error instanceof URLNotAllowedError) throw error;
       return errorResult(context, error);
     }
     const msg = t('act_clickAt_ok', [label]);
@@ -125,7 +123,6 @@ export function createDragAction(context: AgentContext) {
     try {
       await page.dragBetween(from.point, to.point, input.steps ?? DEFAULT_DRAG_STEPS);
     } catch (error) {
-      if (error instanceof URLNotAllowedError) throw error;
       return errorResult(context, error);
     }
     const msg = t('act_drag_ok', [from.label, to.label]);

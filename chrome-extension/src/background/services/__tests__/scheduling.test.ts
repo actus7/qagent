@@ -86,34 +86,25 @@ const task: ScheduledTask = {
 };
 
 describe('decideScheduledRun', () => {
-  const allowAll = () => true;
-
   it('ignores a schedule that no longer exists', () => {
-    expect(decideScheduledRun({ task: undefined, busy: false, isUrlAllowed: allowAll })).toEqual({ action: 'ignore' });
+    expect(decideScheduledRun({ task: undefined, busy: false })).toEqual({ action: 'ignore' });
   });
 
   it('skips the run while another task is in progress', () => {
-    expect(decideScheduledRun({ task, busy: true, isUrlAllowed: allowAll })).toEqual({
+    expect(decideScheduledRun({ task, busy: true })).toEqual({
       action: 'skip',
       detail: BUSY_SKIP_DETAIL,
     });
   });
 
   it('blocks an act task without a start URL', () => {
-    const decision = decideScheduledRun({ task: { ...task, startUrl: null }, busy: false, isUrlAllowed: allowAll });
+    const decision = decideScheduledRun({ task: { ...task, startUrl: null }, busy: false });
 
     expect(decision.action).toBe('block');
   });
 
-  it('blocks a start URL the firewall refuses', () => {
-    expect(decideScheduledRun({ task, busy: false, isUrlAllowed: () => false })).toEqual({
-      action: 'block',
-      detail: 'bloqueada pelo firewall',
-    });
-  });
-
-  it('runs when the worker is free and the start URL is allowed', () => {
-    expect(decideScheduledRun({ task, busy: false, isUrlAllowed: allowAll })).toEqual({ action: 'run' });
+  it('runs when the worker is free', () => {
+    expect(decideScheduledRun({ task, busy: false })).toEqual({ action: 'run' });
   });
 });
 
@@ -163,7 +154,6 @@ describe('runScheduledTaskWith', () => {
         runs.push(run);
       },
       isBusy: () => false,
-      isUrlAllowed: async () => true,
       createSession: async () => 'session-1',
       openStartTab: async () => 7,
       startTask: async command => {

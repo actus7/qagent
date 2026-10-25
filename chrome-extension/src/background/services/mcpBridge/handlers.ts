@@ -1,7 +1,6 @@
-import { firewallStore } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { hasManagedRestrictions, type McpBridgeResponseFrame } from '@extension/shared';
-import { isUrlAllowed, sleep } from '../../browser/util';
+import { sleep } from '../../browser/util';
 import { redactUrl } from '../../browser/page-telemetry';
 import { addPanelMessageListener } from '../../port/panelPort';
 import { routeSidePanelCommand } from '../../port/commandRouter';
@@ -17,14 +16,6 @@ const TAB_POLL_MS = 250;
 // Set while an MCP-started task runs; the panel's own tasks are seen through runtimeStore.
 let bridgeTaskId: string | null = null;
 
-/** Same URL rules as the firewall: managed patterns always apply; the firewall lists apply when enabled. */
-async function isUrlPermittedForTask(url: string): Promise<boolean> {
-  const firewall = await firewallStore.getFirewall();
-  const allowList = firewall.enabled ? firewall.allowList : [];
-  const denyList = firewall.enabled ? firewall.denyList : [];
-  return isUrlAllowed(url, allowList, denyList);
-}
-
 async function waitForTabComplete(tabId: number): Promise<void> {
   const deadline = Date.now() + TAB_LOAD_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -37,9 +28,6 @@ async function waitForTabComplete(tabId: number): Promise<void> {
 /** Opens the requested URL (or uses the active tab) and returns the tab the task will run on. */
 async function resolveTaskTab(url: string | undefined): Promise<number> {
   if (url) {
-    if (!(await isUrlPermittedForTask(url))) {
-      throw new McpBridgeError('URL_BLOCKED', t('bg_mcp_urlBlocked'));
-    }
     const created = await chrome.tabs.create({ url, active: true });
     if (created.id === undefined) throw new McpBridgeError('TAB_UNAVAILABLE', t('bg_mcp_noActiveTab'));
     await waitForTabComplete(created.id);
@@ -48,9 +36,6 @@ async function resolveTaskTab(url: string | undefined): Promise<number> {
 
   const [active] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   if (active?.id === undefined) throw new McpBridgeError('TAB_UNAVAILABLE', t('bg_mcp_noActiveTab'));
-  if (!active.url || !(await isUrlPermittedForTask(active.url))) {
-    throw new McpBridgeError('URL_BLOCKED', t('bg_mcp_urlBlocked'));
-  }
   return active.id;
 }
 
@@ -99,7 +84,6 @@ async function listTabs() {
       active: tab.active,
       title: tab.title ?? '',
       url: redactUrl(tab.url),
-      permitted: await isUrlPermittedForTask(tab.url),
     });
   }
   return { tabs: items };

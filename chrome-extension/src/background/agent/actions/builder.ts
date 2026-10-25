@@ -1,6 +1,4 @@
-import { isManagedActionAllowed } from '@extension/shared';
 import type { AgentContext } from '@src/background/agent/types';
-import { getManagedPolicy } from '@src/background/state/managedPolicyState';
 import { createDoneAction } from './completion';
 import {
   createBackAction,
@@ -132,13 +130,9 @@ export class ActionBuilder {
       createResizeViewportAction(context),
       createRequestUserTakeoverAction(context),
     ];
-    // Managed policy removes actions here, so the model never sees them (order is preserved).
-    const policy = getManagedPolicy();
-    const permittedActions = actions.filter(action => isManagedActionAllowed(action.name(), policy));
-
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
-      return permittedActions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));
+      return actions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));
     }
-    return permittedActions;
+    return actions;
   }
 }

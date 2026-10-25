@@ -23,7 +23,6 @@ import {
   MaxFailuresReachedError,
   describeModelError,
 } from './agents/errors';
-import { URLNotAllowedError } from '../browser/views';
 import { chatHistoryStore } from '@extension/storage/lib/chat';
 import type { AgentStepHistory } from './history';
 import type { GeneralSettingsConfig } from '@extension/storage';
@@ -31,10 +30,15 @@ import { analytics } from '../services/analytics';
 import { createLoopDetectionState, evaluateLoopDetection, type LoopDetectionState } from './loop-detection';
 import type { AssistantAttachment } from '@extension/shared';
 import { buildImageContentParts, indexFileAttachments } from '../services/assistant-attachments';
+import { isSimpleTask, reportStyleFor, type ReportStyle } from './task-kind';
+import { userMessage } from './messages/model-messages';
 
 const logger = createLogger('Executor');
 const MAX_TASK_CHAIN_LENGTH = 50;
 const PAUSE_POLL_INTERVAL_MS = 200;
+// The system prompt is built from the first task, so a QA follow-up needs its own note for the full report.
+const QA_FOLLOW_UP_NOTE =
+  'This follow-up is a QA/test request: in the done action, give the full structured QA report (Relatório Final) described in the system instructions, and a complete final_answer.';
 
 interface ExecutorExtraArgs {
   plannerLLM?: ChatModel;
@@ -58,6 +62,7 @@ export class Executor {
   private readonly generalSettings: GeneralSettingsConfig | undefined;
   private loopDetectionState: LoopDetectionState = createLoopDetectionState();
   private plannerDisabledForTask = false;
+  private readonly reportStyle: ReportStyle;
   private tasks: string[] = [];
   constructor(
     task: string,
@@ -85,8 +90,9 @@ export class Executor {
     this.generalSettings = extraArgs?.generalSettings;
     context.taskFiles = indexFileAttachments(extraArgs?.attachments);
     this.tasks.push(task);
-    this.navigatorPrompt = new NavigatorPrompt(context.options.maxActionsPerStep);
-    this.plannerPrompt = new PlannerPrompt();
+    this.reportStyle = reportStyleFor(task);
+    this.navigatorPrompt = new NavigatorPrompt(context.options.maxActionsPerStep, this.reportStyle);
+    this.plannerPrompt = new PlannerPrompt(this.reportStyle);
 
     const actionBuilder = new ActionBuilder(context);
     const navigatorActionRegistry = new NavigatorActionRegistry(actionBuilder.buildDefaultActions());
@@ -138,6 +144,9 @@ export class Executor {
     this.tasks.push(task);
     this.trimFollowUpTaskChain();
     this.context.messageManager.addNewTask(task);
+    if (this.reportStyle === 'concise' && reportStyleFor(task) === 'qa') {
+      this.context.messageManager.addMessageWithTokens(userMessage(QA_FOLLOW_UP_NOTE), null);
+    }
 
     // need to reset previous action results that are not included in memory
     this.context.actionResults = this.context.actionResults.filter(result => result.includeInMemory);
@@ -175,11 +184,13 @@ export class Executor {
    * @returns {Promise<void>}
    */
   async execute(): Promise<void> {
-    logger.info(`🚀 Executing task: ${this.tasks[this.tasks.length - 1]}`);
+    const currentTask = this.tasks[this.tasks.length - 1];
+    logger.info(`🚀 Executing task: ${currentTask}`);
     // reset the step counter
     const context = this.context;
     context.nSteps = 0;
-    this.plannerDisabledForTask = false;
+    // Single-goal requests run without planner calls: the navigator starts directly and its done is final
+    this.plannerDisabledForTask = isSimpleTask(currentTask);
     this.loopDetectionState = createLoopDetectionState();
     const allowedMaxSteps = this.context.options.maxSteps;
 
@@ -347,7 +358,6 @@ export class Executor {
         error instanceof ChatModelAuthError ||
         error instanceof ChatModelBadRequestError ||
         error instanceof ChatModelForbiddenError ||
-        error instanceof URLNotAllowedError ||
         error instanceof ExtensionConflictError
       ) {
         logger.error(`Failed to execute planner: ${error}`);
@@ -415,7 +425,6 @@ export class Executor {
         error instanceof ChatModelAuthError ||
         error instanceof ChatModelBadRequestError ||
         error instanceof ChatModelForbiddenError ||
-        error instanceof URLNotAllowedError ||
         error instanceof RequestCancelledError ||
         error instanceof ExtensionConflictError ||
         error instanceof NavigationLoopDetectedError
