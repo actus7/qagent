@@ -67,7 +67,7 @@ export function createCallMcpToolAction(context: AgentContext) {
         const msg = t('act_callMcpTool_fail', [input.tool]);
         context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
         return new ActionResult({
-          error: `${msg}\n${clipText(result.text, MCP_RESULT_MAX_CHARS)}`,
+          error: `${msg}\n${wrapUntrustedContent(clipText(result.text, MCP_RESULT_MAX_CHARS))}`,
           includeInMemory: true,
         });
       }
@@ -82,7 +82,8 @@ export function createCallMcpToolAction(context: AgentContext) {
       if (!(error instanceof McpClientError)) throw error;
       const msg = t('act_callMcpTool_fail', [input.tool]);
       context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-      return new ActionResult({ error: `${msg}: ${error.message}`, includeInMemory: true });
+      // Client errors can carry the server's own error text, so it is untrusted too.
+      return new ActionResult({ error: `${msg}: ${wrapUntrustedContent(error.message)}`, includeInMemory: true });
     }
   }, callMcpToolActionSchema);
 }
