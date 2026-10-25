@@ -265,6 +265,9 @@ export default class ContentScriptPage implements BrowserPageLike {
     const tab = await chrome.tabs.get(this.tabId);
     if (!tab.active) await chrome.tabs.update(this.tabId, { active: true });
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: JPEG_QUALITY });
+    // The user may switch tabs between activation and capture: never hand the model another tab's pixels.
+    const [active] = await chrome.tabs.query({ active: true, windowId: tab.windowId });
+    if (active?.id !== this.tabId) return null;
     const comma = dataUrl.indexOf(',');
     return comma === -1 ? null : dataUrl.slice(comma + 1);
   }

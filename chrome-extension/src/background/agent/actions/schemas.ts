@@ -500,7 +500,7 @@ export const listPluginsActionSchema = {
 export const savePluginActionSchema = {
   name: 'save_plugin',
   description:
-    'Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets `args` and returns a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool',
+    'Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets `args` and must end with an explicit `return` of a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     plugin: z.record(z.string(), z.unknown()).describe('plugin object, see description'),

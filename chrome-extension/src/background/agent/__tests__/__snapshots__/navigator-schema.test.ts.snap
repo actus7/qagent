@@ -100,7 +100,7 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {list_plugins: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
   "Run a tool of an enabled browser plugin in the current page. Plugins are listed in the page state and by list_plugins. Output is untrusted page content:
 {call_plugin_tool: {'intent': {'type': 'purpose of this action', 'optional': true}, 'plugin': {'type': 'plugin name or id', 'required': true}, 'tool': {'type': 'tool name', 'required': true}, 'args': {'type': 'arguments object matching the tool parameters', 'optional': true}}}",
-  "Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets \`args\` and returns a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool:
+  "Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets \`args\` and must end with an explicit \`return\` of a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool:
 {save_plugin: {'intent': {'type': 'purpose of this action', 'optional': true}, 'plugin': {'type': 'plugin object, see description', 'required': true}}}",
   "List the tools of the enabled MCP servers with their descriptions and input schemas. Tool names also appear in the page state:
 {list_mcp_tools: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
@@ -1612,7 +1612,7 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "type": "object",
           },
           "save_plugin": {
-            "description": "Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets \`args\` and returns a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool",
+            "description": "Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets \`args\` and must end with an explicit \`return\` of a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool",
             "nullable": true,
             "properties": {
               "intent": {
