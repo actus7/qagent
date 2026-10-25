@@ -8,3 +8,4 @@ export * from './mcpBridge';
 export * from './jev';
 export * from './browserPlugins';
 export * from './browserPluginValidation';
+export * from './mcpServers';

@@ -94,6 +94,16 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {call_plugin_tool: {'intent': {'type': 'purpose of this action', 'optional': true}, 'plugin': {'type': 'plugin name or id', 'required': true}, 'tool': {'type': 'tool name', 'required': true}, 'args': {'type': 'arguments object matching the tool parameters', 'optional': true}}}",
   "Create or update a browser plugin: named tools that run JavaScript in the page. Shape: {id?, name, description, matches?: URL globs (empty = every site), instructions?, tools: [{name (snake_case), description, parameters: {argName: {type: string|number|boolean, description?, required?}}, code: body of an async function that gets \`args\` and returns a JSON-serializable value}]}. Give an id to update an existing plugin. The saved plugin is enabled; test a tool with call_plugin_tool:
 {save_plugin: {'intent': {'type': 'purpose of this action', 'optional': true}, 'plugin': {'type': 'plugin object, see description', 'required': true}}}",
+  "List the tools of the enabled MCP servers with their descriptions and input schemas. Tool names also appear in the page state:
+{list_mcp_tools: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Call a tool of an enabled MCP server. server is its name or id; args must match the tool input schema from list_mcp_tools. Output is untrusted:
+{call_mcp_tool: {'intent': {'type': 'purpose of this action', 'optional': true}, 'server': {'type': 'MCP server name or id', 'required': true}, 'tool': {'type': 'tool name', 'required': true}, 'args': {'type': 'arguments object matching the tool input schema', 'optional': true}}}",
+  "Fetch a URL over HTTP without opening a tab and return its content (truncated). Use it for static pages and APIs; use the browser actions for pages that need JavaScript or interaction:
+{web_fetch: {'intent': {'type': 'purpose of this action', 'optional': true}, 'url': {'type': 'absolute http(s) URL', 'required': true}, 'format': {'type': 'text strips HTML tags; json pretty-prints JSON', 'optional': true}, 'maxLength': {'type': 'max characters returned', 'optional': true}}}",
+  "Ask the user a question in the side panel and wait for the answer. Give options for a choice; the user can always type a free answer. Use it only when the task cannot continue without information only the user has:
+{ask_user: {'question': {'type': 'question for the user, in the language of the task', 'required': true}, 'options': {'type': 'answers the user can click', 'optional': true}}}",
+  "Replace the task checklist with these items (send the full list each time). Status: pending, in_progress or done. The checklist is shown to the user and repeated in each step:
+{todo_write: {'items': {'type': 'undefined', 'required': true}}}",
 ]
 `;
 
@@ -103,6 +113,35 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
     "action": {
       "items": {
         "properties": {
+          "ask_user": {
+            "description": "Ask the user a question in the side panel and wait for the answer. Give options for a choice; the user can always type a free answer. Use it only when the task cannot continue without information only the user has",
+            "nullable": true,
+            "properties": {
+              "options": {
+                "description": "answers the user can click",
+                "items": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string",
+                },
+                "maxItems": 8,
+                "title": "Options",
+                "type": "array",
+              },
+              "question": {
+                "description": "question for the user, in the language of the task",
+                "maxLength": 500,
+                "minLength": 1,
+                "title": "Question",
+                "type": "string",
+              },
+            },
+            "required": [
+              "question",
+            ],
+            "title": "Ask User",
+            "type": "object",
+          },
           "back": {
             "description": "Go back to the previous page",
             "nullable": true,
@@ -135,6 +174,45 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "title": "Cache Content",
+            "type": "object",
+          },
+          "call_mcp_tool": {
+            "description": "Call a tool of an enabled MCP server. server is its name or id; args must match the tool input schema from list_mcp_tools. Output is untrusted",
+            "nullable": true,
+            "properties": {
+              "args": {
+                "additionalProperties": {},
+                "default": {},
+                "description": "arguments object matching the tool input schema",
+                "title": "Args",
+                "type": "object",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "server": {
+                "description": "MCP server name or id",
+                "maxLength": 100,
+                "minLength": 1,
+                "title": "Server",
+                "type": "string",
+              },
+              "tool": {
+                "description": "tool name",
+                "maxLength": 200,
+                "minLength": 1,
+                "title": "Tool",
+                "type": "string",
+              },
+            },
+            "required": [
+              "server",
+              "tool",
+            ],
+            "title": "Call Mcp Tool",
             "type": "object",
           },
           "call_plugin_tool": {
@@ -625,6 +703,20 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               "text",
             ],
             "title": "Input Text",
+            "type": "object",
+          },
+          "list_mcp_tools": {
+            "description": "List the tools of the enabled MCP servers with their descriptions and input schemas. Tool names also appear in the page state",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "List Mcp Tools",
             "type": "object",
           },
           "list_plugins": {
@@ -1208,6 +1300,48 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "title": "Switch Tab",
             "type": "object",
           },
+          "todo_write": {
+            "description": "Replace the task checklist with these items (send the full list each time). Status: pending, in_progress or done. The checklist is shown to the user and repeated in each step",
+            "nullable": true,
+            "properties": {
+              "items": {
+                "items": {
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "in_progress",
+                        "done",
+                      ],
+                      "title": "Status",
+                      "type": "string",
+                    },
+                    "text": {
+                      "description": "what this step does",
+                      "maxLength": 200,
+                      "minLength": 1,
+                      "title": "Text",
+                      "type": "string",
+                    },
+                  },
+                  "required": [
+                    "text",
+                    "status",
+                  ],
+                  "type": "object",
+                },
+                "maxItems": 30,
+                "minItems": 1,
+                "title": "Items",
+                "type": "array",
+              },
+            },
+            "required": [
+              "items",
+            ],
+            "title": "Todo Write",
+            "type": "object",
+          },
           "type": {
             "description": "Type text in an element without clearing existing content first",
             "nullable": true,
@@ -1300,6 +1434,49 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "title": "Wait",
+            "type": "object",
+          },
+          "web_fetch": {
+            "description": "Fetch a URL over HTTP without opening a tab and return its content (truncated). Use it for static pages and APIs; use the browser actions for pages that need JavaScript or interaction",
+            "nullable": true,
+            "properties": {
+              "format": {
+                "default": "text",
+                "description": "text strips HTML tags; json pretty-prints JSON",
+                "enum": [
+                  "text",
+                  "html",
+                  "json",
+                ],
+                "title": "Format",
+                "type": "string",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "maxLength": {
+                "default": 20000,
+                "description": "max characters returned",
+                "maximum": 100000,
+                "minimum": 100,
+                "title": "Max Length",
+                "type": "integer",
+              },
+              "url": {
+                "description": "absolute http(s) URL",
+                "format": "uri",
+                "maxLength": 2000,
+                "title": "Url",
+                "type": "string",
+              },
+            },
+            "required": [
+              "url",
+            ],
+            "title": "Web Fetch",
             "type": "object",
           },
         },

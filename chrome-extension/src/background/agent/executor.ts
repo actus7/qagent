@@ -475,6 +475,11 @@ export class Executor {
     await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_RESUME, t('exec_task_resume'));
   }
 
+  /** Hands the user's answer to a waiting ask_user action. */
+  answerQuestion(answer: string): void {
+    this.context.answerUserQuestion(answer);
+  }
+
   async pause(): Promise<void> {
     this.context.pause();
     await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_PAUSE, t('exec_task_pause'));

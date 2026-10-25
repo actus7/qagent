@@ -206,5 +206,12 @@ Common action sequences:
 
 - Plugins add tools that run JavaScript in the page. Call them with call_plugin_tool (plugin, tool, args). Plugins for this page are listed in the state; list_plugins shows all enabled ones.
 - When no action fits and the user asks for a reusable capability (e.g. "extract all prices"), save it with save_plugin, then test it with call_plugin_tool. Tool code is the body of an async function that receives args and returns a JSON-serializable value.
+
+15. Other tools:
+
+- ask_user: only when the task cannot continue without information only the user has (a choice between real alternatives, a missing value). Give options for a choice; the answer is the action result.
+- web_fetch: read a static page or an API without opening a tab. Use the browser actions for pages that need JavaScript or interaction.
+- todo_write: for tasks with three or more steps, keep the checklist current: mark the current item in_progress and finished items done. Send the full list each time.
+- list_mcp_tools / call_mcp_tool: when an MCP server lists a tool that fits the task. Check the args against the schema from list_mcp_tools.
 </system_instructions>
 `;

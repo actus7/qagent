@@ -4,6 +4,8 @@ import type { AgentContext } from '@src/background/agent/types';
 import { wrapUntrustedContent } from '../messages/utils';
 import { createLogger } from '@src/background/log';
 import { loadPluginPromptSection } from '../../plugins/context';
+import { loadMcpPromptSection } from '../../mcp/context';
+import { buildTodoPromptSection } from '../actions/todo';
 
 const logger = createLogger('BasePrompt');
 /**
@@ -48,6 +50,8 @@ abstract class BasePrompt {
     }
 
     const pluginsSection = await loadPluginPromptSection(browserState.url);
+    const mcpSection = await loadMcpPromptSection(context);
+    const todoSection = buildTodoPromptSection(context.todos);
 
     const timeStr = new Date().toISOString().slice(0, 16).replace('T', ' '); // Format: YYYY-MM-DD HH:mm
     stepInfoDescription += `Current date and time: ${timeStr}`;
@@ -78,7 +82,7 @@ The following is one-time information - if you need to remember it write it to m
 Current tab: ${currentTab}
 Other available tabs:
   ${otherTabs.join('\n')}
-${pluginsSection}Interactive elements from top layer of the current page inside the viewport:
+${pluginsSection}${mcpSection}${todoSection}Interactive elements from top layer of the current page inside the viewport:
 ${formattedElementsText}
 Use selectors from this snapshot and prefer refs in format @eN when available.
 ${stepInfoDescription}

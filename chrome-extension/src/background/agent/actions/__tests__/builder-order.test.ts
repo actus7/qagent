@@ -51,6 +51,11 @@ const DEFAULT_ACTION_NAMES = [
   'list_plugins',
   'call_plugin_tool',
   'save_plugin',
+  'list_mcp_tools',
+  'call_mcp_tool',
+  'web_fetch',
+  'ask_user',
+  'todo_write',
 ];
 
 const AGENT_BROWSER_V1_ACTION_NAMES = [

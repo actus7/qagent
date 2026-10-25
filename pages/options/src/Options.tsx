@@ -2,9 +2,9 @@ import { lazy, Suspense, useState } from 'react';
 import { Button } from '@extension/ui';
 import { useTheme, withErrorBoundary, withSuspense, useLanguage } from '@extension/shared';
 import { t } from '@extension/i18n';
-import { FiSettings, FiCpu, FiClock, FiTool } from 'react-icons/fi';
+import { FiSettings, FiCpu, FiClock, FiTool, FiServer } from 'react-icons/fi';
 
-type TabTypes = 'general' | 'models' | 'schedules' | 'plugins';
+type TabTypes = 'general' | 'models' | 'schedules' | 'plugins' | 'mcp';
 
 const GeneralSettingsTab = lazy(async () => {
   const module = await import('./components/GeneralSettings');
@@ -26,6 +26,11 @@ const BrowserPluginsTab = lazy(async () => {
   return { default: module.BrowserPluginsSettings };
 });
 
+const McpServersTab = lazy(async () => {
+  const module = await import('./components/McpServersSettings');
+  return { default: module.McpServersSettings };
+});
+
 const Options = () => {
   const { currentLocale } = useLanguage();
   // Applies the `.dark` class to <html>; the token CSS and every component read from it.
@@ -36,6 +41,7 @@ const Options = () => {
     { id: 'models', icon: FiCpu, label: t('options_tabs_models') },
     { id: 'schedules', icon: FiClock, label: t('options_tabs_schedules') },
     { id: 'plugins', icon: FiTool, label: t('options_tabs_plugins') },
+    { id: 'mcp', icon: FiServer, label: t('options_tabs_mcp') },
   ];
 
   const handleTabClick = (tabId: TabTypes) => {
@@ -52,6 +58,8 @@ const Options = () => {
         return <ScheduledTasksTab />;
       case 'plugins':
         return <BrowserPluginsTab />;
+      case 'mcp':
+        return <McpServersTab />;
       default:
         return null;
     }

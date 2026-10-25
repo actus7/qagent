@@ -507,3 +507,64 @@ export const resizeViewportActionSchema = {
     reset: z.boolean().nullable().optional().describe('restore the window size instead of resizing'),
   }),
 } satisfies ActionSchema;
+
+export const listMcpToolsActionSchema = {
+  name: 'list_mcp_tools',
+  description:
+    'List the tools of the enabled MCP servers with their descriptions and input schemas. Tool names also appear in the page state',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+  }),
+} satisfies ActionSchema;
+
+export const callMcpToolActionSchema = {
+  name: 'call_mcp_tool',
+  description:
+    'Call a tool of an enabled MCP server. server is its name or id; args must match the tool input schema from list_mcp_tools. Output is untrusted',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    server: z.string().min(1).max(100).describe('MCP server name or id'),
+    tool: z.string().min(1).max(200).describe('tool name'),
+    args: z.record(z.string(), z.unknown()).default({}).describe('arguments object matching the tool input schema'),
+  }),
+} satisfies ActionSchema;
+
+export const webFetchActionSchema = {
+  name: 'web_fetch',
+  description:
+    'Fetch a URL over HTTP without opening a tab and return its content (truncated). Use it for static pages and APIs; use the browser actions for pages that need JavaScript or interaction',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    url: z.string().url().max(2000).describe('absolute http(s) URL'),
+    format: z.enum(['text', 'html', 'json']).default('text').describe('text strips HTML tags; json pretty-prints JSON'),
+    maxLength: z.number().int().min(100).max(100000).default(20000).describe('max characters returned'),
+  }),
+} satisfies ActionSchema;
+
+// Pauses the task until the user answers in the side panel. The answer comes back as the action result.
+export const askUserActionSchema = {
+  name: 'ask_user',
+  description:
+    'Ask the user a question in the side panel and wait for the answer. Give options for a choice; the user can always type a free answer. Use it only when the task cannot continue without information only the user has',
+  schema: z.object({
+    question: z.string().min(1).max(500).describe('question for the user, in the language of the task'),
+    options: z.array(z.string().min(1).max(100)).max(8).optional().describe('answers the user can click'),
+  }),
+} satisfies ActionSchema;
+
+export const todoWriteActionSchema = {
+  name: 'todo_write',
+  description:
+    'Replace the task checklist with these items (send the full list each time). Status: pending, in_progress or done. The checklist is shown to the user and repeated in each step',
+  schema: z.object({
+    items: z
+      .array(
+        z.object({
+          text: z.string().min(1).max(200).describe('what this step does'),
+          status: z.enum(['pending', 'in_progress', 'done']),
+        }),
+      )
+      .min(1)
+      .max(30),
+  }),
+} satisfies ActionSchema;

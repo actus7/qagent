@@ -65,7 +65,7 @@ export const useTaskEventHandler = ({
 }: UseTaskEventHandlerArgs) => {
   const { setMessages } = useSidePanelActions();
   const applySystemState = useSystemStateEffects();
-  const { setLastEvent, setIsStopping, setIsPaused, setTakeover } = runState;
+  const { setLastEvent, setIsStopping, setIsPaused, setTakeover, setQuestion } = runState;
 
   return useCallback(
     (event: AgentEvent) => {
@@ -76,6 +76,7 @@ export const useTaskEventHandler = ({
         setIsStopping(false);
         setIsPaused(false);
         setTakeover(null);
+        setQuestion(null);
         setMessages(previous => previous.filter(item => item.content !== progressMessage));
       }
       // The background is the source of truth for pause state; the local toggle is only optimistic
@@ -85,6 +86,7 @@ export const useTaskEventHandler = ({
         setTakeover({ source: 'agent', message: data.takeover.message });
       }
       if (state === ExecutionState.TASK_RESUME) setTakeover(null);
+      if (state === ExecutionState.ACT_START && data?.question) setQuestion(data.question);
 
       const content = data?.details;
       const plan = planTaskDisplay(actor, state, content);
@@ -130,6 +132,7 @@ export const useTaskEventHandler = ({
       setLastEvent,
       setMessages,
       setTakeover,
+      setQuestion,
     ],
   );
 };

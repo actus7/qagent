@@ -60,6 +60,13 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
       return post({ type: 'success' });
     }
 
+    case 'answer_question': {
+      // Without a waiting ask_user action the answer is dropped; the panel only offers it while one waits.
+      const { currentExecutor } = runtimeStore.getState();
+      currentExecutor?.answerQuestion(message.text.trim());
+      return post({ type: 'success' });
+    }
+
     case 'screenshot': {
       const page = await browserContext.switchTab(message.tabId);
       const screenshot = await page.takeScreenshot();

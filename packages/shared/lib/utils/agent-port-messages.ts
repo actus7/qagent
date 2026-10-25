@@ -81,6 +81,7 @@ export type SidePanelCommandMessage =
   | { type: 'cancel_task' }
   | { type: 'resume_task' }
   | { type: 'pause_task' }
+  | { type: 'answer_question'; text: string }
   | { type: 'screenshot'; tabId: number }
   | { type: 'capture_visible_tab'; tabId: number }
   | { type: 'state' }
@@ -99,6 +100,11 @@ export interface UserTakeoverPayload {
   message: string;
 }
 
+export interface UserQuestionPayload {
+  question: string;
+  options: string[];
+}
+
 interface ExecutionEventPayload {
   taskId: string;
   step: number;
@@ -106,6 +112,8 @@ interface ExecutionEventPayload {
   details: string;
   // Set on the pause event of a request_user_takeover action.
   takeover?: UserTakeoverPayload;
+  // Set on the start event of an ask_user action.
+  question?: UserQuestionPayload;
 }
 
 export interface ExecutionPortEventMessage {
@@ -198,6 +206,8 @@ export function isSidePanelCommandMessage(message: unknown): message is SidePane
         message.taskId.length > 0 &&
         (message.modelAgent === undefined || message.modelAgent === 'navigator' || message.modelAgent === 'planner')
       );
+    case 'answer_question':
+      return typeof message.text === 'string' && message.text.trim().length > 0 && message.text.length <= 2000;
     case 'new_task':
     case 'follow_up_task':
       return (

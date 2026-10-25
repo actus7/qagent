@@ -20,3 +20,8 @@ export function engineUnsupportedResult(context: AgentContext): ActionResult {
   context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
   return new ActionResult({ error: msg, includeInMemory: true });
 }
+
+/** Cuts text to a limit so tool output cannot fill the context; the cut is marked for the model. */
+export function clipText(text: string, maxLength: number): string {
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...[truncated]` : text;
+}

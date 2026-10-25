@@ -13,6 +13,7 @@ import SettingsModal from './components/SettingsModal';
 import SetupRequiredModal from './components/SetupRequiredModal';
 import TaskStatusBar from './components/TaskStatusBar';
 import TakeoverBanner from './components/TakeoverBanner';
+import QuestionBanner from './components/QuestionBanner';
 import WelcomeScreen from './components/WelcomeScreen';
 import WorkflowRecordControl from './components/WorkflowRecordControl';
 import { useAssistantWorkspace } from './hooks/useAssistantWorkspace';
@@ -91,15 +92,8 @@ const SidePanel = () => {
   // Prompt the schedule dialog opens with; null while the dialog is closed.
   const [schedulePrompt, setSchedulePrompt] = useState<string | null>(null);
   const runState = useTaskRunState();
-  const {
-    lastEvent,
-    setLastEvent,
-    isPaused,
-    setIsPaused,
-    isStopping,
-    takeover,
-    setTakeover,
-  } = runState;
+  const { lastEvent, setLastEvent, isPaused, setIsPaused, isStopping, takeover, setTakeover, question, setQuestion } =
+    runState;
   const isTaskRunningRef = useRef(false);
   // Stream id of the plan-mode answer produced by the current run, used for "Execute this plan"
   const [planStreamId, setPlanStreamId] = useState<string | null>(null);
@@ -336,6 +330,13 @@ const SidePanel = () => {
     setTakeover(null);
   };
 
+  // The answer goes to the waiting ask_user action and is added to the chat as the user's message.
+  const handleAnswerQuestion = (answer: string) => {
+    sendMessage({ type: 'answer_question', text: answer });
+    setQuestion(null);
+    void appendMessage({ actor: Actors.USER, content: answer, timestamp: Date.now() }, sessionIdRef.current);
+  };
+
   const handleSuggestion = (_mode: AssistantMode, prompt: string) => {
     setInputText(prompt);
   };
@@ -427,6 +428,9 @@ const SidePanel = () => {
           />
           {showStopButton && takeover ? (
             <TakeoverBanner copy={copy} takeover={takeover} onReturnToAgent={handleReturnToAgent} />
+          ) : null}
+          {showStopButton && question ? (
+            <QuestionBanner copy={copy} question={question} onAnswer={handleAnswerQuestion} />
           ) : null}
           {showStopButton ? (
             <TaskStatusBar

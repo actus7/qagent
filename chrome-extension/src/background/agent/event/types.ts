@@ -58,6 +58,8 @@ export interface EventData {
   details: string;
   /** Set on the pause event raised by request_user_takeover, so the panel can show the request. */
   takeover?: { reason: string; reasonLabel: string; message: string };
+  /** Set on the ACT_START event of ask_user, so the panel can show the question and its options. */
+  question?: { question: string; options: string[] };
 }
 
 export class AgentEvent {

@@ -12,3 +12,4 @@ export * from './schedule-draft';
 export * from './workflow-selector';
 export * from './infer-mode';
 export * from './jev';
+export * from './mcp-client';

@@ -627,6 +627,57 @@ describe('extension e2e', { timeout: 300_000 }, () => {
     assert.deepEqual(pageErrors, []);
   });
 
+  it('holds the task on ask_user until the side panel answers', async () => {
+    state.navigatorSteps = 0;
+    state.script = [
+      { ask_user: { intent: 'need a plan', question: 'Which plan?', options: ['Basic', 'Pro'] } },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/ask-user`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/ask-user` }))[0]?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'ask-user tab not found');
+
+    const { events, question } = await panel.evaluate(
+      targetTabId =>
+        new Promise(resolve => {
+          const events = [];
+          let question = null;
+          const port = chrome.runtime.connect({ name: 'side-panel-connection' });
+          const finish = () => resolve({ events, question });
+          setTimeout(finish, 120_000);
+          port.onMessage.addListener(message => {
+            if (message.type !== 'execution') return;
+            events.push(`${message.actor}:${message.state}`);
+            if (message.data.question && !question) {
+              question = message.data.question;
+              // The panel answers the question once it is shown.
+              setTimeout(() => port.postMessage({ type: 'answer_question', text: 'Pro' }), 500);
+            }
+            if (['task.ok', 'task.fail', 'task.cancel'].includes(message.state)) finish();
+          });
+          port.postMessage({
+            type: 'new_task',
+            task: 'Choose a plan for the account',
+            taskId: 'e2e-ask-user-task',
+            tabId: targetTabId,
+            options: { mode: 'act', tabIds: [targetTabId] },
+          });
+        }),
+      tabId,
+    );
+    state.script = null;
+
+    assert.equal(question?.question, 'Which plan?');
+    assert.deepEqual(question?.options, ['Basic', 'Pro']);
+    assert.ok(events.includes('system:task.ok'), `task did not complete after the answer: ${events.join(', ')}`);
+    assert.deepEqual(pageErrors, []);
+  });
+
   it('runs a scheduled act task from storage when run-now is sent', async () => {
     state.navigatorSteps = 0;
     state.script = null;

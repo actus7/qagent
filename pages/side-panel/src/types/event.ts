@@ -53,6 +53,8 @@ export interface EventData {
   details: string;
   /** Set on the pause event of a request_user_takeover action. */
   takeover?: { reason: string; reasonLabel: string; message: string };
+  /** Set on the ACT_START event of an ask_user action. */
+  question?: { question: string; options: string[] };
 }
 
 export class AgentEvent {

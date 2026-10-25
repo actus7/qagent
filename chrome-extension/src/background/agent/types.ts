@@ -56,6 +56,12 @@ export class AgentContext {
   taskFiles: Map<string, { mimeType: string; base64: string }>;
   /** Set on resume so the next navigator step refreshes the browser state instead of reusing the cached one. */
   pageStale: boolean;
+  /** Checklist kept with todo_write; echoed in every navigator step. */
+  todos: TodoItem[];
+  /** Tool names per enabled MCP server id, fetched once per task; null when the server could not be reached. */
+  mcpToolNames: Map<string, string[] | null>;
+  /** Resolves the ask_user action that waits for the user's answer. */
+  private answerResolver: ((answer: string) => void) | null;
 
   constructor(
     taskId: string,
@@ -83,15 +89,25 @@ export class AgentContext {
     this.finalAnswer = null;
     this.taskFiles = new Map();
     this.pageStale = false;
+    this.todos = [];
+    this.mcpToolNames = new Map();
+    this.answerResolver = null;
   }
 
-  async emitEvent(actor: Actors, state: ExecutionState, eventDetails: string, takeover?: EventData['takeover']) {
+  async emitEvent(
+    actor: Actors,
+    state: ExecutionState,
+    eventDetails: string,
+    takeover?: EventData['takeover'],
+    question?: EventData['question'],
+  ) {
     const event = new AgentEvent(actor, state, {
       taskId: this.taskId,
       step: this.nSteps,
       maxSteps: this.options.maxSteps,
       details: eventDetails,
       takeover,
+      question,
     });
     await this.eventManager.emit(event);
   }
@@ -106,10 +122,31 @@ export class AgentContext {
     this.pageStale = true;
   }
 
+  /** Waits for answerUserQuestion; a stop resolves it with an empty answer so the task can end. */
+  waitForUserAnswer(): Promise<string> {
+    return new Promise(resolve => {
+      this.answerResolver = resolve;
+    });
+  }
+
+  /** Returns false when no question is waiting. */
+  answerUserQuestion(answer: string): boolean {
+    const resolve = this.answerResolver;
+    this.answerResolver = null;
+    resolve?.(answer);
+    return resolve !== null;
+  }
+
   async stop() {
     this.stopped = true;
+    this.answerUserQuestion('');
     setTimeout(() => this.controller.abort(), 300);
   }
+}
+
+export interface TodoItem {
+  text: string;
+  status: 'pending' | 'in_progress' | 'done';
 }
 
 class AgentStepInfo {

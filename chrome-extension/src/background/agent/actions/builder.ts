@@ -49,6 +49,10 @@ import {
 import { createClickAtAction, createDragAction, createHoverAction } from './pointer';
 import { createRequestUserTakeoverAction } from './takeover';
 import { createCallPluginToolAction, createListPluginsAction, createSavePluginAction } from './plugins';
+import { createCallMcpToolAction, createListMcpToolsAction } from './mcp';
+import { createWebFetchAction } from './web-fetch';
+import { createAskUserAction } from './ask-user';
+import { createTodoWriteAction } from './todo';
 
 export { Action, InvalidInputError, buildDynamicActionSchema } from './action';
 
@@ -133,6 +137,11 @@ export class ActionBuilder {
       createListPluginsAction(context),
       createCallPluginToolAction(context),
       createSavePluginAction(context),
+      createListMcpToolsAction(context),
+      createCallMcpToolAction(context),
+      createWebFetchAction(context),
+      createAskUserAction(context),
+      createTodoWriteAction(context),
     ];
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
       return actions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));

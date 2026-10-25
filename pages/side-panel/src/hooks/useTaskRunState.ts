@@ -7,18 +7,26 @@ export interface TakeoverState {
   message: string;
 }
 
+/** A question from ask_user that waits for the user's answer. */
+export interface QuestionState {
+  question: string;
+  options: string[];
+}
+
 /** Per-task UI state shared by the event handler, submission and status bar. */
 export const useTaskRunState = () => {
   const [lastEvent, setLastEvent] = useState<AgentEvent | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [takeover, setTakeover] = useState<TakeoverState | null>(null);
+  const [question, setQuestion] = useState<QuestionState | null>(null);
 
   const resetRunState = useCallback(() => {
     setLastEvent(null);
     setIsPaused(false);
     setIsStopping(false);
     setTakeover(null);
+    setQuestion(null);
   }, []);
 
   return {
@@ -30,6 +38,8 @@ export const useTaskRunState = () => {
     setIsStopping,
     takeover,
     setTakeover,
+    question,
+    setQuestion,
     resetRunState,
   };
 };
