@@ -78,6 +78,8 @@ const DEFAULT_ACTION_NAMES = [
   'fs_write',
   'fs_list',
   'fs_search',
+  'map_site',
+  'run_workflow',
 ];
 
 const AGENT_BROWSER_V1_ACTION_NAMES = [

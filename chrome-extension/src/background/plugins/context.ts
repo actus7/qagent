@@ -6,7 +6,8 @@ import { pluginAppliesToUrl } from './urlMatch';
 const logger = createLogger('Plugins');
 
 export const PLUGIN_PROMPT_MAX_CHARS = 3000;
-const INSTRUCTIONS_MAX_CHARS = 500;
+// Sized for a site map summary (900 characters), so the map is not cut in the prompt.
+const INSTRUCTIONS_MAX_CHARS = 1000;
 
 function formatParams(tool: PluginTool): string {
   return Object.entries(tool.parameters)

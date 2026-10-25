@@ -148,6 +148,10 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {fs_list: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'folder path', 'required': true}}}",
   "Search text files under a folder on the host machine for a pattern (regex if it compiles, else literal, case-insensitive). Skips node_modules and .git:
 {fs_search: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'folder to search', 'required': true}, 'pattern': {'type': 'text or regex to find', 'required': true}, 'maxResults': {'type': 'stop after this many matches', 'optional': true}}}",
+  "Crawl the current site (same host only, read-only, up to 15 pages) and save a site map as a browser plugin for this host, so the map is in context on later visits. Defaults to the current page:
+{map_site: {'intent': {'type': 'purpose of this action', 'optional': true}, 'url': {'type': 'start URL, default the current page', 'optional': true}, 'maxPages': {'type': 'pages to read, 1 to 15', 'optional': true}}}",
+  "Replay a saved workflow (recorded by the user with "Gravar fluxo") through the normal browser actions. Pass the variables it lists, e.g. {name: "Checkout", variables: {email: "a@b.com"}}. Stops at the first failing step:
+{run_workflow: {'intent': {'type': 'purpose of this action', 'optional': true}, 'name': {'type': 'workflow name or id', 'required': true}, 'variables': {'type': 'values for the {{variables}} of the workflow', 'optional': true}}}",
 ]
 `;
 
@@ -1205,6 +1209,34 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "title": "List Site Tools",
             "type": "object",
           },
+          "map_site": {
+            "description": "Crawl the current site (same host only, read-only, up to 15 pages) and save a site map as a browser plugin for this host, so the map is in context on later visits. Defaults to the current page",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "maxPages": {
+                "default": 15,
+                "description": "pages to read, 1 to 15",
+                "maximum": 15,
+                "minimum": 1,
+                "title": "Max Pages",
+                "type": "integer",
+              },
+              "url": {
+                "description": "start URL, default the current page",
+                "maxLength": 2000,
+                "title": "Url",
+                "type": "string",
+              },
+            },
+            "title": "Map Site",
+            "type": "object",
+          },
           "monitor_status": {
             "description": "List the monitors and their state (watching, changed, stopped, expired or lost) with the changed text",
             "nullable": true,
@@ -1543,6 +1575,40 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "title": "Resize Viewport",
+            "type": "object",
+          },
+          "run_workflow": {
+            "description": "Replay a saved workflow (recorded by the user with "Gravar fluxo") through the normal browser actions. Pass the variables it lists, e.g. {name: "Checkout", variables: {email: "a@b.com"}}. Stops at the first failing step",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "name": {
+                "description": "workflow name or id",
+                "maxLength": 200,
+                "minLength": 1,
+                "title": "Name",
+                "type": "string",
+              },
+              "variables": {
+                "additionalProperties": {
+                  "maxLength": 2000,
+                  "type": "string",
+                },
+                "default": {},
+                "description": "values for the {{variables}} of the workflow",
+                "title": "Variables",
+                "type": "object",
+              },
+            },
+            "required": [
+              "name",
+            ],
+            "title": "Run Workflow",
             "type": "object",
           },
           "save_plugin": {

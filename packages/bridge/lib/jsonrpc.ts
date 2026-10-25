@@ -109,7 +109,7 @@ async function handleRequest(
         id,
         result: {
           protocolVersion: negotiateProtocolVersion(params.protocolVersion),
-          capabilities: { tools: { listChanged: false } },
+          capabilities: { tools: { listChanged: true } },
           serverInfo: { name: server.name, version: server.version },
           ...(server.instructions ? { instructions: server.instructions } : {}),
         },

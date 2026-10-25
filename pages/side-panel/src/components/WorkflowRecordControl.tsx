@@ -100,6 +100,8 @@ export default function WorkflowRecordControl({ sendMessage, ensureConnection }:
       setNotice(t('chat_record_saveFailed'));
       return;
     }
+    // The background builds the workflow from the steps before the discard below clears them.
+    send({ type: 'workflow_record_build', name: title });
     send({ type: 'workflow_record_discard' });
     setIsReviewOpen(false);
     setNotice(t('chat_record_saved'));
@@ -109,7 +111,12 @@ export default function WorkflowRecordControl({ sendMessage, ensureConnection }:
     <section className="mx-3 mt-2 flex flex-col gap-2 text-sm" aria-label={t('chat_record_start')}>
       {!isRecording && !isStopped && (
         <div className="flex items-center justify-between gap-2">
-          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => void handleStart()}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={() => void handleStart()}>
             <FiCircle aria-hidden="true" size={10} className="text-red-500" />
             {t('chat_record_start')}
           </Button>
@@ -125,7 +132,10 @@ export default function WorkflowRecordControl({ sendMessage, ensureConnection }:
         <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-2">
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-2 font-medium">
-              <span aria-hidden="true" className="size-2 animate-pulse rounded-full bg-red-500 motion-reduce:animate-none" />
+              <span
+                aria-hidden="true"
+                className="size-2 animate-pulse rounded-full bg-red-500 motion-reduce:animate-none"
+              />
               {t('chat_record_recording')}
             </span>
             <div className="flex gap-1">
@@ -185,12 +195,7 @@ export default function WorkflowRecordControl({ sendMessage, ensureConnection }:
           </label>
           <label className="flex flex-col gap-1 text-xs">
             {t('chat_record_procedureLabel')}
-            <Textarea
-              value={procedure}
-              rows={6}
-              className="text-sm"
-              onChange={e => setProcedure(e.target.value)}
-            />
+            <Textarea value={procedure} rows={6} className="text-sm" onChange={e => setProcedure(e.target.value)} />
           </label>
           <StepList steps={snapshot.steps} truncated={snapshot.truncated} />
           <div className="flex justify-end gap-2">
@@ -229,7 +234,10 @@ function StepList({ steps, truncated }: { steps: RecordedStep[]; truncated: bool
   }
   return (
     <>
-      <ol aria-label={t('chat_record_stepsLabel')} aria-live="polite" className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+      <ol
+        aria-label={t('chat_record_stepsLabel')}
+        aria-live="polite"
+        className="flex max-h-40 flex-col gap-1 overflow-y-auto">
         {steps.map((step, index) => (
           <li key={`${step.kind}-${step.at}`} className="text-xs">
             {index + 1}. {describeStep(step, labels)}

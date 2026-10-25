@@ -8,6 +8,7 @@ import { compactChatConversation } from '../services/conversation-compaction';
 import { assertManagedProvidersAllowed, loadManagedPolicy, prepareManagedTask } from '../services/managedPolicy';
 import { SpeechToTextService } from '../services/speechToText';
 import { workflowRecorder } from '../services/workflowRecording';
+import { saveRecordedWorkflow } from '../workflows/build';
 import { captureVisibleTab } from '../services/tabCapture';
 import { browserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
@@ -171,6 +172,17 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
     case 'workflow_record_discard': {
       await workflowRecorder.discard();
       break;
+    }
+
+    case 'workflow_record_build': {
+      try {
+        const snapshot = await workflowRecorder.snapshot();
+        await saveRecordedWorkflow(message.name, snapshot.steps, 'navigator');
+        return post({ type: 'success' });
+      } catch (error) {
+        logger.error('Could not build the recorded workflow', error);
+        return post({ type: 'error', error: t('bg_record_buildFailed') });
+      }
     }
 
     case 'workflow_record_status': {

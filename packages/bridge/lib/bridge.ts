@@ -39,6 +39,8 @@ export interface McpBridgeOptions {
   taskTimeoutMs?: number;
   requestTimeoutMs?: number;
   handler?: ExtensionHandler;
+  /** Called after an extension completes the handshake, so the action list can be refreshed. */
+  onExtensionConnected?: () => void;
 }
 
 interface PendingRequest {
@@ -128,6 +130,7 @@ export class QAgentMcpBridge implements BridgeRequester {
   private readonly taskTimeoutMs: number;
   private readonly requestTimeoutMs: number;
   private readonly handler?: ExtensionHandler;
+  private readonly onExtensionConnected?: () => void;
   private wss: WebSocketServer | null = null;
   private socket: WebSocket | null = null;
   private readonly pending = new Map<string, PendingRequest>();
@@ -146,6 +149,7 @@ export class QAgentMcpBridge implements BridgeRequester {
     this.taskTimeoutMs = options.taskTimeoutMs ?? DEFAULT_TASK_TIMEOUT_MS;
     this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     this.handler = options.handler;
+    this.onExtensionConnected = options.onExtensionConnected;
     if (!LOOPBACK_HOSTS.has(this.host)) {
       throw new Error('QAgent MCP bridge only listens on 127.0.0.1 or localhost');
     }
@@ -295,6 +299,7 @@ export class QAgentMcpBridge implements BridgeRequester {
       this.socket.close(4002, 'replaced');
     }
     this.socket = ws;
+    this.onExtensionConnected?.();
   }
 
   private settle(frame: McpBridgeResponseFrame & Record<string, unknown>): void {

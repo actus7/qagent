@@ -507,6 +507,31 @@ export const savePluginActionSchema = {
   }),
 } satisfies ActionSchema;
 
+export const runWorkflowActionSchema = {
+  name: 'run_workflow',
+  description:
+    'Replay a saved workflow (recorded by the user with "Gravar fluxo") through the normal browser actions. Pass the variables it lists, e.g. {name: "Checkout", variables: {email: "a@b.com"}}. Stops at the first failing step',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    name: z.string().min(1).max(200).describe('workflow name or id'),
+    variables: z
+      .record(z.string().max(40), z.string().max(2000))
+      .default({})
+      .describe('values for the {{variables}} of the workflow'),
+  }),
+} satisfies ActionSchema;
+
+export const mapSiteActionSchema = {
+  name: 'map_site',
+  description:
+    'Crawl the current site (same host only, read-only, up to 15 pages) and save a site map as a browser plugin for this host, so the map is in context on later visits. Defaults to the current page',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    url: z.string().max(2000).optional().describe('start URL, default the current page'),
+    maxPages: z.number().int().min(1).max(15).default(15).describe('pages to read, 1 to 15'),
+  }),
+} satisfies ActionSchema;
+
 export const clickAtActionSchema = {
   name: 'click_at',
   description:

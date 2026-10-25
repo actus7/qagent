@@ -1,6 +1,6 @@
 import type { AssistantAttachment } from './assistant-attachments';
 import { isValidAssistantAttachments } from './assistant-attachments';
-import { isWorkflowRecordingSnapshot, type WorkflowRecordingSnapshot } from './workflow-recording';
+import { isWorkflowRecordingSnapshot, MAX_NAME_CHARS, type WorkflowRecordingSnapshot } from './workflow-recording';
 
 export const SIDE_PANEL_CONNECTION_PORT_NAME = 'side-panel-connection' as const;
 
@@ -92,6 +92,7 @@ export type SidePanelCommandMessage =
   | { type: 'workflow_record_start'; tabId: number }
   | { type: 'workflow_record_stop' }
   | { type: 'workflow_record_discard' }
+  | { type: 'workflow_record_build'; name: string }
   | { type: 'workflow_record_status' };
 
 export interface UserTakeoverPayload {
@@ -200,6 +201,8 @@ export function isSidePanelCommandMessage(message: unknown): message is SidePane
       return true;
     case 'workflow_record_start':
       return Number.isSafeInteger(message.tabId) && Number(message.tabId) >= 0;
+    case 'workflow_record_build':
+      return typeof message.name === 'string' && message.name.length > 0 && message.name.length <= MAX_NAME_CHARS;
     case 'compact_chat':
       return (
         typeof message.taskId === 'string' &&

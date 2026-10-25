@@ -77,6 +77,10 @@ import {
   createShellExecAction,
 } from './host';
 
+import type { Action } from './action';
+import { createMapSiteAction } from './site-map';
+import { createRunWorkflowAction } from './workflow';
+
 export { Action, InvalidInputError, buildDynamicActionSchema } from './action';
 
 const AGENT_BROWSER_V1_ALLOWED_ACTIONS = new Set([
@@ -113,7 +117,8 @@ export class ActionBuilder {
   // The order of this list is part of the prompt contract: do not reorder without updating the order-guard test.
   buildDefaultActions() {
     const context = this.context;
-    const actions = [
+    // Typed up front: run_workflow looks its sibling actions up in this same list, which would otherwise be circular.
+    const actions: Action[] = [
       createDoneAction(context),
       createSearchGoogleAction(context),
       createOpenAction(context),
@@ -187,6 +192,8 @@ export class ActionBuilder {
       createFsWriteAction(context),
       createFsListAction(context),
       createFsSearchAction(context),
+      createMapSiteAction(context),
+      createRunWorkflowAction(context, name => actions.find(action => action.name() === name)),
     ];
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
       return actions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));

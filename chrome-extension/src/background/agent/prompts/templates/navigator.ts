@@ -217,6 +217,8 @@ Common action sequences:
 
 - Plugins add tools that run JavaScript in the page. Call them with call_plugin_tool (plugin, tool, args). Plugins for this page are listed in the state; list_plugins shows all enabled ones.
 - When no action fits and the user asks for a reusable capability (e.g. "extract all prices"), save it with save_plugin, then test it with call_plugin_tool. Tool code is the body of an async function that receives args and returns a JSON-serializable value.
+- run_workflow (name, variables): replays a workflow the user recorded with "Gravar fluxo", filling its variables. Use it when the user names a saved workflow.
+- map_site (url?, maxPages?): reads the site (same host, read-only, up to 15 pages) and saves a map as a plugin for that host. Use it when the user asks to learn a site; later visits to that host show the map.
 
 15. Other tools:
 

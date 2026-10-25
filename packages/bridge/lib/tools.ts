@@ -120,17 +120,46 @@ export function actionTools(entries: ActionCatalogEntry[]): {
   return { tools, actionByTool };
 }
 
+export function isActionCatalogEntry(value: unknown): value is ActionCatalogEntry {
+  if (typeof value !== 'object' || value === null) return false;
+  const entry = value as Partial<Record<keyof ActionCatalogEntry, unknown>>;
+  return (
+    typeof entry.name === 'string' &&
+    typeof entry.description === 'string' &&
+    typeof entry.inputSchema === 'object' &&
+    entry.inputSchema !== null &&
+    !Array.isArray(entry.inputSchema)
+  );
+}
+
 function parseCatalog(value: unknown): ActionCatalogEntry[] {
   const actions = (value as { actions?: unknown } | null)?.actions;
   if (!Array.isArray(actions)) return [];
-  return actions.filter(
-    (entry): entry is ActionCatalogEntry =>
-      typeof entry === 'object' &&
-      entry !== null &&
-      typeof (entry as ActionCatalogEntry).name === 'string' &&
-      typeof (entry as ActionCatalogEntry).description === 'string' &&
-      typeof (entry as ActionCatalogEntry).inputSchema === 'object',
-  );
+  return actions.filter(isActionCatalogEntry);
+}
+
+/** True when the page tool list would change: a first load, or any difference in the action list. */
+export function catalogChanged(previous: ActionCatalogEntry[] | null, next: ActionCatalogEntry[]): boolean {
+  return previous === null || JSON.stringify(previous) !== JSON.stringify(next);
+}
+
+export const EXTENSION_NOT_CONNECTED_MESSAGE =
+  'extension not connected: open Chrome with the QAgent extension and make sure the bridge is paired';
+
+function isExtensionNotConnected(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith('EXTENSION_NOT_CONNECTED');
+}
+
+export interface ActionToolsOptions {
+  /** Last-known action list, read from disk, so page tools exist before the extension connects. */
+  cachedCatalog?: ActionCatalogEntry[] | null;
+  /** Persists each action list the extension returns. */
+  saveCatalog?: (entries: ActionCatalogEntry[]) => void;
+}
+
+export interface QAgentToolHost extends McpToolHost {
+  /** Asks the extension for its actions. Resolves true when the page tool list changed. */
+  refreshActions(): Promise<boolean>;
 }
 
 function textResult(text: string, isError = false): McpToolResult {
@@ -147,38 +176,52 @@ const TOOL_METHODS: Record<string, McpBridgeMethod> = {
  * Maps MCP tool calls onto bridge requests. The browser action tools are loaded from the extension on first use,
  * and retried until the extension answers. Bridge failures become tool errors, not protocol errors.
  */
-export function createQaAgentToolHost(bridge: BridgeRequester): McpToolHost {
-  let actionTools_: { tools: McpToolDefinition[]; actionByTool: Map<string, string> } | null = null;
+export function createQaAgentToolHost(bridge: BridgeRequester, options: ActionToolsOptions = {}): QAgentToolHost {
+  let catalog: ActionCatalogEntry[] | null = options.cachedCatalog ?? null;
+  // The cached list is only a stand-in until the extension answers once in this process.
+  let live = false;
 
-  async function loadActionTools(): Promise<{ tools: McpToolDefinition[]; actionByTool: Map<string, string> }> {
-    if (actionTools_) return actionTools_;
+  async function refreshActions(): Promise<boolean> {
+    let entries: ActionCatalogEntry[];
     try {
-      actionTools_ = actionTools(parseCatalog(await bridge.request('list_actions', {})));
+      entries = parseCatalog(await bridge.request('list_actions', {}));
     } catch {
-      // The extension is not connected yet; the static tools still work and the next call retries.
-      return { tools: [], actionByTool: new Map() };
+      // The extension is not connected yet; the last-known list stays and the next call retries.
+      return false;
     }
-    return actionTools_;
+    const changed = catalogChanged(catalog, entries);
+    catalog = entries;
+    live = true;
+    if (changed) options.saveCatalog?.(entries);
+    return changed;
+  }
+
+  async function runAction(action: string, args: Record<string, unknown>): Promise<McpToolResult> {
+    const { tabId, ...input } = args;
+    try {
+      const result = (await bridge.request('run_action', {
+        action,
+        input,
+        ...(typeof tabId === 'number' ? { tabId } : {}),
+      })) as { ok?: boolean } | undefined;
+      return textResult(JSON.stringify(result, null, 2), result?.ok === false);
+    } catch (error) {
+      if (isExtensionNotConnected(error)) return textResult(EXTENSION_NOT_CONNECTED_MESSAGE, true);
+      return textResult(error instanceof Error ? error.message : 'QAgent tool failed', true);
+    }
   }
 
   return {
+    refreshActions,
     async listTools() {
-      const loaded = await loadActionTools();
-      return [...QAGENT_TOOLS, ...loaded.tools];
+      if (!live) await refreshActions();
+      return [...QAGENT_TOOLS, ...actionTools(catalog ?? []).tools];
     },
     async callTool(name, args) {
+      if (!live) await refreshActions();
+      const action = actionTools(catalog ?? []).actionByTool.get(name);
+      if (action) return runAction(action, args);
       try {
-        const loaded = await loadActionTools();
-        const action = loaded.actionByTool.get(name);
-        if (action) {
-          const { tabId, ...input } = args;
-          const result = (await bridge.request('run_action', {
-            action,
-            input,
-            ...(typeof tabId === 'number' ? { tabId } : {}),
-          })) as { ok?: boolean } | undefined;
-          return textResult(JSON.stringify(result, null, 2), result?.ok === false);
-        }
         const method = name === 'qagent_run_task' ? 'run_task' : TOOL_METHODS[name];
         const params = method === 'run_task' ? validateRunTaskArgs(args) : {};
         const result = await bridge.request(method, params);
