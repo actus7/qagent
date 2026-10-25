@@ -41,7 +41,8 @@ export function buildSiteMapPlugin(
     name: `Site map: ${host}`.slice(0, 80),
     description: 'Site map built by the agent from a read-only crawl of this host',
     version: '1.0.0',
-    enabled: true,
+    // Refreshing the map never re-enables a map the user switched off.
+    enabled: existing?.enabled ?? true,
     matches: [host],
     instructions,
     tools: [],
@@ -53,6 +54,8 @@ export function buildSiteMapPlugin(
 
 async function fetchFacts(url: string, signal: AbortSignal): Promise<PageFacts | null> {
   const response = await fetch(url, { redirect: 'follow', signal });
+  // A redirect off the crawled host would break the same-host promise of the map.
+  if (response.url && new URL(response.url).hostname !== new URL(url).hostname) return null;
   if (!response.ok || !(response.headers.get('Content-Type') ?? '').includes('html')) return null;
   const html = await response.text();
   return factsFromHtml(html, extractHrefs(html));

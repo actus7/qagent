@@ -2,6 +2,7 @@ import { generateText } from 'ai';
 import type { AssistantTaskOptions, RecordedStep } from '@extension/shared';
 import { workflowsStore, type Workflow, type WorkflowStep } from '@extension/storage';
 import { createLogger } from '../log';
+import { wrapUntrustedContent } from '../agent/messages/utils';
 import { loadAssistantModel } from '../services/assistant-model';
 import { normalizeRecording } from './normalize';
 import { extractJsonObject, parseWorkflowDraft, toWorkflow, type WorkflowDraft } from './draft';
@@ -30,7 +31,8 @@ async function draftWithModel(
       model: model.model,
       ...model.settings,
       instructions: BUILD_PROMPT,
-      prompt: `Workflow name: ${name}\nRecorded steps (JSON):\n${JSON.stringify(steps)}`,
+      // Recorded steps carry page text (labels, URLs), so they are data for the model, not instructions.
+      prompt: `Workflow name: ${name}\nRecorded steps (JSON):\n${wrapUntrustedContent(JSON.stringify(steps), false)}`,
       abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
       maxRetries: 0,
     });
