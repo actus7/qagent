@@ -74,12 +74,23 @@ export const reloadActionSchema = {
   }),
 } satisfies ActionSchema;
 
+// Readable alternative to a ref: match by visible text and role, pick the nth (0-based) match.
+const targetField = z
+  .object({
+    selector: z.string().optional().describe('CSS selector to search within (default: interactive elements)'),
+    text: z.string().optional().describe('visible text the element contains, case-insensitive'),
+    role: z.string().optional().describe('ARIA role or tag, e.g. button, link, textbox'),
+    nth: z.number().int().nonnegative().optional().describe('0-based index when several elements match, default 0'),
+  })
+  .describe('readable target {text, role, nth}, used when no ref fits');
+
 export const clickActionSchema = {
   name: 'click',
-  description: 'Click element by selector',
+  description: 'Click element by selector or readable target',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
-    selector: selectorField,
+    selector: selectorField.optional(),
+    target: targetField.optional(),
   }),
 } satisfies ActionSchema;
 
@@ -88,7 +99,8 @@ export const fillActionSchema = {
   description: 'Clear and fill text in an input element',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
-    selector: selectorField,
+    selector: selectorField.optional(),
+    target: targetField.optional(),
     text: z.string().describe('text to fill'),
   }),
 } satisfies ActionSchema;
@@ -98,7 +110,8 @@ export const typeActionSchema = {
   description: 'Type text in an element without clearing existing content first',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
-    selector: selectorField,
+    selector: selectorField.optional(),
+    target: targetField.optional(),
     text: z.string().describe('text to type'),
   }),
 } satisfies ActionSchema;
@@ -141,10 +154,57 @@ export const snapshotActionSchema = {
 
 export const getTextActionSchema = {
   name: 'get_text',
-  description: 'Get element text by selector',
+  description:
+    'Get element text by selector or target, or the whole page when neither is given. Long text comes in groups: when the reply has a cursor, pass it back to read on',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
-    selector: selectorField,
+    selector: selectorField.optional(),
+    target: targetField.optional(),
+    max_length: z.number().int().min(100).max(200000).default(20000).describe('characters per group'),
+    cursor: z.string().max(32).optional().describe('cursor from the previous group; omit to read from the top'),
+  }),
+} satisfies ActionSchema;
+
+export const pageInfoActionSchema = {
+  name: 'page_info',
+  description:
+    'Structural summary of the page: URL, title, landmarks, headings and the links, buttons, fields and forms with their ARIA state. Lists up to max_per_kind items per kind and reports the true totals. Use it to orient before snapshot',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    max_per_kind: z.number().int().min(1).max(50).default(15).describe('items listed per kind'),
+    geometry: z.boolean().default(false).describe('add bounding boxes to each item'),
+  }),
+} satisfies ActionSchema;
+
+export const findProgressActionSchema = {
+  name: 'find_progress',
+  description:
+    'Find progress signals on the page: progress bars, percent text, spinners and busy regions. Use it to decide whether to wait for a job or ask the user',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+  }),
+} satisfies ActionSchema;
+
+export const waitForElementActionSchema = {
+  name: 'wait_for_element',
+  description:
+    'Wait until a target reaches a state: attached, visible, hidden or detached. Prefer it over a fixed wait action',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    selector: selectorField.optional(),
+    target: targetField.optional(),
+    state: z.enum(['attached', 'visible', 'hidden', 'detached']).default('visible').describe('state to wait for'),
+    timeout_ms: z.number().int().positive().max(30000).default(5000).describe('give up after this many ms'),
+  }),
+} satisfies ActionSchema;
+
+export const switchFrameActionSchema = {
+  name: 'switch_frame',
+  description:
+    'Scope snapshot and element actions to one frame, including cross-origin iframes. Without index, lists the frames. Index 0 is the top document. Navigation of the top document returns to it',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    index: z.number().int().nonnegative().optional().describe('frame index from the list'),
   }),
 } satisfies ActionSchema;
 

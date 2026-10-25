@@ -1866,5 +1866,80 @@
   "options_mcp_error_invalidUrl": {"message":"Informe uma URL válida começando com http:// ou https://."},
   "options_mcp_error_invalidHeader": {"message":"Cada cabeçalho precisa de um nome, como Nome: valor."},
   "options_mcp_error_nameRequired": {"message":"Informe um nome para o servidor."},
-  "options_mcp_error_testFailed": {"message":"A conexão falhou. Veja o console para detalhes."}
+  "options_mcp_error_testFailed": {"message":"A conexão falhou. Veja o console para detalhes."},
+  "act_pageInfo_start": {
+    "message": "Lendo a estrutura da página"
+  },
+  "act_pageInfo_ok": {
+    "message": "Estrutura da página capturada"
+  },
+  "act_progress_start": {
+    "message": "Procurando sinais de progresso"
+  },
+  "act_progress_ok": {
+    "message": "Sinais de progresso capturados"
+  },
+  "act_waitFor_start": {
+    "message": "Aguardando $TARGET$ ficar $STATE$",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Salvar\"" },
+      "state": { "content": "$2", "example": "visível" }
+    }
+  },
+  "act_waitFor_ok": {
+    "message": "$TARGET$ está $STATE$ após $MS$ ms",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Salvar\"" },
+      "state": { "content": "$2", "example": "visível" },
+      "ms": { "content": "$3", "example": "420" }
+    }
+  },
+  "act_switchFrame_start": {
+    "message": "Mudando para o frame $INDEX$",
+    "placeholders": {
+      "index": { "content": "$1", "example": "1" }
+    }
+  },
+  "act_switchFrame_ok": {
+    "message": "Frame $INDEX$ em foco: $URL$",
+    "placeholders": {
+      "index": { "content": "$1", "example": "1" },
+      "url": { "content": "$2", "example": "https://example.com/embed" }
+    }
+  },
+  "act_getText_chunk": {
+    "message": "[texto $FROM$-$TO$ de $TOTAL$ caracteres]",
+    "placeholders": {
+      "from": { "content": "$1", "example": "0" },
+      "to": { "content": "$2", "example": "20000" },
+      "total": { "content": "$3", "example": "48312" }
+    }
+  },
+  "act_getText_more": {
+    "message": "Há mais texto: passe o cursor \"$CURSOR$\" para continuar",
+    "placeholders": {
+      "cursor": { "content": "$1", "example": "20000.9f3a2c1b" }
+    }
+  },
+  "act_getText_stale": {
+    "message": "A página mudou desde esse cursor. Leia de novo desde o início (sem cursor)."
+  },
+  "act_getText_badCursor": {
+    "message": "Esse não é um cursor retornado por get_text. Omita-o para ler desde o início."
+  },
+  "act_clickTarget_ok": {
+    "message": "Clicado: $TARGET$",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Salvar\"" }
+    }
+  },
+  "act_needLocator": {
+    "message": "Informe um seletor ou um alvo"
+  },
+  "act_failed": {
+    "message": "Ação falhou: $ERROR$",
+    "placeholders": {
+      "error": { "content": "$1", "example": "elemento coberto por div#banner" }
+    }
+  }
 }

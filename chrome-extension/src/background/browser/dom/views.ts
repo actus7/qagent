@@ -1,6 +1,7 @@
 import type { CoordinateSet, HashedDomElement, ViewportInfo } from './history/view';
 import { HistoryTreeProcessor } from './history/service';
 import { capTextLength } from '../util';
+import { ariaStateFlags, formatAriaState } from './aria-state';
 import { createLogger } from '@src/background/log';
 
 const logger = createLogger('dom/views');
@@ -16,11 +17,28 @@ export const DEFAULT_INCLUDE_ATTRIBUTES = [
   'data-date-format',
   'data-state',
   'alt',
-  'aria-checked',
   'aria-label',
-  'aria-expanded',
   'href',
 ];
+
+// Landmarks that name a region of the page in the snapshot. Only tags are read, so the rule works on any node.
+const REGION_BY_TAG: Record<string, string> = {
+  nav: 'navigation',
+  main: 'main',
+  header: 'banner',
+  footer: 'contentinfo',
+  aside: 'complementary',
+  form: 'form',
+};
+
+/** Landmark that contains the node, or '' outside every landmark. */
+export function regionOfNode(node: DOMElementNode): string {
+  for (let current = node.parent; current; current = current.parent) {
+    const region = current.tagName ? REGION_BY_TAG[current.tagName] : undefined;
+    if (region) return region;
+  }
+  return '';
+}
 
 export abstract class DOMBaseNode {
   isVisible: boolean;
@@ -220,6 +238,7 @@ export class DOMElementNode extends DOMBaseNode {
       includeAttributes = DEFAULT_INCLUDE_ATTRIBUTES;
     }
 
+    let currentRegion = '';
     const processNode = (node: DOMBaseNode, depth: number): void => {
       let nextDepth = depth;
       const depthStr = '\t'.repeat(depth);
@@ -228,6 +247,13 @@ export class DOMElementNode extends DOMBaseNode {
         // Add element with highlight_index
         if (node.highlightIndex !== null) {
           nextDepth += 1;
+
+          // A header line only when the landmark changes, so the region costs little per element.
+          const region = regionOfNode(node);
+          if (region !== currentRegion) {
+            currentRegion = region;
+            formattedText.push(`${depthStr}# region: ${region || 'page'}`);
+          }
 
           const text = node.getAllTextTillNextClickableElement();
           let attributesHtmlStr: string | null = null;
@@ -296,6 +322,10 @@ export class DOMElementNode extends DOMBaseNode {
                 .join(' ');
             }
           }
+
+          // ARIA and native state as one compact token, e.g. state=disabled,expanded
+          const stateToken = formatAriaState(ariaStateFlags(node.attributes, node.tagName));
+          if (stateToken) attributesHtmlStr = attributesHtmlStr ? `${attributesHtmlStr} ${stateToken}` : stateToken;
 
           // Build the line
           const highlightIndicator = node.isNew ? `*[${node.highlightIndex}]` : `[${node.highlightIndex}]`;

@@ -21,6 +21,40 @@ const TELEMETRY_PAGE = `<!doctype html><title>Telemetry target</title><h1 id="st
 const POINTER_PAGE = `<!doctype html><title>Pointer target</title><h1 id="status">idle</h1>
 <div id="pad" style="position:absolute;left:100px;top:100px;width:200px;height:100px;background:#ccc"
   onclick="document.getElementById('status').textContent='clicked:'+Math.round(event.clientX)+','+Math.round(event.clientY)">pad</div>`;
+// A controlled field like React's: a plain `.value =` is ignored, only the native setter and typing stick.
+// It starts with stale text, so a fill that does not clear first leaves "old text" behind.
+const UI_PAGE = `<!doctype html><title>UI target</title><h1 id="status">idle</h1>
+<input id="name" aria-label="Name">
+<output id="echo"></output>
+<button id="save" style="position:absolute;top:20px;left:20px" onclick="document.getElementById('status').textContent='saved'">Save</button>
+<div id="banner" style="position:fixed;top:0;left:0;right:0;height:80px;background:#fee;z-index:10">
+  Cookie notice <button id="accept" onclick="document.getElementById('banner').remove()">Accept</button>
+</div>
+<div class="spinner" style="width:20px;height:20px;animation:spin 1s linear infinite"></div>
+<div role="progressbar" aria-label="Upload" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width:200px;height:10px;background:#ccc"></div>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+<script>
+  const input = document.getElementById('name');
+  const nativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  const echo = document.getElementById('echo');
+  Object.defineProperty(input, 'value', { get: () => nativeValue.get.call(input), set: () => {} });
+  input.addEventListener('input', () => { echo.textContent = input.value; });
+  nativeValue.set.call(input, 'old text');
+  echo.textContent = 'old text';
+  // A button that appears after a delay, as a late-loading page would show it.
+  setTimeout(() => {
+    const ready = document.createElement('button');
+    ready.textContent = 'Ready';
+    ready.onclick = () => (document.getElementById('status').textContent = 'ready clicked');
+    document.body.append(ready);
+  }, 800);
+</script>`;
+// The top page embeds a cross-origin frame (localhost vs 127.0.0.1); the port is filled in by the server.
+const frameHostPage = origin => `<!doctype html><title>Frame host</title><h1 id="status">idle</h1>
+<iframe id="child" src="${origin}/inner" width="400" height="200"></iframe>`;
+const INNER_PAGE = `<!doctype html><title>Inner frame</title>
+<button id="inner-go" onclick="this.textContent='inner clicked'">Inner go</button>`;
+
 // Index of the "Go" button in the snapshot the navigator receives.
 const goButtonIndex = prompt => Number(prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<button[^>]*>Go \/>/)?.[1]);
 
@@ -165,6 +199,12 @@ describe('extension e2e', { timeout: 300_000 }, () => {
         res.writeHead(200, { 'content-type': 'text/html' });
         if (req.url.startsWith('/telemetry')) return res.end(TELEMETRY_PAGE);
         if (req.url.startsWith('/pointer')) return res.end(POINTER_PAGE);
+        if (req.url.startsWith('/ui')) return res.end(UI_PAGE);
+        if (req.url.startsWith('/frame-host')) {
+          // localhost is a different origin from the 127.0.0.1 page, so the iframe is cross-origin.
+          return res.end(frameHostPage(`http://localhost:${server.address().port}`));
+        }
+        if (req.url.startsWith('/inner')) return res.end(INNER_PAGE);
         return res.end(req.url.startsWith('/upload') ? UPLOAD_PAGE : TARGET_PAGE);
       }
       let raw = '';
@@ -838,6 +878,109 @@ describe('extension e2e', { timeout: 300_000 }, () => {
     assert.ok(prompts[0]?.includes('E2E title'), 'the applicable plugin was not listed in the state message');
     assert.equal(await target.title(), 'plugin ran');
     await panel.evaluate(() => chrome.storage.local.remove('browser-plugins'));
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('fills a controlled field over stale text and reads the page structure', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      { fill: { intent: 'fill name', target: { role: 'textbox', text: 'Name' }, text: 'Ada Lovelace' } },
+      { page_info: { intent: 'read structure', max_per_kind: 5 } },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/ui`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/ui` })).at(-1)?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'ui tab not found');
+
+    const seen = await runTask(panel, tabId, 'Fill the name field', 'e2e-fill-task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.equal(await target.locator('#echo').textContent(), 'Ada Lovelace', 'the page did not receive the fill');
+    assert.equal(await target.inputValue('#name'), 'Ada Lovelace');
+    // page_info is the second action, so its result arrives in the prompt after it: index 2.
+    assert.ok(prompts[2]?.includes('Fields ('), 'page_info did not reach the model');
+    assert.ok(prompts[2]?.includes('textbox'), 'the named field is missing from page_info');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('names the covering element, clears it, waits for a late button and reads progress', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      { click: { intent: 'click save while covered', target: { role: 'button', text: 'Save' } } },
+      { click: { intent: 'dismiss the banner', target: { text: 'Accept' } } },
+      { click: { intent: 'save', target: { role: 'button', text: 'Save' } } },
+      {
+        wait_for_element: {
+          intent: 'wait for ready',
+          target: { role: 'button', text: 'Ready' },
+          state: 'visible',
+          timeout_ms: 5000,
+        },
+      },
+      { click: { intent: 'click ready', target: { text: 'Ready' } } },
+      { find_progress: { intent: 'look for progress' } },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/ui`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    // Earlier scenarios leave their /ui tabs open, so take the newest one.
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/ui` })).at(-1)?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'ui tab not found');
+
+    const seen = await runTask(panel, tabId, 'Save, then press Ready', 'e2e-cover-task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    // The covered click reports its blocker in the next prompt, and nothing was clicked through the banner.
+    assert.ok(prompts[1]?.includes('covered by div#banner'), 'covering element was not reported to the model');
+    assert.equal(await target.locator('#status').textContent(), 'ready clicked');
+    // find_progress is the sixth action, so its result is in the prompt after it: index 6.
+    assert.ok(prompts[6]?.includes('progressbar') && prompts[6]?.includes('40%'), 'progress bar was not reported');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('lists frames and scopes the snapshot and a click to a cross-origin iframe', async () => {
+    state.navigatorSteps = 0;
+    state.navigatorPrompts = [];
+    state.script = [
+      { switch_frame: { intent: 'list frames' } },
+      { switch_frame: { intent: 'enter the frame', index: 1 } },
+      { click: { intent: 'click inside the frame', target: { role: 'button', text: 'Inner go' } } },
+      { done: { text: 'done', success: true } },
+    ];
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/frame-host`);
+    const panel = await openExtensionPage('side-panel/index.html');
+    const tabId = await panel.evaluate(
+      async url => (await chrome.tabs.query({ url: `${url}/frame-host` }))[0]?.id,
+      baseUrl,
+    );
+    assert.ok(tabId, 'frame host tab not found');
+
+    const seen = await runTask(panel, tabId, 'Click the button inside the frame', 'e2e-frame-task');
+    const prompts = state.navigatorPrompts;
+    state.script = null;
+
+    assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
+    assert.ok(prompts[1]?.includes('localhost'), 'frame list did not reach the model');
+    assert.ok(prompts[2]?.includes('Inner go'), 'snapshot did not come from the focused frame');
+    const inner = target.frames().find(frame => frame.url().includes('/inner'));
+    assert.ok(inner, 'cross-origin frame not found');
+    assert.equal(await inner.locator('#inner-go').textContent(), 'inner clicked');
     assert.deepEqual(pageErrors, []);
   });
 });

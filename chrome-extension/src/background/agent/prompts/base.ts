@@ -1,7 +1,7 @@
 import type { SystemModelMessage, UserModelMessage } from 'ai';
 import { userMessage } from '../messages/model-messages';
 import type { AgentContext } from '@src/background/agent/types';
-import { wrapUntrustedContent } from '../messages/utils';
+import { actionErrorForPrompt, wrapUntrustedContent } from '../messages/utils';
 import { createLogger } from '@src/background/log';
 import { loadPluginPromptSection } from '../../plugins/context';
 import { loadMcpPromptSection } from '../../mcp/context';
@@ -64,8 +64,7 @@ abstract class BasePrompt {
           actionResultsDescription += `\nAction result ${i + 1}/${context.actionResults.length}: ${result.extractedContent}`;
         }
         if (result.error) {
-          // only use last line of error
-          const error = result.error.split('\n').pop();
+          const error = actionErrorForPrompt(result.error);
           actionResultsDescription += `\nAction error ${i + 1}/${context.actionResults.length}: ...${error}`;
         }
       }

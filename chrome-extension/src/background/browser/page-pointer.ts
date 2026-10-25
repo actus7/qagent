@@ -64,3 +64,23 @@ export function isInsideViewport(point: Point, viewport: Size): boolean {
 export function centerOfBox(box: { x: number; y: number; width: number; height: number }): Point {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
+
+/**
+ * Points for a mouse path from `from` to `to`: ease-out progress with a small sideways bow, so the pointer
+ * does not travel in a straight ruler line. The last point is exactly `to`.
+ */
+export function easedPath(from: Point, to: Point, steps: number): Point[] {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const span = Math.hypot(dx, dy) || 1;
+  const bow = Math.min(6, span / 10);
+  return Array.from({ length: steps }, (_, index) => {
+    if (index === steps - 1) return { x: to.x, y: to.y };
+    const progress = 1 - (1 - (index + 1) / steps) ** 3;
+    const offset = Math.sin(progress * Math.PI) * bow;
+    return {
+      x: from.x + dx * progress - (dy / span) * offset,
+      y: from.y + dy * progress + (dx / span) * offset,
+    };
+  });
+}

@@ -6,12 +6,14 @@ import {
   type Browser,
   type Dialog,
   type ElementHandle,
+  type Frame,
   type KeyInput,
   type Page as PuppeteerPage,
   type ProtocolType,
 } from 'puppeteer-core/internal/puppeteer-core-browser.js';
 import {
   getClickableElements as _getClickableElements,
+  getClickableElementsInFrame,
   removeHighlights as _removeHighlights,
   getScrollInfo as _getScrollInfo,
 } from './dom/service';
@@ -37,12 +39,37 @@ import type { EvaluationOutcome } from './page-script';
 import {
   clickWithFallback,
   type DropdownOption,
+  easedClick,
   locateElementInPage,
   queryElementBySelectorOnPage,
   readSelectOptions,
   scrollToTextOnPage,
   selectOptionByText,
 } from './page-elements';
+import {
+  collectTargetCandidates,
+  DEFAULT_TARGET_SELECTOR,
+  describeTargetSpec,
+  isTargetStateSatisfied,
+  matchTargetIndexes,
+  pickTargetIndex,
+  type TargetSpec,
+  type TargetState,
+} from './target-resolver';
+import { collectPageFacts, PAGE_INFO_MAX_HEADINGS, type PageFacts, type PageInfoOptions } from './page-info';
+import { collectProgressSignals, type ProgressReport } from './progress';
+import type { FrameSummary } from './types';
+
+const TARGET_POLL_MS = 250;
+const PROGRESS_TEXT_CHARS = 80;
+
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return 'null';
+  }
+}
 
 export { build_initial_state, CachedStateClickableElementsHashes };
 
@@ -65,6 +92,8 @@ export default class Page {
   private _telemetry = new PageTelemetry();
   private _lastScreenshotSize: Size | null = null;
   private _viewportOverridden = false;
+  // A frame chosen with switch_frame; null means the top document. Cleared when the top document navigates.
+  private _focusedFrame: Frame | null = null;
 
   constructor(tabId: number, url: string, title: string, config: Partial<BrowserContextConfig> = {}) {
     this._tabId = tabId;
@@ -132,6 +161,9 @@ export default class Page {
       const [page] = await browser.pages();
       this._puppeteerPage = page;
       page.on('dialog', dialog => this._handleDialog(dialog));
+      page.on('framenavigated', frame => {
+        if (frame === page.mainFrame()) this._focusedFrame = null;
+      });
       this._telemetry.attach(page);
 
       // Add anti-detection scripts
@@ -197,6 +229,14 @@ export default class Page {
   async getClickableElements(showHighlightElements: boolean, focusElement: number): Promise<DOMState | null> {
     if (!this._validWebPage) {
       return null;
+    }
+    if (this._focusedFrame) {
+      return getClickableElementsInFrame(
+        this._focusedFrame,
+        showHighlightElements,
+        focusElement,
+        this._config.viewportExpansion,
+      );
     }
     return _getClickableElements(
       this._tabId,
@@ -733,7 +773,7 @@ export default class Page {
       logger.warning('Puppeteer is not connected');
       return null;
     }
-    return locateElementInPage(this._puppeteerPage, element, this._config.includeDynamicAttributes);
+    return locateElementInPage(this._root(), element, this._config.includeDynamicAttributes);
   }
 
   async inputTextElementNode(useVision: boolean, elementNode: DOMElementNode, text: string): Promise<void> {
@@ -795,7 +835,7 @@ export default class Page {
       // Scroll element into view if needed
       await this._scrollIntoViewIfNeeded(element);
       await this._showAgentPointer(element);
-      await clickWithFallback(element, 'Failed to click element');
+      await this._clickHandle(element, 'Failed to click element');
     } catch (error) {
       throw new Error(
         `Failed to click element: ${elementNode}. Error: ${error instanceof Error ? error.message : String(error)}`,
@@ -841,7 +881,7 @@ export default class Page {
   }
 
   private async queryElementBySelector(selector: string): Promise<ElementHandle | null> {
-    return this._puppeteerPage ? queryElementBySelectorOnPage(this._puppeteerPage, selector) : null;
+    return this._puppeteerPage ? queryElementBySelectorOnPage(this._root(), selector) : null;
   }
 
   async getElementBySelector(
@@ -895,6 +935,129 @@ export default class Page {
     await typeIntoSelectorElement(element, selector, text, clearBeforeTyping);
 
     await this.waitForPageAndFramesLoad();
+  }
+
+  /** Resolves a readable target ({selector, text, role, nth}) to a live element in the current root. */
+  async resolveTargetHandle(spec: TargetSpec): Promise<ElementHandle> {
+    const root = this._root();
+    const candidates = await root.evaluate(collectTargetCandidates, spec.selector ?? null, DEFAULT_TARGET_SELECTOR);
+    const position = pickTargetIndex(candidates, spec);
+    const handle = await root.evaluateHandle(
+      (selector: string | null, index: number, fallback: string) =>
+        document.querySelectorAll(selector ?? fallback)[index] ?? null,
+      spec.selector ?? null,
+      position,
+      DEFAULT_TARGET_SELECTOR,
+    );
+    const element = handle.asElement();
+    if (!element) throw new Error(`Target ${describeTargetSpec(spec)} is no longer on the page`);
+    return element;
+  }
+
+  async clickByTarget(spec: TargetSpec): Promise<void> {
+    const element = await this.resolveTargetHandle(spec);
+    await this._scrollIntoViewIfNeeded(element);
+    await this._showAgentPointer(element);
+    await this._clickHandle(element, `Failed to click ${describeTargetSpec(spec)}`);
+  }
+
+  async inputTextByTarget(spec: TargetSpec, text: string, clearBeforeTyping: boolean): Promise<void> {
+    const element = await this.resolveTargetHandle(spec);
+    await this._showAgentPointer(element);
+    if (clearBeforeTyping) {
+      await typeIntoElementNode(element, text);
+    } else {
+      await typeIntoSelectorElement(element, describeTargetSpec(spec), text, false);
+    }
+    await this.waitForPageAndFramesLoad();
+  }
+
+  /** Visible text of a readable target, or of the whole document when no target is given. */
+  async getTextOf(target?: TargetSpec): Promise<string> {
+    if (!target) {
+      return this._root().evaluate(() => document.body?.innerText ?? '');
+    }
+    const element = await this.resolveTargetHandle(target);
+    return element.evaluate(el => {
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+        return el.value ?? '';
+      }
+      const asHTMLElement = el as HTMLElement;
+      return (asHTMLElement.innerText || el.textContent || '').trim();
+    });
+  }
+
+  /** Waits until the target reaches `state`. Polls the page; throws when the timeout passes first. */
+  async waitForTarget(spec: TargetSpec, state: TargetState, timeoutMs: number): Promise<number> {
+    const started = Date.now();
+    for (;;) {
+      const candidates = await this._root().evaluate(
+        collectTargetCandidates,
+        spec.selector ?? null,
+        DEFAULT_TARGET_SELECTOR,
+      );
+      const matchingAll = matchTargetIndexes(candidates, spec, { includeHidden: true }).length;
+      const matchingVisible = matchTargetIndexes(candidates, spec).length;
+      if (isTargetStateSatisfied(state, matchingAll, matchingVisible)) return Date.now() - started;
+      if (Date.now() - started >= timeoutMs) {
+        throw new Error(`Timed out after ${timeoutMs} ms waiting for ${describeTargetSpec(spec)} to be ${state}`);
+      }
+      await new Promise(resolve => setTimeout(resolve, TARGET_POLL_MS));
+    }
+  }
+
+  async getPageFacts(options: PageInfoOptions): Promise<PageFacts> {
+    return this._root().evaluate(collectPageFacts, options.maxPerKind, options.geometry, PAGE_INFO_MAX_HEADINGS);
+  }
+
+  async findProgressSignals(): Promise<ProgressReport> {
+    return this._root().evaluate(collectProgressSignals, PROGRESS_TEXT_CHARS);
+  }
+
+  /** Frames of the tab, top document first. Index 0 is always the top document. */
+  async listFrames(): Promise<FrameSummary[]> {
+    const frames = this._frameList();
+    const top = frames[0];
+    const focused = this._focusedFrame ?? top;
+    return frames.map((frame, index) => ({
+      index,
+      url: frame.url(),
+      name: frame.name(),
+      crossOrigin: index > 0 && originOf(frame.url()) !== originOf(top.url()),
+      focused: frame === focused,
+    }));
+  }
+
+  /** Makes a frame the scope of later snapshots and element actions. Index 0 returns to the top document. */
+  async focusFrame(index: number): Promise<FrameSummary> {
+    const frame = this._frameList()[index];
+    if (!frame) throw new Error(`No frame with index ${index}; list the frames first`);
+    this._focusedFrame = index === 0 ? null : frame;
+    const summaries = await this.listFrames();
+    return summaries[index];
+  }
+
+  private _frameList(): Frame[] {
+    const page = this._requirePuppeteerPage();
+    const top = page.mainFrame();
+    return [top, ...page.frames().filter(frame => frame !== top)];
+  }
+
+  /** The document element actions run in: the focused frame, or the top page. */
+  private _root(): PuppeteerPage | Frame {
+    if (this._focusedFrame?.detached) {
+      logger.warning('Focused frame was detached; falling back to the top document');
+      this._focusedFrame = null;
+    }
+    return this._focusedFrame ?? this._requirePuppeteerPage();
+  }
+
+  private async _clickHandle(element: ElementHandle, errorPrefix: string): Promise<void> {
+    if (this._config.smoothClicks) {
+      await easedClick(this._requirePuppeteerPage(), element, errorPrefix);
+      return;
+    }
+    await clickWithFallback(element, errorPrefix);
   }
 
   async scrollByDirection(direction: 'up' | 'down' | 'left' | 'right', pixels: number): Promise<void> {

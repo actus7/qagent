@@ -409,3 +409,12 @@ export function wrapAttachments(rawAttachmentsInner: string, filterFirst = true,
   const innerContent = trusted ? filteredAttachments : wrapUntrustedContent(filteredAttachments, false);
   return `${ATTACHED_FILES_TAG_START}\n${innerContent}\n${ATTACHED_FILES_TAG_END}`;
 }
+
+/**
+ * The part of an action error the model sees: the last line of a plain error (stack noise sits above it), or the
+ * whole error when it carries a wrapped untrusted block, whose last line is only the wrapper's closing notice.
+ */
+export function actionErrorForPrompt(error: string): string {
+  const text = error.trim();
+  return text.includes('<nano_untrusted_content>') ? text : (text.split('\n').pop() ?? '');
+}

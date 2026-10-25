@@ -29,6 +29,7 @@ import { type BrowserState, BrowserStateHistory } from '@src/background/browser/
 import { repairJsonString } from '@src/background/utils';
 import { HistoryTreeProcessor } from '@src/background/browser/dom/history/service';
 import { AgentStepRecord } from '../history';
+import { actionErrorForPrompt } from '../messages/utils';
 import { type DOMHistoryElement } from '@src/background/browser/dom/history/view';
 
 const logger = createLogger('NavigatorAgent');
@@ -327,11 +328,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
             messageManager.addMessageWithTokens(userMessage(`Action result: ${r.extractedContent}`));
           }
           if (r.error) {
-            // Get error text and convert to string
-            const errorText = r.error.toString().trim();
-
-            // Get only the last line of the error
-            const lastLine = errorText.split('\n').pop() || '';
+            const lastLine = actionErrorForPrompt(r.error.toString());
 
             logger.info('Adding action error to memory', lastLine);
             messageManager.addMessageWithTokens(userMessage(`Action error: ${lastLine}`));

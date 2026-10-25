@@ -1866,5 +1866,80 @@
   "options_mcp_error_invalidUrl": {"message":"Enter a valid http:// or https:// URL."},
   "options_mcp_error_invalidHeader": {"message":"Each header needs a name, as Name: value."},
   "options_mcp_error_nameRequired": {"message":"Enter a name for the server."},
-  "options_mcp_error_testFailed": {"message":"Connection failed. See the console for details."}
+  "options_mcp_error_testFailed": {"message":"Connection failed. See the console for details."},
+  "act_pageInfo_start": {
+    "message": "Reading page structure"
+  },
+  "act_pageInfo_ok": {
+    "message": "Page structure captured"
+  },
+  "act_progress_start": {
+    "message": "Looking for progress signals"
+  },
+  "act_progress_ok": {
+    "message": "Progress signals captured"
+  },
+  "act_waitFor_start": {
+    "message": "Waiting for $TARGET$ to be $STATE$",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Save\"" },
+      "state": { "content": "$2", "example": "visible" }
+    }
+  },
+  "act_waitFor_ok": {
+    "message": "$TARGET$ is $STATE$ after $MS$ ms",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Save\"" },
+      "state": { "content": "$2", "example": "visible" },
+      "ms": { "content": "$3", "example": "420" }
+    }
+  },
+  "act_switchFrame_start": {
+    "message": "Switching to frame $INDEX$",
+    "placeholders": {
+      "index": { "content": "$1", "example": "1" }
+    }
+  },
+  "act_switchFrame_ok": {
+    "message": "Frame $INDEX$ is in scope: $URL$",
+    "placeholders": {
+      "index": { "content": "$1", "example": "1" },
+      "url": { "content": "$2", "example": "https://example.com/embed" }
+    }
+  },
+  "act_getText_chunk": {
+    "message": "[text $FROM$-$TO$ of $TOTAL$ characters]",
+    "placeholders": {
+      "from": { "content": "$1", "example": "0" },
+      "to": { "content": "$2", "example": "20000" },
+      "total": { "content": "$3", "example": "48312" }
+    }
+  },
+  "act_getText_more": {
+    "message": "More text: pass cursor \"$CURSOR$\" to continue",
+    "placeholders": {
+      "cursor": { "content": "$1", "example": "20000.9f3a2c1b" }
+    }
+  },
+  "act_getText_stale": {
+    "message": "The page changed since that cursor was issued. Read again from the top (omit cursor)."
+  },
+  "act_getText_badCursor": {
+    "message": "That is not a cursor get_text returned. Omit it to read from the top."
+  },
+  "act_clickTarget_ok": {
+    "message": "Clicked $TARGET$",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Save\"" }
+    }
+  },
+  "act_needLocator": {
+    "message": "Give a selector or a target"
+  },
+  "act_failed": {
+    "message": "Action failed: $ERROR$",
+    "placeholders": {
+      "error": { "content": "$1", "example": "element is covered by div#banner" }
+    }
+  }
 }

@@ -47,6 +47,12 @@ import {
   createResizeViewportAction,
 } from './inspection';
 import { createClickAtAction, createDragAction, createHoverAction } from './pointer';
+import {
+  createFindProgressAction,
+  createPageInfoAction,
+  createSwitchFrameAction,
+  createWaitForElementAction,
+} from './page-tools';
 import { createRequestUserTakeoverAction } from './takeover';
 import { createCallPluginToolAction, createListPluginsAction, createSavePluginAction } from './plugins';
 import { createCallMcpToolAction, createListMcpToolsAction } from './mcp';
@@ -132,6 +138,10 @@ export class ActionBuilder {
       createClickAtAction(context),
       createHoverAction(context),
       createDragAction(context),
+      createPageInfoAction(context),
+      createFindProgressAction(context),
+      createWaitForElementAction(context),
+      createSwitchFrameAction(context),
       createResizeViewportAction(context),
       createRequestUserTakeoverAction(context),
       createListPluginsAction(context),

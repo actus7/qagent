@@ -3,7 +3,14 @@ import { t } from '@extension/i18n';
 import type { z } from 'zod';
 import { Actors, ExecutionState } from '../event/types';
 import { Action } from './action';
-import { elementNotExistResult, logger } from './shared';
+import { describeTargetSpec, type TargetSpec } from '../../browser/target-resolver';
+import {
+  actionFailedResult,
+  elementNotExistResult,
+  engineUnsupportedResult,
+  logger,
+  missingLocatorResult,
+} from './shared';
 import {
   clickActionSchema,
   clickElementActionSchema,
@@ -69,21 +76,38 @@ async function clickBySelector(context: AgentContext, selector: string, intent: 
   }
 }
 
-async function writeTextBySelector(
+/** A readable target is tried first, then a ref or CSS selector. Either way the page does the lookup. */
+interface WriteLocator {
+  selector?: string;
+  target?: TargetSpec;
+}
+
+async function writeText(
   context: AgentContext,
-  selector: string,
+  locator: WriteLocator,
   text: string,
   intent: string,
   clearBeforeTyping: boolean,
 ): Promise<ActionResult> {
   context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
+  const page = await context.browserContext.getCurrentPage();
 
-  const normalizedSelector = selector.trim();
+  if (locator.target) {
+    if (!page.inputTextByTarget) return engineUnsupportedResult(context);
+    try {
+      await page.inputTextByTarget(locator.target, text, clearBeforeTyping);
+    } catch (error) {
+      return actionFailedResult(context, error);
+    }
+    const msg = t('act_inputText_ok', [text, describeTargetSpec(locator.target)]);
+    context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
+    return new ActionResult({ extractedContent: msg, includeInMemory: true });
+  }
+
+  const normalizedSelector = (locator.selector ?? '').trim();
   if (!normalizedSelector) {
     throw new Error('Selector cannot be empty');
   }
-
-  const page = await context.browserContext.getCurrentPage();
   await page.inputTextBySelector(context.options.useVision, normalizedSelector, text, {
     clearBeforeTyping,
   });
@@ -93,9 +117,31 @@ async function writeTextBySelector(
   return new ActionResult({ extractedContent: msg, includeInMemory: true });
 }
 
+async function clickByTarget(context: AgentContext, target: TargetSpec, intent: string): Promise<ActionResult> {
+  context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
+  const page = await context.browserContext.getCurrentPage();
+  if (!page.clickByTarget) return engineUnsupportedResult(context);
+  try {
+    await page.clickByTarget(target);
+  } catch (error) {
+    return actionFailedResult(context, error);
+  }
+  const msg = t('act_clickTarget_ok', [describeTargetSpec(target)]);
+  context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
+  return new ActionResult({ extractedContent: msg, includeInMemory: true });
+}
+
 export function createClickAction(context: AgentContext) {
   return new Action(
     async (input: z.infer<typeof clickActionSchema.schema>) => {
+      if (input.target) {
+        return clickByTarget(
+          context,
+          input.target,
+          input.intent || t('act_clickTarget_ok', [describeTargetSpec(input.target)]),
+        );
+      }
+      if (!input.selector) return missingLocatorResult(context);
       const intent = input.intent || t('act_click_start', [input.selector]);
       return clickBySelector(context, input.selector, intent);
     },
@@ -116,11 +162,16 @@ export function createClickElementAction(context: AgentContext) {
   );
 }
 
+function locatorLabel(input: { selector?: string; target?: TargetSpec }): string {
+  return input.target ? describeTargetSpec(input.target) : (input.selector ?? '');
+}
+
 export function createFillAction(context: AgentContext) {
   return new Action(
     async (input: z.infer<typeof fillActionSchema.schema>) => {
-      const intent = input.intent || t('act_inputText_start', [input.selector]);
-      return writeTextBySelector(context, input.selector, input.text, intent, true);
+      if (!input.selector && !input.target) return missingLocatorResult(context);
+      const intent = input.intent || t('act_inputText_start', [locatorLabel(input)]);
+      return writeText(context, input, input.text, intent, true);
     },
     fillActionSchema,
     true,
@@ -130,8 +181,9 @@ export function createFillAction(context: AgentContext) {
 export function createTypeAction(context: AgentContext) {
   return new Action(
     async (input: z.infer<typeof typeActionSchema.schema>) => {
-      const intent = input.intent || t('act_inputText_start', [input.selector]);
-      return writeTextBySelector(context, input.selector, input.text, intent, false);
+      if (!input.selector && !input.target) return missingLocatorResult(context);
+      const intent = input.intent || t('act_inputText_start', [locatorLabel(input)]);
+      return writeText(context, input, input.text, intent, false);
     },
     typeActionSchema,
     true,
@@ -143,7 +195,7 @@ export function createInputTextAction(context: AgentContext) {
   return new Action(
     async (input: z.infer<typeof inputTextActionSchema.schema>) => {
       const intent = input.intent || t('act_inputText_start', [input.index.toString()]);
-      return writeTextBySelector(context, `@e${input.index}`, input.text, intent, true);
+      return writeText(context, { selector: `@e${input.index}` }, input.text, intent, true);
     },
     inputTextActionSchema,
     true,

@@ -20,14 +20,14 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {reload: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
   "Wait for x seconds default 3, do NOT use this action unless user asks to wait explicitly:
 {wait: {'intent': {'type': 'purpose of this action', 'optional': true}, 'seconds': {'type': 'amount of seconds', 'optional': true}}}",
-  "Click element by selector:
-{click: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}}}",
+  "Click element by selector or readable target:
+{click: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'undefined', 'optional': true}, 'target': {'type': 'undefined', 'optional': true}}}",
   "Click element by index:
 {click_element: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the element', 'required': true}, 'xpath': {'type': 'xpath of the element', 'optional': true}}}",
   "Clear and fill text in an input element:
-{fill: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}, 'text': {'type': 'text to fill', 'required': true}}}",
+{fill: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'undefined', 'optional': true}, 'target': {'type': 'undefined', 'optional': true}, 'text': {'type': 'text to fill', 'required': true}}}",
   "Type text in an element without clearing existing content first:
-{type: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}, 'text': {'type': 'text to type', 'required': true}}}",
+{type: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'undefined', 'optional': true}, 'target': {'type': 'undefined', 'optional': true}, 'text': {'type': 'text to type', 'required': true}}}",
   "Input text into an interactive input element:
 {input_text: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the element', 'required': true}, 'text': {'type': 'text to input', 'required': true}, 'xpath': {'type': 'xpath of the element', 'optional': true}}}",
   "Press keyboard keys like Enter, Tab, Backspace and combinations like Control+o or Control+Shift+T:
@@ -36,8 +36,8 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {scroll: {'intent': {'type': 'purpose of this action', 'optional': true}, 'direction': {'type': 'scroll direction', 'required': true}, 'pixels': {'type': 'pixel amount to scroll', 'optional': true}}}",
   "Scroll the target element into view:
 {scrollintoview: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}}}",
-  "Get element text by selector:
-{get_text: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.', 'required': true}}}",
+  "Get element text by selector or target, or the whole page when neither is given. Long text comes in groups: when the reply has a cursor, pass it back to read on:
+{get_text: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'undefined', 'optional': true}, 'target': {'type': 'undefined', 'optional': true}, 'max_length': {'type': 'characters per group', 'optional': true}, 'cursor': {'type': 'cursor from the previous group; omit to read from the top', 'optional': true}}}",
   "Get current page title:
 {get_title: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
   "Get current page URL:
@@ -84,6 +84,14 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {hover: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'index of the element to hover', 'optional': true}, 'x': {'type': 'x coordinate (used when index is not given)', 'optional': true}, 'y': {'type': 'y coordinate (used when index is not given)', 'optional': true}}}",
   "Drag the mouse from one element or point to another (press, move in steps, release). Each end is an element index, or both x and y:
 {drag: {'intent': {'type': 'purpose of this action', 'optional': true}, 'from_index': {'type': 'index of the element to drag from', 'optional': true}, 'from_x': {'type': 'x coordinate to drag from', 'optional': true}, 'from_y': {'type': 'y coordinate to drag from', 'optional': true}, 'to_index': {'type': 'index of the element to drag to', 'optional': true}, 'to_x': {'type': 'x coordinate to drag to', 'optional': true}, 'to_y': {'type': 'y coordinate to drag to', 'optional': true}, 'steps': {'type': 'mouse move steps, default 10', 'optional': true}}}",
+  "Structural summary of the page: URL, title, landmarks, headings and the links, buttons, fields and forms with their ARIA state. Lists up to max_per_kind items per kind and reports the true totals. Use it to orient before snapshot:
+{page_info: {'intent': {'type': 'purpose of this action', 'optional': true}, 'max_per_kind': {'type': 'items listed per kind', 'optional': true}, 'geometry': {'type': 'add bounding boxes to each item', 'optional': true}}}",
+  "Find progress signals on the page: progress bars, percent text, spinners and busy regions. Use it to decide whether to wait for a job or ask the user:
+{find_progress: {'intent': {'type': 'purpose of this action', 'optional': true}}}",
+  "Wait until a target reaches a state: attached, visible, hidden or detached. Prefer it over a fixed wait action:
+{wait_for_element: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'undefined', 'optional': true}, 'target': {'type': 'undefined', 'optional': true}, 'state': {'type': 'state to wait for', 'optional': true}, 'timeout_ms': {'type': 'give up after this many ms', 'optional': true}}}",
+  "Scope snapshot and element actions to one frame, including cross-origin iframes. Without index, lists the frames. Index 0 is the top document. Navigation of the top document returns to it:
+{switch_frame: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'frame index from the list', 'optional': true}}}",
   "Resize the viewport of the current tab for responsive QA checks, or restore the window size with reset. The size is restored automatically when the task ends:
 {resize_viewport: {'intent': {'type': 'purpose of this action', 'optional': true}, 'width': {'type': 'viewport width in CSS pixels', 'optional': true}, 'height': {'type': 'viewport height in CSS pixels', 'optional': true}, 'mobile': {'type': 'use mobile viewport metrics, default false', 'optional': true}, 'reset': {'type': 'restore the window size instead of resizing', 'optional': true}}}",
   "Pause the task and hand the browser to the user for a step only they can do: a two-factor code on their device, or credentials or payment data the task did not provide. The task resumes when the user returns control.:
@@ -255,7 +263,7 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "type": "object",
           },
           "click": {
-            "description": "Click element by selector",
+            "description": "Click element by selector or readable target",
             "nullable": true,
             "properties": {
               "intent": {
@@ -269,10 +277,35 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
                 "title": "Selector",
                 "type": "string",
               },
+              "target": {
+                "description": "readable target {text, role, nth}, used when no ref fits",
+                "properties": {
+                  "nth": {
+                    "description": "0-based index when several elements match, default 0",
+                    "minimum": 0,
+                    "title": "Nth",
+                    "type": "integer",
+                  },
+                  "role": {
+                    "description": "ARIA role or tag, e.g. button, link, textbox",
+                    "title": "Role",
+                    "type": "string",
+                  },
+                  "selector": {
+                    "description": "CSS selector to search within (default: interactive elements)",
+                    "title": "Selector",
+                    "type": "string",
+                  },
+                  "text": {
+                    "description": "visible text the element contains, case-insensitive",
+                    "title": "Text",
+                    "type": "string",
+                  },
+                },
+                "title": "Target",
+                "type": "object",
+              },
             },
-            "required": [
-              "selector",
-            ],
             "title": "Click",
             "type": "object",
           },
@@ -505,6 +538,34 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
                 "title": "Selector",
                 "type": "string",
               },
+              "target": {
+                "description": "readable target {text, role, nth}, used when no ref fits",
+                "properties": {
+                  "nth": {
+                    "description": "0-based index when several elements match, default 0",
+                    "minimum": 0,
+                    "title": "Nth",
+                    "type": "integer",
+                  },
+                  "role": {
+                    "description": "ARIA role or tag, e.g. button, link, textbox",
+                    "title": "Role",
+                    "type": "string",
+                  },
+                  "selector": {
+                    "description": "CSS selector to search within (default: interactive elements)",
+                    "title": "Selector",
+                    "type": "string",
+                  },
+                  "text": {
+                    "description": "visible text the element contains, case-insensitive",
+                    "title": "Text",
+                    "type": "string",
+                  },
+                },
+                "title": "Target",
+                "type": "object",
+              },
               "text": {
                 "description": "text to fill",
                 "title": "Text",
@@ -512,10 +573,23 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "required": [
-              "selector",
               "text",
             ],
             "title": "Fill",
+            "type": "object",
+          },
+          "find_progress": {
+            "description": "Find progress signals on the page: progress bars, percent text, spinners and busy regions. Use it to decide whether to wait for a job or ask the user",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Find Progress",
             "type": "object",
           },
           "forward": {
@@ -555,24 +629,63 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "type": "object",
           },
           "get_text": {
-            "description": "Get element text by selector",
+            "description": "Get element text by selector or target, or the whole page when neither is given. Long text comes in groups: when the reply has a cursor, pass it back to read on",
             "nullable": true,
             "properties": {
+              "cursor": {
+                "description": "cursor from the previous group; omit to read from the top",
+                "maxLength": 32,
+                "title": "Cursor",
+                "type": "string",
+              },
               "intent": {
                 "default": "",
                 "description": "purpose of this action",
                 "title": "Intent",
                 "type": "string",
               },
+              "max_length": {
+                "default": 20000,
+                "description": "characters per group",
+                "maximum": 200000,
+                "minimum": 100,
+                "title": "Max Length",
+                "type": "integer",
+              },
               "selector": {
                 "description": "selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.",
                 "title": "Selector",
                 "type": "string",
               },
+              "target": {
+                "description": "readable target {text, role, nth}, used when no ref fits",
+                "properties": {
+                  "nth": {
+                    "description": "0-based index when several elements match, default 0",
+                    "minimum": 0,
+                    "title": "Nth",
+                    "type": "integer",
+                  },
+                  "role": {
+                    "description": "ARIA role or tag, e.g. button, link, textbox",
+                    "title": "Role",
+                    "type": "string",
+                  },
+                  "selector": {
+                    "description": "CSS selector to search within (default: interactive elements)",
+                    "title": "Selector",
+                    "type": "string",
+                  },
+                  "text": {
+                    "description": "visible text the element contains, case-insensitive",
+                    "title": "Text",
+                    "type": "string",
+                  },
+                },
+                "title": "Target",
+                "type": "object",
+              },
             },
-            "required": [
-              "selector",
-            ],
             "title": "Get Text",
             "type": "object",
           },
@@ -794,6 +907,34 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               "url",
             ],
             "title": "Open Tab",
+            "type": "object",
+          },
+          "page_info": {
+            "description": "Structural summary of the page: URL, title, landmarks, headings and the links, buttons, fields and forms with their ARIA state. Lists up to max_per_kind items per kind and reports the true totals. Use it to orient before snapshot",
+            "nullable": true,
+            "properties": {
+              "geometry": {
+                "default": false,
+                "description": "add bounding boxes to each item",
+                "title": "Geometry",
+                "type": "boolean",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "max_per_kind": {
+                "default": 15,
+                "description": "items listed per kind",
+                "maximum": 50,
+                "minimum": 1,
+                "title": "Max Per Kind",
+                "type": "integer",
+              },
+            },
+            "title": "Page Info",
             "type": "object",
           },
           "press": {
@@ -1278,6 +1419,26 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "title": "Snapshot",
             "type": "object",
           },
+          "switch_frame": {
+            "description": "Scope snapshot and element actions to one frame, including cross-origin iframes. Without index, lists the frames. Index 0 is the top document. Navigation of the top document returns to it",
+            "nullable": true,
+            "properties": {
+              "index": {
+                "description": "frame index from the list",
+                "minimum": 0,
+                "title": "Index",
+                "type": "integer",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+            },
+            "title": "Switch Frame",
+            "type": "object",
+          },
           "switch_tab": {
             "description": "Switch to tab by tab id",
             "nullable": true,
@@ -1357,6 +1518,34 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
                 "title": "Selector",
                 "type": "string",
               },
+              "target": {
+                "description": "readable target {text, role, nth}, used when no ref fits",
+                "properties": {
+                  "nth": {
+                    "description": "0-based index when several elements match, default 0",
+                    "minimum": 0,
+                    "title": "Nth",
+                    "type": "integer",
+                  },
+                  "role": {
+                    "description": "ARIA role or tag, e.g. button, link, textbox",
+                    "title": "Role",
+                    "type": "string",
+                  },
+                  "selector": {
+                    "description": "CSS selector to search within (default: interactive elements)",
+                    "title": "Selector",
+                    "type": "string",
+                  },
+                  "text": {
+                    "description": "visible text the element contains, case-insensitive",
+                    "title": "Text",
+                    "type": "string",
+                  },
+                },
+                "title": "Target",
+                "type": "object",
+              },
               "text": {
                 "description": "text to type",
                 "title": "Text",
@@ -1364,7 +1553,6 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "required": [
-              "selector",
               "text",
             ],
             "title": "Type",
@@ -1434,6 +1622,73 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "title": "Wait",
+            "type": "object",
+          },
+          "wait_for_element": {
+            "description": "Wait until a target reaches a state: attached, visible, hidden or detached. Prefer it over a fixed wait action",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "selector": {
+                "description": "selector to target an element. Prefer refs from snapshot (ex: @e12). CSS selectors are also supported.",
+                "title": "Selector",
+                "type": "string",
+              },
+              "state": {
+                "default": "visible",
+                "description": "state to wait for",
+                "enum": [
+                  "attached",
+                  "visible",
+                  "hidden",
+                  "detached",
+                ],
+                "title": "State",
+                "type": "string",
+              },
+              "target": {
+                "description": "readable target {text, role, nth}, used when no ref fits",
+                "properties": {
+                  "nth": {
+                    "description": "0-based index when several elements match, default 0",
+                    "minimum": 0,
+                    "title": "Nth",
+                    "type": "integer",
+                  },
+                  "role": {
+                    "description": "ARIA role or tag, e.g. button, link, textbox",
+                    "title": "Role",
+                    "type": "string",
+                  },
+                  "selector": {
+                    "description": "CSS selector to search within (default: interactive elements)",
+                    "title": "Selector",
+                    "type": "string",
+                  },
+                  "text": {
+                    "description": "visible text the element contains, case-insensitive",
+                    "title": "Text",
+                    "type": "string",
+                  },
+                },
+                "title": "Target",
+                "type": "object",
+              },
+              "timeout_ms": {
+                "default": 5000,
+                "description": "give up after this many ms",
+                "exclusiveMinimum": 0,
+                "maximum": 30000,
+                "title": "Timeout Ms",
+                "type": "integer",
+              },
+            },
+            "title": "Wait For Element",
             "type": "object",
           },
           "web_fetch": {

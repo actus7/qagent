@@ -1866,5 +1866,80 @@
   "options_mcp_error_invalidUrl": {"message":"請輸入以 http:// 或 https:// 開頭的有效 URL。"},
   "options_mcp_error_invalidHeader": {"message":"每個標頭都需要名稱，格式為 名稱: 值。"},
   "options_mcp_error_nameRequired": {"message":"請輸入伺服器名稱。"},
-  "options_mcp_error_testFailed": {"message":"連線失敗。詳情請見主控台。"}
+  "options_mcp_error_testFailed": {"message":"連線失敗。詳情請見主控台。"},
+  "act_pageInfo_start": {
+    "message": "正在讀取頁面結構"
+  },
+  "act_pageInfo_ok": {
+    "message": "已擷取頁面結構"
+  },
+  "act_progress_start": {
+    "message": "正在尋找進度訊號"
+  },
+  "act_progress_ok": {
+    "message": "已擷取進度訊號"
+  },
+  "act_waitFor_start": {
+    "message": "等待 $TARGET$ 變為 $STATE$",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Save\"" },
+      "state": { "content": "$2", "example": "visible" }
+    }
+  },
+  "act_waitFor_ok": {
+    "message": "$TARGET$ 已$STATE$，耗時 $MS$ 毫秒",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Save\"" },
+      "state": { "content": "$2", "example": "visible" },
+      "ms": { "content": "$3", "example": "420" }
+    }
+  },
+  "act_switchFrame_start": {
+    "message": "切換到框架 $INDEX$",
+    "placeholders": {
+      "index": { "content": "$1", "example": "1" }
+    }
+  },
+  "act_switchFrame_ok": {
+    "message": "框架 $INDEX$ 已成為作用範圍：$URL$",
+    "placeholders": {
+      "index": { "content": "$1", "example": "1" },
+      "url": { "content": "$2", "example": "https://example.com/embed" }
+    }
+  },
+  "act_getText_chunk": {
+    "message": "[文字 $FROM$-$TO$，共 $TOTAL$ 個字元]",
+    "placeholders": {
+      "from": { "content": "$1", "example": "0" },
+      "to": { "content": "$2", "example": "20000" },
+      "total": { "content": "$3", "example": "48312" }
+    }
+  },
+  "act_getText_more": {
+    "message": "還有更多文字：傳入游標 \"$CURSOR$\" 以繼續",
+    "placeholders": {
+      "cursor": { "content": "$1", "example": "20000.9f3a2c1b" }
+    }
+  },
+  "act_getText_stale": {
+    "message": "自該游標發出後頁面已變更。請從頭重新讀取（不傳游標）。"
+  },
+  "act_getText_badCursor": {
+    "message": "這不是 get_text 回傳的游標。省略它即可從頭讀取。"
+  },
+  "act_clickTarget_ok": {
+    "message": "已點擊 $TARGET$",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Save\"" }
+    }
+  },
+  "act_needLocator": {
+    "message": "請提供選擇器或目標"
+  },
+  "act_failed": {
+    "message": "操作失敗：$ERROR$",
+    "placeholders": {
+      "error": { "content": "$1", "example": "element is covered by div#banner" }
+    }
+  }
 }

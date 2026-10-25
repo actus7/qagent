@@ -125,6 +125,11 @@ Common action sequences:
 3. ELEMENT INTERACTION:
 
 - Use 'selector' on interaction actions ('click', 'fill', 'type', 'get_text', 'scrollintoview') and prefer refs ('@eN') from the snapshot.
+- Without a ref, pass 'target' instead: {"text": "Save", "role": "button", "nth": 0}. nth picks among several matches.
+- A click that reports "covered by ..." means another element is on top: dismiss it first (cookie banner, modal).
+- page_info gives landmarks, headings and controls with state (disabled, expanded) for a cheap overview. get_text returns long text in groups: pass back the cursor until none comes.
+- wait_for_element waits for a target to be visible or hidden; find_progress tells whether a job is still running. Prefer them to a fixed wait.
+- switch_frame without index lists the frames; with index it scopes snapshots and clicks to that frame (cross-origin iframes included). Index 0 returns to the page.
 
 4. NAVIGATION & ERROR HANDLING:
 

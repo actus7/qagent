@@ -64,6 +64,13 @@ export interface BrowserContextConfig {
    * @default true
    */
   displayHighlights: boolean;
+
+  /**
+   * Move the pointer along an eased path and hover briefly before pressing. Off by default; for sites that
+   * react to instantly teleporting pointers.
+   * @default false
+   */
+  smoothClicks: boolean;
 }
 
 export const DEFAULT_BROWSER_CONTEXT_CONFIG: BrowserContextConfig = {
@@ -76,6 +83,7 @@ export const DEFAULT_BROWSER_CONTEXT_CONFIG: BrowserContextConfig = {
   includeDynamicAttributes: true,
   homePageUrl: 'about:blank',
   displayHighlights: true,
+  smoothClicks: false,
 };
 
 export interface PageState extends DOMState {

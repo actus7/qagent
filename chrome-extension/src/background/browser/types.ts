@@ -3,6 +3,17 @@ import type { BrowserContextConfig, BrowserState, PageState, TabInfo } from './v
 import type { ConsoleEntry, ConsoleReadOptions, NetworkEntry, NetworkReadOptions } from './page-telemetry';
 import type { Point, Size } from './page-pointer';
 import type { EvaluationOutcome } from './page-script';
+import type { PageFacts, PageInfoOptions } from './page-info';
+import type { ProgressReport } from './progress';
+import type { TargetSpec, TargetState } from './target-resolver';
+
+export interface FrameSummary {
+  index: number;
+  url: string;
+  name: string;
+  crossOrigin: boolean;
+  focused: boolean;
+}
 
 export type BrowserEngineName = 'chrome-debugger' | 'agent-browser-v1';
 
@@ -63,6 +74,15 @@ export interface BrowserPageLike {
   ): Promise<void>;
   hoverAt?(point: Point): Promise<void>;
   dragBetween?(from: Point, to: Point, steps: number): Promise<void>;
+  // Page structure, targets, waiting and frames. Like the pointer methods, chrome-debugger only.
+  getPageFacts?(options: PageInfoOptions): Promise<PageFacts>;
+  findProgressSignals?(): Promise<ProgressReport>;
+  clickByTarget?(target: TargetSpec): Promise<void>;
+  inputTextByTarget?(target: TargetSpec, text: string, clearBeforeTyping: boolean): Promise<void>;
+  getTextOf?(target?: TargetSpec): Promise<string>;
+  waitForTarget?(target: TargetSpec, state: TargetState, timeoutMs: number): Promise<number>;
+  listFrames?(): Promise<FrameSummary[]>;
+  focusFrame?(index: number): Promise<FrameSummary>;
 }
 
 export interface BrowserContextLike {

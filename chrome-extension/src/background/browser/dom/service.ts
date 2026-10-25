@@ -1,3 +1,4 @@
+import type { Frame } from 'puppeteer-core/internal/puppeteer-core-browser.js';
 import { createLogger } from '@src/background/log';
 import type { BuildDomTreeArgs, RawDomTreeNode, RawDomElementNode, BuildDomTreeResult } from './raw_types';
 import { type DOMState, type DOMBaseNode, DOMElementNode, DOMTextNode } from './views';
@@ -550,6 +551,43 @@ export async function getScrollInfo(tabId: number): Promise<[number, number, num
 // Injects buildDomTree.js into every frame that doesn't have it yet.
 // Failures here are expected (policy-blocked hosts, frames detached mid-navigation), so they are
 // logged at debug level; the caller's own executeScript surfaces a real error if the page is unusable.
+let buildDomTreeSource: Promise<string> | null = null;
+
+/** Source of the page-side DOM builder, read once from the extension package. */
+function loadBuildDomTreeSource(): Promise<string> {
+  buildDomTreeSource ??= fetch(chrome.runtime.getURL('buildDomTree.js')).then(response => response.text());
+  return buildDomTreeSource;
+}
+
+/**
+ * Snapshot of one frame, including cross-origin ones that the tab-level scan cannot reach.
+ * Runs over the Puppeteer frame, so the indexes it returns resolve on that same frame.
+ */
+export async function getClickableElementsInFrame(
+  frame: Frame,
+  showHighlightElements: boolean,
+  focusElement: number,
+  viewportExpansion: number,
+): Promise<DOMState> {
+  const hasBuilder = await frame.evaluate(() => typeof window.buildDomTree === 'function');
+  if (!hasBuilder) {
+    await frame.evaluate(await loadBuildDomTreeSource());
+  }
+  const result = (await frame.evaluate(args => window.buildDomTree(args), {
+    showHighlightElements,
+    focusHighlightIndex: focusElement,
+    viewportExpansion,
+    startId: 0,
+    startHighlightIndex: 0,
+    debugMode: false,
+  })) as unknown as BuildDomTreeResult | undefined;
+  if (!result?.map || !result.rootId) {
+    throw new Error('Failed to build DOM tree in the focused frame');
+  }
+  const [elementTree, selectorMap] = _constructDomTree(result);
+  return { elementTree, selectorMap };
+}
+
 export async function injectBuildDomTreeScripts(tabId: number) {
   let frames: chrome.scripting.InjectionResult<boolean>[];
   try {

@@ -4,6 +4,9 @@ import type { z } from 'zod';
 import { Actors, ExecutionState } from '../event/types';
 import { wrapUntrustedContent } from '../messages/utils';
 import { Action } from './action';
+import { actionFailedResult, engineUnsupportedResult } from './shared';
+import { readTextChunk } from '../../browser/text-chunks';
+import { describeTargetSpec } from '../../browser/target-resolver';
 import {
   cacheContentActionSchema,
   getTextActionSchema,
@@ -22,13 +25,37 @@ const clip = (text: string) =>
 
 export function createGetTextAction(context: AgentContext) {
   return new Action(async (input: z.infer<typeof getTextActionSchema.schema>) => {
-    const intent = input.intent || `Get text from ${input.selector}`;
+    const label = input.selector ?? (input.target ? describeTargetSpec(input.target) : 'page');
+    const intent = input.intent || `Get text from ${label}`;
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const page = await context.browserContext.getCurrentPage();
-    const text = await page.getTextBySelector(input.selector);
-    const msg = wrapUntrustedContent(clip(text || '(empty)'));
+    if (!input.selector && !page.getTextOf) return engineUnsupportedResult(context);
+    let full: string;
+    try {
+      full = input.selector
+        ? await page.getTextBySelector(input.selector)
+        : await (page.getTextOf?.(input.target) ?? '');
+    } catch (error) {
+      return actionFailedResult(context, error);
+    }
+
+    const chunk = readTextChunk(full, { maxLength: input.max_length, cursor: input.cursor });
+    if (chunk.status === 'invalid') {
+      return actionFailedResult(context, new Error(t('act_getText_badCursor')));
+    }
+    if (chunk.status === 'stale') {
+      const msg = t('act_getText_stale');
+      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
+      return new ActionResult({ extractedContent: msg, includeInMemory: true });
+    }
+    const end = chunk.offset + chunk.content.length;
+    const header = t('act_getText_chunk', [String(chunk.offset), String(end), String(chunk.totalLength)]);
+    const footer = chunk.cursor ? `\n${t('act_getText_more', [chunk.cursor])}` : '';
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, 'Text captured');
-    return new ActionResult({ extractedContent: msg, includeInMemory: true });
+    return new ActionResult({
+      extractedContent: `${header}\n${wrapUntrustedContent(chunk.content || '(empty)')}${footer}`,
+      includeInMemory: true,
+    });
   }, getTextActionSchema);
 }
 
