@@ -20,6 +20,7 @@ import { subscribeToExecutorEvents } from './executorEvents';
 import { clearRunningTask, saveRunningTask, startServiceWorkerKeepAlive, updateRunningTaskSteps } from './runState';
 import { setupExecutor } from './setupExecutor';
 import { taskTabGroups } from '../services/tab-groups';
+import { runCliAgentTask, selectedCliRunner } from '../services/mcpBridge/cliTask';
 
 // The single in-flight assistant task. Only this module reads or writes it.
 let activeTask: AbortController | null = null;
@@ -121,6 +122,24 @@ export async function runAssistantTask(
       return;
     }
     if (tabIds.length === 0) throw new Error(t('bg_task_selectTab'));
+    const cliRunner = await selectedCliRunner();
+    if (cliRunner) {
+      // The CLI agent is chosen in options: the daemon runs it and its steps reach the panel as they happen.
+      emit(ExecutionState.TASK_START);
+      const tabId = tabIds.includes(message.tabId) ? message.tabId : tabIds[0];
+      const outcome = await runCliAgentTask({
+        taskId: message.taskId,
+        task: message.task,
+        tabId,
+        runner: cliRunner,
+        signal: controller.signal,
+        post: postToPanel,
+      });
+      if (controller.signal.aborted) emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
+      else if (outcome.ok) emit(ExecutionState.TASK_OK, outcome.text);
+      else emit(ExecutionState.TASK_FAIL, outcome.error ?? '');
+      return;
+    }
     if (browserContext instanceof ScopedBrowserContext) browserContext.setAllowedTabs(tabIds);
     await taskTabGroups.start(message.taskId, tabIds);
     await saveRunningTask({

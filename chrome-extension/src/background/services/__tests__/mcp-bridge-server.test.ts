@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MCP_BRIDGE_CLIENT_PROOF_LABEL, MCP_BRIDGE_SERVER_PROOF_LABEL } from '@extension/shared';
-import { mcpBridgeProof, QAgentMcpBridge } from '../../../../../packages/dev-utils/lib/mcp-bridge/bridge';
+import { mcpBridgeProof, QAgentMcpBridge } from '../../../../../packages/bridge/lib/bridge';
 import { randomHex } from '../mcpBridge/handshake';
 
 const TOKEN = 'test-token-0123456789-abcdefghijklmnop';

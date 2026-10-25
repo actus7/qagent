@@ -1680,6 +1680,57 @@
   "options_mcp_token_copied": {
     "message": "Copied"
   },
+    "act_host_start": {
+    "message": "Running $LABEL$",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "shell_exec"
+      }
+    }
+  },
+  "act_host_ok": {
+    "message": "$LABEL$ finished",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "shell_exec"
+      }
+    }
+  },
+  "act_host_fail": {
+    "message": "$LABEL$ failed",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "shell_exec"
+      }
+    }
+  },
+  "bg_mcp_notConnected": {
+    "message": "The QAgent bridge is not connected. Start the daemon with \"qagent start\" and enable the MCP bridge in options."
+  },
+  "bg_mcp_hostTimeout": {
+    "message": "The bridge did not answer in time."
+  },
+  "options_mcp_cli_label": {
+    "message": "CLI agent"
+  },
+  "options_mcp_cli_desc": {
+    "message": "Run assistant tasks through a CLI agent on this machine. The CLI drives the browser through the bridge."
+  },
+  "options_mcp_cli_off": {
+    "message": "Off (built-in agent)"
+  },
+  "options_mcp_status_label": {
+    "message": "Bridge status"
+  },
+  "options_mcp_status_connected": {
+    "message": "Connected"
+  },
+  "options_mcp_status_disconnected": {
+    "message": "Not connected"
+  },
   "options_mcp_token_hint": {
     "message": "The token must have at least 32 characters. Generate one and set the same value in QAGENT_MCP_TOKEN."
   },

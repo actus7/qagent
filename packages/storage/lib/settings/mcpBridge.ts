@@ -9,7 +9,11 @@ export interface McpBridgeConfig {
   port: number;
   // Shared secret for the HMAC handshake. Stays local: it is never sent raw nor returned to MCP clients.
   token: string;
+  // Which CLI agent runs assistant tasks through the daemon; 'off' keeps the built-in agent.
+  cliAgent: McpBridgeCliAgent;
 }
+
+export type McpBridgeCliAgent = 'off' | 'claude' | 'codex';
 
 export const MCP_BRIDGE_MIN_TOKEN_LENGTH = 32;
 
@@ -27,6 +31,7 @@ export const DEFAULT_MCP_BRIDGE_CONFIG: McpBridgeConfig = {
   host: '127.0.0.1',
   port: 9224,
   token: '',
+  cliAgent: 'off',
 };
 
 // The bridge only ever talks to the loopback interface.
@@ -42,6 +47,7 @@ export function sanitizeMcpBridgeConfig(value: Partial<McpBridgeConfig>): McpBri
     host: LOOPBACK_HOSTS.has(host) ? host : DEFAULT_MCP_BRIDGE_CONFIG.host,
     port: port >= 1024 && port <= 65535 ? port : DEFAULT_MCP_BRIDGE_CONFIG.port,
     token,
+    cliAgent: value.cliAgent === 'claude' || value.cliAgent === 'codex' ? value.cliAgent : 'off',
   };
 }
 

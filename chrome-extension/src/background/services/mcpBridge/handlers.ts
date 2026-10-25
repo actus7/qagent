@@ -9,6 +9,7 @@ import { getManagedPolicy } from '../../state/managedPolicyState';
 import { cancelActiveTask } from '../../task/taskRunner';
 import { loadManagedPolicy } from '../managedPolicy';
 import { createTaskCollector, type TaskRunOutcome } from './taskCollector';
+import { listBridgeActions, runBridgeAction } from './actionRunner';
 import { McpBridgeError, type ParsedBridgeRequest, type RunTaskParams } from './protocol';
 
 const TAB_LOAD_TIMEOUT_MS = 15000;
@@ -112,11 +113,18 @@ export async function handleBridgeRequest(request: ParsedBridgeRequest): Promise
     case 'cancel_task':
       await cancelActiveTask();
       return { cancelled: true };
+    case 'list_actions':
+      return listBridgeActions();
+    case 'run_action':
+      return runBridgeAction(request.params);
   }
 }
 
 /** Builds the response frame for a handler outcome. Internal error details are not exposed to the bridge. */
-export function toBridgeResponse(id: string, outcome: { ok: true; result: unknown } | { ok: false; error: unknown }): McpBridgeResponseFrame {
+export function toBridgeResponse(
+  id: string,
+  outcome: { ok: true; result: unknown } | { ok: false; error: unknown },
+): McpBridgeResponseFrame {
   if (outcome.ok) return { type: 'response', id, ok: true, result: outcome.result };
   if (outcome.error instanceof McpBridgeError) {
     return { type: 'response', id, ok: false, error: { code: outcome.error.code, message: outcome.error.message } };

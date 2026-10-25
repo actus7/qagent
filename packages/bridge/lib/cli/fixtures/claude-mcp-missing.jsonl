@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","session_id":"s-2","tools":["Bash"],"mcp_servers":[{"name":"qagent","status":"failed"}]}
+{"type":"result","subtype":"success","is_error":false,"result":"I cannot see the page.","session_id":"s-2"}

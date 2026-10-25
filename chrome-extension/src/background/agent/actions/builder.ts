@@ -69,6 +69,13 @@ import {
   createStartMonitorAction,
   createStopMonitorAction,
 } from './monitor';
+import {
+  createFsListAction,
+  createFsReadAction,
+  createFsSearchAction,
+  createFsWriteAction,
+  createShellExecAction,
+} from './host';
 
 export { Action, InvalidInputError, buildDynamicActionSchema } from './action';
 
@@ -175,6 +182,11 @@ export class ActionBuilder {
       createMonitorStatusAction(context),
       createAwaitMonitorAction(context),
       createStopMonitorAction(context),
+      createShellExecAction(context),
+      createFsReadAction(context),
+      createFsWriteAction(context),
+      createFsListAction(context),
+      createFsSearchAction(context),
     ];
     if (this.context.browserContext.getEngineName() === 'agent-browser-v1') {
       return actions.filter(action => AGENT_BROWSER_V1_ALLOWED_ACTIONS.has(action.name()));

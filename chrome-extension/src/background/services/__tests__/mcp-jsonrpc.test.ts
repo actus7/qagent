@@ -4,12 +4,8 @@ import {
   parseJsonRpcLine,
   splitFrames,
   type McpToolHost,
-} from '../../../../../packages/dev-utils/lib/mcp-bridge/jsonrpc';
-import {
-  createQaAgentToolHost,
-  QAGENT_TOOLS,
-  validateRunTaskArgs,
-} from '../../../../../packages/dev-utils/lib/mcp-bridge/tools';
+} from '../../../../../packages/bridge/lib/jsonrpc';
+import { createQaAgentToolHost, QAGENT_TOOLS, validateRunTaskArgs } from '../../../../../packages/bridge/lib/tools';
 
 const SERVER = { name: 'qagent', version: '0.1.0' };
 
@@ -95,9 +91,9 @@ describe('tools', () => {
 
   it('lists the four QAgent tools with object input schemas', async () => {
     const response = await handleJsonRpcPayload(rpc({ id: 5, method: 'tools/list' }), host, SERVER);
-    const names = (response as { result: { tools: Array<{ name: string; inputSchema: { type: string } }> } }).result.tools.map(
-      tool => tool.name,
-    );
+    const names = (
+      response as { result: { tools: Array<{ name: string; inputSchema: { type: string } }> } }
+    ).result.tools.map(tool => tool.name);
     expect(names).toEqual(['qagent_run_task', 'qagent_list_tabs', 'qagent_get_status', 'qagent_cancel_task']);
     for (const tool of QAGENT_TOOLS) {
       expect(tool.inputSchema.type).toBe('object');

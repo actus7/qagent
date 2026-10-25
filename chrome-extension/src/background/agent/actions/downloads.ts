@@ -62,7 +62,8 @@ export function createListDownloadsAction(context: AgentContext) {
         return new ActionResult({ extractedContent: msg, includeInMemory: true });
       }
       const lines = downloads.map(
-        item => `- id ${item.id} [${item.state}] ${item.filename} (from ${wrapUntrustedContent(item.url)})`,
+        item =>
+          `- id ${item.id} [${item.state}] ${wrapUntrustedContent(item.filename)} (from ${wrapUntrustedContent(item.url)})`,
       );
       const msg = t('act_listDownloads_ok', [String(downloads.length)]);
       context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);

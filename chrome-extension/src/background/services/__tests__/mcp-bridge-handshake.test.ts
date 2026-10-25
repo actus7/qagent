@@ -4,7 +4,7 @@ import {
   mcpBridgeProof,
   MCP_BRIDGE_CLIENT_PROOF_LABEL as SERVER_CLIENT_LABEL,
   MCP_BRIDGE_SERVER_PROOF_LABEL as SERVER_SERVER_LABEL,
-} from '../../../../../packages/dev-utils/lib/mcp-bridge/bridge';
+} from '../../../../../packages/bridge/lib/bridge';
 import { BridgeHandshake, computeBridgeProof, constantTimeEqual } from '../mcpBridge/handshake';
 
 const TOKEN = 'test-token-0123456789-abcdefghijklmnop';

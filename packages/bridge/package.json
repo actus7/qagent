@@ -1,0 +1,42 @@
+{
+  "name": "@qagent/bridge",
+  "version": "0.1.0",
+  "description": "Local bridge between the QAgent browser extension and MCP clients, host tools and CLI agents",
+  "author": "Alex Schmitt",
+  "license": "Apache-2.0",
+  "bin": {
+    "qagent": "./dist/lib/bin.js"
+  },
+  "main": "dist/lib/index.js",
+  "types": "dist/lib/index.d.ts",
+  "files": [
+    "dist/lib/**/*.js",
+    "dist/lib/**/*.d.ts",
+    "!dist/lib/**/*.test.*",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "clean:bundle": "rimraf dist",
+    "clean:node_modules": "pnpx rimraf node_modules",
+    "clean:turbo": "rimraf .turbo",
+    "clean": "pnpm clean:bundle && pnpm clean:node_modules && pnpm clean:turbo",
+    "ready": "tsc",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "pnpm lint --fix",
+    "prettier": "prettier . --write --ignore-path ../../.prettierignore",
+    "test": "node --test \"dist/lib/**/*.test.js\"",
+    "mcp": "node ./dist/lib/bin.js mcp"
+  },
+  "devDependencies": {
+    "@extension/tsconfig": "workspace:*",
+    "@types/ws": "^8.18.2"
+  },
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
+}

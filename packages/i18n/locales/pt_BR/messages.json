@@ -1680,6 +1680,57 @@
   "options_mcp_token_copied": {
     "message": "Copiado"
   },
+    "act_host_start": {
+    "message": "Executando $LABEL$",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "shell_exec"
+      }
+    }
+  },
+  "act_host_ok": {
+    "message": "$LABEL$ concluído",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "shell_exec"
+      }
+    }
+  },
+  "act_host_fail": {
+    "message": "$LABEL$ falhou",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "shell_exec"
+      }
+    }
+  },
+  "bg_mcp_notConnected": {
+    "message": "A ponte do QAgent não está conectada. Inicie o daemon com \"qagent start\" e ative a ponte MCP nas opções."
+  },
+  "bg_mcp_hostTimeout": {
+    "message": "A ponte não respondeu a tempo."
+  },
+  "options_mcp_cli_label": {
+    "message": "Agente CLI"
+  },
+  "options_mcp_cli_desc": {
+    "message": "Executa as tarefas do assistente por um agente CLI nesta máquina. A CLI controla o navegador pela ponte."
+  },
+  "options_mcp_cli_off": {
+    "message": "Desligado (agente interno)"
+  },
+  "options_mcp_status_label": {
+    "message": "Status da ponte"
+  },
+  "options_mcp_status_connected": {
+    "message": "Conectada"
+  },
+  "options_mcp_status_disconnected": {
+    "message": "Não conectada"
+  },
   "options_mcp_token_hint": {
     "message": "O token precisa ter pelo menos 32 caracteres. Gere um e use o mesmo valor em QAGENT_MCP_TOKEN."
   },

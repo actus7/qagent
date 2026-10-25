@@ -73,6 +73,11 @@ const DEFAULT_ACTION_NAMES = [
   'monitor_status',
   'await_monitor',
   'stop_monitor',
+  'shell_exec',
+  'fs_read',
+  'fs_write',
+  'fs_list',
+  'fs_search',
 ];
 
 const AGENT_BROWSER_V1_ACTION_NAMES = [

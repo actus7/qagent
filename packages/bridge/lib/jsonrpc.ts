@@ -38,7 +38,7 @@ export interface McpToolResult {
 }
 
 export interface McpToolHost {
-  listTools(): McpToolDefinition[];
+  listTools(): McpToolDefinition[] | Promise<McpToolDefinition[]>;
   callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult>;
 }
 
@@ -60,7 +60,9 @@ export function splitFrames(buffer: string): { frames: string[]; rest: string } 
   return { frames, rest };
 }
 
-export function parseJsonRpcLine(line: string): { ok: true; message: unknown } | { ok: false; response: JsonRpcResponse } {
+export function parseJsonRpcLine(
+  line: string,
+): { ok: true; message: unknown } | { ok: false; response: JsonRpcResponse } {
   try {
     return { ok: true, message: JSON.parse(line) };
   } catch {
@@ -115,12 +117,12 @@ async function handleRequest(
     case 'ping':
       return { jsonrpc: '2.0', id, result: {} };
     case 'tools/list':
-      return { jsonrpc: '2.0', id, result: { tools: host.listTools() } };
+      return { jsonrpc: '2.0', id, result: { tools: await host.listTools() } };
     case 'tools/call': {
       if (typeof params.name !== 'string') {
         return jsonRpcError(id, JSON_RPC_ERROR.invalidParams, 'tools/call requires a tool name');
       }
-      if (!host.listTools().some(tool => tool.name === params.name)) {
+      if (!(await host.listTools()).some(tool => tool.name === params.name)) {
         return jsonRpcError(id, JSON_RPC_ERROR.invalidParams, `Unknown tool: ${params.name}`);
       }
       const args = isRecord(params.arguments) ? params.arguments : {};

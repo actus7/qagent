@@ -765,3 +765,58 @@ export const stopMonitorActionSchema = {
       .describe('monitor id from start_monitor'),
   }),
 } satisfies ActionSchema;
+
+// Host tools: run on the machine that runs the bridge daemon, through the QAgent bridge. Not browser actions.
+export const shellExecActionSchema = {
+  name: 'shell_exec',
+  description:
+    'Run a shell command on the host machine (PowerShell on Windows, bash elsewhere) and return the exit code, stdout and stderr (capped). Use it for local tooling, not for the page',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    command: z.string().min(1).max(8000).describe('command line to run'),
+    cwd: z.string().max(1024).optional().describe('working directory, defaults to the home folder'),
+    timeoutMs: z.number().int().min(1000).max(600000).default(60000).describe('kill the command after this many ms'),
+  }),
+} satisfies ActionSchema;
+
+export const fsReadActionSchema = {
+  name: 'fs_read',
+  description: 'Read a text file on the host machine, a window of lines (capped)',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    path: z.string().min(1).max(1024).describe('file path, absolute or relative to the daemon folder'),
+    offset: z.number().int().min(0).default(0).describe('first line to return, 0-based'),
+    limit: z.number().int().min(1).max(2000).default(200).describe('number of lines to return'),
+  }),
+} satisfies ActionSchema;
+
+export const fsWriteActionSchema = {
+  name: 'fs_write',
+  description: 'Write a text file on the host machine, creating parent folders and replacing the file',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    path: z.string().min(1).max(1024).describe('file path, absolute or relative to the daemon folder'),
+    content: z.string().max(2000000).describe('full file content'),
+  }),
+} satisfies ActionSchema;
+
+export const fsListActionSchema = {
+  name: 'fs_list',
+  description: 'List the entries of a folder on the host machine (names and types, capped)',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    path: z.string().min(1).max(1024).describe('folder path'),
+  }),
+} satisfies ActionSchema;
+
+export const fsSearchActionSchema = {
+  name: 'fs_search',
+  description:
+    'Search text files under a folder on the host machine for a pattern (regex if it compiles, else literal, case-insensitive). Skips node_modules and .git',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    path: z.string().min(1).max(1024).describe('folder to search'),
+    pattern: z.string().min(1).max(500).describe('text or regex to find'),
+    maxResults: z.number().int().min(1).max(500).default(100).describe('stop after this many matches'),
+  }),
+} satisfies ActionSchema;

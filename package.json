@@ -20,7 +20,7 @@
     "smoke:quick": "bash scripts/smoke.sh --quick",
     "smoke:zip": "bash scripts/smoke.sh --zip",
     "companion:agent-browser": "pnpm -F @extension/dev-utils ready && pnpm -F @extension/dev-utils companion",
-    "mcp:qagent": "pnpm -s -F @extension/dev-utils ready 1>&2 && pnpm -s -F @extension/dev-utils mcp",
+    "mcp:qagent": "pnpm -s -F @qagent/bridge ready 1>&2 && pnpm -s -F @qagent/bridge mcp",
     "type-check": "pnpm -F @extension/i18n ready && turbo type-check",
     "lint": "turbo lint --continue -- --fix --cache --cache-location node_modules/.cache/.eslintcache",
     "lint:fix": "turbo lint:fix --continue -- --fix --cache --cache-location node_modules/.cache/.eslintcache",

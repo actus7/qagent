@@ -138,6 +138,16 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {await_monitor: {'intent': {'type': 'purpose of this action', 'optional': true}, 'id': {'type': 'monitor id from start_monitor', 'required': true}, 'timeout_ms': {'type': 'give up waiting after this many ms', 'optional': true}}}",
   "Stop a monitor that is still watching:
 {stop_monitor: {'intent': {'type': 'purpose of this action', 'optional': true}, 'id': {'type': 'monitor id from start_monitor', 'required': true}}}",
+  "Run a shell command on the host machine (PowerShell on Windows, bash elsewhere) and return the exit code, stdout and stderr (capped). Use it for local tooling, not for the page:
+{shell_exec: {'intent': {'type': 'purpose of this action', 'optional': true}, 'command': {'type': 'command line to run', 'required': true}, 'cwd': {'type': 'working directory, defaults to the home folder', 'optional': true}, 'timeoutMs': {'type': 'kill the command after this many ms', 'optional': true}}}",
+  "Read a text file on the host machine, a window of lines (capped):
+{fs_read: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'file path, absolute or relative to the daemon folder', 'required': true}, 'offset': {'type': 'first line to return, 0-based', 'optional': true}, 'limit': {'type': 'number of lines to return', 'optional': true}}}",
+  "Write a text file on the host machine, creating parent folders and replacing the file:
+{fs_write: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'file path, absolute or relative to the daemon folder', 'required': true}, 'content': {'type': 'full file content', 'required': true}}}",
+  "List the entries of a folder on the host machine (names and types, capped):
+{fs_list: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'folder path', 'required': true}}}",
+  "Search text files under a folder on the host machine for a pattern (regex if it compiles, else literal, case-insensitive). Skips node_modules and .git:
+{fs_search: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'folder to search', 'required': true}, 'pattern': {'type': 'text or regex to find', 'required': true}, 'maxResults': {'type': 'stop after this many matches', 'optional': true}}}",
 ]
 `;
 
@@ -783,6 +793,140 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "title": "Forward",
+            "type": "object",
+          },
+          "fs_list": {
+            "description": "List the entries of a folder on the host machine (names and types, capped)",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "path": {
+                "description": "folder path",
+                "maxLength": 1024,
+                "minLength": 1,
+                "title": "Path",
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "title": "Fs List",
+            "type": "object",
+          },
+          "fs_read": {
+            "description": "Read a text file on the host machine, a window of lines (capped)",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "limit": {
+                "default": 200,
+                "description": "number of lines to return",
+                "maximum": 2000,
+                "minimum": 1,
+                "title": "Limit",
+                "type": "integer",
+              },
+              "offset": {
+                "default": 0,
+                "description": "first line to return, 0-based",
+                "minimum": 0,
+                "title": "Offset",
+                "type": "integer",
+              },
+              "path": {
+                "description": "file path, absolute or relative to the daemon folder",
+                "maxLength": 1024,
+                "minLength": 1,
+                "title": "Path",
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "title": "Fs Read",
+            "type": "object",
+          },
+          "fs_search": {
+            "description": "Search text files under a folder on the host machine for a pattern (regex if it compiles, else literal, case-insensitive). Skips node_modules and .git",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "maxResults": {
+                "default": 100,
+                "description": "stop after this many matches",
+                "maximum": 500,
+                "minimum": 1,
+                "title": "Max Results",
+                "type": "integer",
+              },
+              "path": {
+                "description": "folder to search",
+                "maxLength": 1024,
+                "minLength": 1,
+                "title": "Path",
+                "type": "string",
+              },
+              "pattern": {
+                "description": "text or regex to find",
+                "maxLength": 500,
+                "minLength": 1,
+                "title": "Pattern",
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+              "pattern",
+            ],
+            "title": "Fs Search",
+            "type": "object",
+          },
+          "fs_write": {
+            "description": "Write a text file on the host machine, creating parent folders and replacing the file",
+            "nullable": true,
+            "properties": {
+              "content": {
+                "description": "full file content",
+                "maxLength": 2000000,
+                "title": "Content",
+                "type": "string",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "path": {
+                "description": "file path, absolute or relative to the daemon folder",
+                "maxLength": 1024,
+                "minLength": 1,
+                "title": "Path",
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+              "content",
+            ],
+            "title": "Fs Write",
             "type": "object",
           },
           "get_dropdown_options": {
@@ -1666,6 +1810,44 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               "keys",
             ],
             "title": "Send Keys",
+            "type": "object",
+          },
+          "shell_exec": {
+            "description": "Run a shell command on the host machine (PowerShell on Windows, bash elsewhere) and return the exit code, stdout and stderr (capped). Use it for local tooling, not for the page",
+            "nullable": true,
+            "properties": {
+              "command": {
+                "description": "command line to run",
+                "maxLength": 8000,
+                "minLength": 1,
+                "title": "Command",
+                "type": "string",
+              },
+              "cwd": {
+                "description": "working directory, defaults to the home folder",
+                "maxLength": 1024,
+                "title": "Cwd",
+                "type": "string",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "timeoutMs": {
+                "default": 60000,
+                "description": "kill the command after this many ms",
+                "maximum": 600000,
+                "minimum": 1000,
+                "title": "Timeout Ms",
+                "type": "integer",
+              },
+            },
+            "required": [
+              "command",
+            ],
+            "title": "Shell Exec",
             "type": "object",
           },
           "snapshot": {

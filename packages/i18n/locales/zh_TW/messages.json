@@ -1680,6 +1680,57 @@
   "options_mcp_token_copied": {
     "message": "已複製"
   },
+    "act_host_start": {
+    "message": "正在執行 $LABEL$",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "shell_exec"
+      }
+    }
+  },
+  "act_host_ok": {
+    "message": "$LABEL$ 完成",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "shell_exec"
+      }
+    }
+  },
+  "act_host_fail": {
+    "message": "$LABEL$ 失敗",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "shell_exec"
+      }
+    }
+  },
+  "bg_mcp_notConnected": {
+    "message": "QAgent 橋接未連線。請用 \"qagent start\" 啟動常駐程式，並在選項中啟用 MCP 橋接。"
+  },
+  "bg_mcp_hostTimeout": {
+    "message": "橋接未在時限內回應。"
+  },
+  "options_mcp_cli_label": {
+    "message": "CLI 代理"
+  },
+  "options_mcp_cli_desc": {
+    "message": "透過本機的 CLI 代理執行助理任務。CLI 會經由橋接操作瀏覽器。"
+  },
+  "options_mcp_cli_off": {
+    "message": "關閉（內建代理）"
+  },
+  "options_mcp_status_label": {
+    "message": "橋接狀態"
+  },
+  "options_mcp_status_connected": {
+    "message": "已連線"
+  },
+  "options_mcp_status_disconnected": {
+    "message": "未連線"
+  },
   "options_mcp_token_hint": {
     "message": "權杖至少需要 32 個字元。請產生一個，並在 QAGENT_MCP_TOKEN 設定相同的值。"
   },

@@ -1,18 +1,32 @@
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
-// Types only: at runtime this file must not depend on @extension/shared (a devDependency of this package).
-import type { McpBridgeMethod, McpBridgeResponseFrame } from '@extension/shared';
+import {
+  BridgeError,
+  MCP_BRIDGE_CLIENT_PROOF_LABEL,
+  MCP_BRIDGE_DEFAULT_HOST,
+  MCP_BRIDGE_DEFAULT_PORT,
+  MCP_BRIDGE_HOST_METHODS,
+  MCP_BRIDGE_MIN_TOKEN_LENGTH,
+  MCP_BRIDGE_SERVER_PROOF_LABEL,
+  type McpBridgeEventFrame,
+  type McpBridgeHostMethod,
+  type McpBridgeMethod,
+  type McpBridgeResponseFrame,
+} from './protocol';
 import type { BridgeRequester } from './tools';
 
-// Keep in sync with MCP_BRIDGE_DEFAULT_HOST / MCP_BRIDGE_DEFAULT_PORT in @extension/shared.
-const MCP_BRIDGE_DEFAULT_HOST = '127.0.0.1';
-const MCP_BRIDGE_DEFAULT_PORT = 9224;
-// Keep in sync with the proof labels and handshake timeout in @extension/shared (mcp-bridge-protocol.ts).
-export const MCP_BRIDGE_SERVER_PROOF_LABEL = 'qagent-mcp-bridge/v1/server';
-export const MCP_BRIDGE_CLIENT_PROOF_LABEL = 'qagent-mcp-bridge/v1/client';
+export { MCP_BRIDGE_CLIENT_PROOF_LABEL, MCP_BRIDGE_MIN_TOKEN_LENGTH, MCP_BRIDGE_SERVER_PROOF_LABEL };
 const HANDSHAKE_TIMEOUT_MS = 5000;
-export const MCP_BRIDGE_MIN_TOKEN_LENGTH = 32;
 const NONCE_PATTERN = /^[0-9a-f]{64}$/;
+
+/** Answers the requests the extension makes to the daemon (host tools, CLI agents). */
+export interface ExtensionHandler {
+  handle(
+    method: McpBridgeHostMethod,
+    params: Record<string, unknown>,
+    sendEvent: (event: McpBridgeEventFrame) => void,
+  ): Promise<unknown>;
+}
 
 export interface McpBridgeOptions {
   host?: string;
@@ -21,9 +35,10 @@ export interface McpBridgeOptions {
   token: string;
   /** Exact extension id allowed to connect; any chrome-extension:// origin when unset. */
   extensionId?: string;
-  /** Upper bound for run_task, which waits for the whole task. */
+  /** Upper bound for run_task and run_action, which wait for the browser. */
   taskTimeoutMs?: number;
   requestTimeoutMs?: number;
+  handler?: ExtensionHandler;
 }
 
 interface PendingRequest {
@@ -42,6 +57,9 @@ interface HandshakeStep {
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost']);
 const DEFAULT_TASK_TIMEOUT_MS = 10 * 60 * 1000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15 * 1000;
+// Methods that wait for the browser or a whole task get the long timeout.
+const LONG_METHODS: ReadonlySet<string> = new Set(['run_task', 'run_action']);
+const HOST_METHODS: ReadonlySet<string> = new Set<string>(MCP_BRIDGE_HOST_METHODS);
 
 /** HMAC-SHA256(token, `${label}|${first}|${second}`), hex encoded. The raw token never leaves the process. */
 export function mcpBridgeProof(token: string, label: string, first: string, second: string): string {
@@ -109,6 +127,7 @@ export class QAgentMcpBridge implements BridgeRequester {
   private readonly extensionId?: string;
   private readonly taskTimeoutMs: number;
   private readonly requestTimeoutMs: number;
+  private readonly handler?: ExtensionHandler;
   private wss: WebSocketServer | null = null;
   private socket: WebSocket | null = null;
   private readonly pending = new Map<string, PendingRequest>();
@@ -126,6 +145,7 @@ export class QAgentMcpBridge implements BridgeRequester {
     this.extensionId = options.extensionId;
     this.taskTimeoutMs = options.taskTimeoutMs ?? DEFAULT_TASK_TIMEOUT_MS;
     this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    this.handler = options.handler;
     if (!LOOPBACK_HOSTS.has(this.host)) {
       throw new Error('QAgent MCP bridge only listens on 127.0.0.1 or localhost');
     }
@@ -193,7 +213,7 @@ export class QAgentMcpBridge implements BridgeRequester {
       );
     }
     const id = randomUUID();
-    const timeoutMs = method === 'run_task' ? this.taskTimeoutMs : this.requestTimeoutMs;
+    const timeoutMs = LONG_METHODS.has(method) ? this.taskTimeoutMs : this.requestTimeoutMs;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
@@ -204,6 +224,11 @@ export class QAgentMcpBridge implements BridgeRequester {
     });
   }
 
+  /** Pushes a progress event to the extension; dropped silently when no extension is connected. */
+  sendEvent(event: McpBridgeEventFrame): void {
+    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(event));
+  }
+
   private handleConnection(ws: WebSocket): void {
     let state: HandshakeState | 'authenticated' = { step: 'hello' };
     const timer = setTimeout(() => ws.close(4005, 'handshake timeout'), HANDSHAKE_TIMEOUT_MS);
@@ -211,6 +236,7 @@ export class QAgentMcpBridge implements BridgeRequester {
       const frame = parseFrame(raw);
       if (state === 'authenticated') {
         if (frame && isResponseFrame(frame)) this.settle(frame);
+        else if (frame && frame.type === 'request') void this.answerExtension(ws, frame);
         return;
       }
       const step = handshakeStep(this.token, state, frame);
@@ -232,6 +258,34 @@ export class QAgentMcpBridge implements BridgeRequester {
       this.socket = null;
       this.rejectAll('EXTENSION_DISCONNECTED: the QAgent extension disconnected');
     });
+  }
+
+  /** Runs one extension request. Only host methods are accepted; anything else gets INVALID_REQUEST. */
+  private async answerExtension(ws: WebSocket, frame: Record<string, unknown>): Promise<void> {
+    const id = typeof frame.id === 'string' ? frame.id : null;
+    if (id === null) return;
+    const method = typeof frame.method === 'string' ? frame.method : '';
+    const params = typeof frame.params === 'object' && frame.params !== null ? frame.params : {};
+    let response: McpBridgeResponseFrame;
+    try {
+      if (!HOST_METHODS.has(method) || !this.handler) {
+        throw new BridgeError('INVALID_REQUEST', 'Unsupported request method');
+      }
+      const sendEvent = (event: McpBridgeEventFrame) => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(event));
+      };
+      const result = await this.handler.handle(
+        method as McpBridgeHostMethod,
+        params as Record<string, unknown>,
+        sendEvent,
+      );
+      response = { type: 'response', id, ok: true, result };
+    } catch (error) {
+      const code = error instanceof BridgeError ? error.code : 'INTERNAL';
+      const message = error instanceof Error ? error.message : String(error);
+      response = { type: 'response', id, ok: false, error: { code, message } };
+    }
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(response));
   }
 
   private adoptSocket(ws: WebSocket): void {

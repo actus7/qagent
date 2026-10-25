@@ -3,6 +3,7 @@ import {
   DEFAULT_MCP_BRIDGE_CONFIG,
   isValidMcpBridgeToken,
   mcpBridgeStore,
+  type McpBridgeCliAgent,
   type McpBridgeConfig,
 } from '@extension/storage';
 import { t } from '@extension/i18n';
@@ -24,6 +25,24 @@ export const McpBridgeSettings = () => {
   const [portDraft, setPortDraft] = useState(String(DEFAULT_MCP_BRIDGE_CONFIG.port));
   const [tokenDraft, setTokenDraft] = useState('');
   const [copied, setCopied] = useState(false);
+  const [bridgeConnected, setBridgeConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // The background publishes the connection state to session storage; the options page only reads it.
+    const readStatus = (value: unknown) => {
+      const status = value as { connected?: boolean } | undefined;
+      setBridgeConnected(status?.connected === true);
+    };
+    const onChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === 'session' && changes.mcpBridgeStatus) readStatus(changes.mcpBridgeStatus.newValue);
+    };
+    void chrome.storage.session
+      .get('mcpBridgeStatus')
+      .then(stored => readStatus(stored.mcpBridgeStatus))
+      .catch(() => setBridgeConnected(false));
+    chrome.storage.onChanged.addListener(onChanged);
+    return () => chrome.storage.onChanged.removeListener(onChanged);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -127,6 +146,29 @@ export const McpBridgeSettings = () => {
               className={`w-24 ${inputClass}`}
             />
           </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-medium text-foreground">{t('options_mcp_cli_label')}</h3>
+            <p className="text-sm font-normal text-muted-foreground">{t('options_mcp_cli_desc')}</p>
+          </div>
+          <select
+            id="mcpBridgeCliAgent"
+            value={config.cliAgent}
+            onChange={e => void save({ cliAgent: e.target.value as McpBridgeCliAgent })}
+            className={inputClass}>
+            <option value="off">{t('options_mcp_cli_off')}</option>
+            <option value="claude">Claude Code</option>
+            <option value="codex">Codex</option>
+          </select>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-medium text-foreground">{t('options_mcp_status_label')}</h3>
+          <span className="text-sm text-muted-foreground" role="status">
+            {bridgeConnected === true ? t('options_mcp_status_connected') : t('options_mcp_status_disconnected')}
+          </span>
         </div>
 
         <div className="space-y-2">

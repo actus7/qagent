@@ -12,6 +12,8 @@ export type HandshakeOutcome =
   | { kind: 'reply'; frame: McpBridgeAuthFrame }
   | { kind: 'ready' }
   | { kind: 'dispatch' }
+  | { kind: 'response'; frame: Record<string, unknown> }
+  | { kind: 'event'; frame: Record<string, unknown> }
   | { kind: 'drop' }
   | { kind: 'ignore' }
   | { kind: 'fail'; reason: string };
@@ -70,7 +72,12 @@ export class BridgeHandshake {
 
   async handle(frame: unknown): Promise<HandshakeOutcome> {
     const type = isRecord(frame) ? frame.type : undefined;
-    if (this.phase === 'ready') return { kind: type === 'request' ? 'dispatch' : 'ignore' };
+    if (this.phase === 'ready') {
+      if (type === 'request') return { kind: 'dispatch' };
+      if (type === 'response' && isRecord(frame)) return { kind: 'response', frame };
+      if (type === 'event' && isRecord(frame)) return { kind: 'event', frame };
+      return { kind: 'ignore' };
+    }
     if (type === 'request') return { kind: 'drop' };
     if (this.phase === 'awaiting_challenge') return this.onChallenge(frame);
     if (this.phase === 'awaiting_ready') return this.onReady(frame);

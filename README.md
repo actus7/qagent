@@ -77,47 +77,51 @@ Administradores podem limitar quais provedores de LLM o AQgent usa pela polític
 
 Quando alguma restrição está ativa, o painel lateral mostra "Gerenciado pela sua organização".
 
-## Controle por clientes MCP (Claude Code, Codex CLI)
+## Ponte local (`qagent`): clientes MCP, agentes CLI e ferramentas do host
 
-O AQgent pode ser controlado por clientes MCP locais. A opção fica desligada por padrão e é ativada em **Configurações gerais > Permitir controle por clientes MCP locais**. Ela conecta a extensão, por WebSocket, a um servidor MCP local em `127.0.0.1:9224`.
+A ponte é o pacote `@qagent/bridge` (`packages/bridge`), com o comando `qagent`. Ela roda como um daemon local que a extensão acessa por WebSocket e que os clientes acessam por um canal de controle. Tudo escuta só em `127.0.0.1`, e cada lado prova o token antes de trocar mensagens (HMAC-SHA256 mútuo; o token bruto não trafega).
 
-Ferramentas expostas:
-
-- `qagent_run_task`: executa uma tarefa (`task`, `mode` = `chat` | `plan` | `act`, `url` opcional) e aguarda a conclusão. Retorna a resposta final e o resumo dos passos.
-- `qagent_list_tabs`: lista as abas http(s), com URL sem query e se o AQgent pode usá-las.
-- `qagent_get_status`: mostra se há conexão, tarefa em andamento e painel aberto.
-- `qagent_cancel_task`: cancela a tarefa em andamento.
-
-Segurança: o servidor só escuta em loopback, recusa conexões sem `Origin` e sem `chrome-extension://` (e, com `QAGENT_MCP_EXTENSION_ID`, aceita só essa extensão). A autenticação é mútua, por HMAC-SHA256 sobre um token compartilhado: o servidor prova que conhece o token antes de a extensão enviar a sua prova, e o token bruto nunca trafega pelo socket. Sem token de pelo menos 32 caracteres, o servidor não inicia e a extensão não conecta. Um processo local que ocupe a porta sem o token não consegue receber tarefas. Cada tarefa passa pelo mesmo pipeline do painel.
-
-Gerar o token (32 bytes em hex, 64 caracteres):
+**Instalação**
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+pnpm -F @qagent/bridge build                 # no repositório
+npm install -g ./packages/bridge             # instala o comando `qagent` (ou: npx -p ./packages/bridge qagent)
 ```
 
-Use o mesmo valor em **Opções da extensão > Controle por clientes MCP > Token** (ou no botão "Gerar token" ali) e no ambiente do cliente MCP (`QAGENT_MCP_TOKEN`). Sem o token, a ativação fica bloqueada.
+**Pareamento e início**
 
-Variáveis de ambiente do servidor: `QAGENT_MCP_TOKEN` (obrigatório, mínimo 32 caracteres), `QAGENT_MCP_PORT` (padrão `9224`), `QAGENT_MCP_EXTENSION_ID`, `QAGENT_MCP_TASK_TIMEOUT_MS` (padrão 10 minutos).
+1. `qagent pair` cria (ou mostra) o token compartilhado e imprime os passos. `qagent pair --rotate` troca o token; daemons e extensões precisam ser atualizados depois.
+2. Em **Opções da extensão > Controle por clientes MCP**, ative a ponte e cole o token.
+3. `qagent start` roda o daemon em primeiro plano (Ctrl+C encerra). `qagent status` mostra o estado; `qagent stop` encerra.
 
-Registro no Claude Code (use `--silent` para o pnpm não escrever no stdout, que transporta o protocolo):
+**Registro nos clientes MCP**
 
 ```bash
-claude mcp add qagent -e QAGENT_MCP_TOKEN=seu-token -- pnpm --silent --dir <caminho-do-repo> mcp:qagent
+claude mcp add qagent -- qagent mcp
+codex mcp add qagent -- qagent mcp
 ```
 
-Registro no Codex CLI, em `~/.codex/config.toml`:
+O servidor MCP usa o daemon em execução. Sem daemon, ele inicia a ponte no próprio processo. Além de `qagent_run_task`, `qagent_list_tabs`, `qagent_get_status` e `qagent_cancel_task`, cada ação do navegador vira uma ferramenta: `page_info`, `page_click`, `page_fill` etc. Todas aceitam `tabId` opcional.
 
-```toml
-[mcp_servers.qagent]
-command = "pnpm"
-args = ["--silent", "--dir", "<caminho-do-repo>", "mcp:qagent"]
+**Agente CLI como provedor**
 
-[mcp_servers.qagent.env]
-QAGENT_MCP_TOKEN = "seu-token"
-```
+Em **Opções > Agente CLI**, escolha Claude Code ou Codex. A partir daí as tarefas do modo *act* do painel são executadas pela CLI no daemon, e os passos aparecem no painel como passos normais do agente. A CLI dirige o navegador pelo servidor MCP `qagent`. Ela roda sem pedidos de aprovação, porque o produto não tem essas travas. O executável é encontrado no PATH; `QAGENT_CLAUDE_BIN` e `QAGENT_CODEX_BIN` apontam para outro caminho. Os modos *chat* e *plan* continuam com o agente interno.
 
-Antes de usar, rode `pnpm build` e carregue a extensão em `dist/`.
+**Ferramentas de host para o agente interno**
+
+`shell_exec`, `fs_read`, `fs_write`, `fs_list` e `fs_search` rodam na máquina do daemon, pela ponte. Sem ponte conectada, a ação falha com uma mensagem clara e nada roda localmente. A saída é limitada em tamanho e entra no contexto do modelo como conteúdo não confiável.
+
+**Variáveis de ambiente**
+
+`QAGENT_HOME` (diretório de estado, padrão `~/.qagent`, onde fica `config.json` com o token), `QAGENT_MCP_TOKEN` (substitui o token salvo), `QAGENT_MCP_PORT` (padrão `9224`, para a extensão), `QAGENT_CONTROL_PORT` (padrão `9225`, para clientes locais), `QAGENT_CLAUDE_BIN`, `QAGENT_CODEX_BIN`.
+
+**Segurança**
+
+Os dois canais escutam só em loopback. O canal de controle exige o token em `Authorization: Bearer` e recusa requisições com `Origin`, então uma página web não o alcança. O socket da extensão exige o handshake mútuo e aceita só `chrome-extension://`. Sem token de 32 caracteres ou mais, nada inicia.
+
+**Modo de desenvolvimento**
+
+`pnpm mcp:qagent` roda o servidor MCP a partir do código do repositório (compila o pacote antes). Para o Codex, prefira `codex mcp add qagent -- qagent mcp` depois de instalar o comando.
 
 ## Build
 

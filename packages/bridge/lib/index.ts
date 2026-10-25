@@ -1,0 +1,11 @@
+export { QAgentMcpBridge, mcpBridgeProof, type ExtensionHandler, type McpBridgeOptions } from './bridge';
+export { ControlClient, ControlServer } from './control';
+export { createExtensionHandler, QAgentDaemon, type DaemonOptions } from './daemon';
+export { ensureToken, generateToken, readToken, rotateToken, stateDirFrom } from './config';
+export { runHostTool } from './host';
+export { CliTaskRunner, resolveCliCommand, systemPromptFor } from './cli/runner';
+export { createClaudeParser } from './cli/claude';
+export { createCodexParser } from './cli/codex';
+export { createQaAgentToolHost, actionTools, type ActionCatalogEntry } from './tools';
+export { runCli } from './cli';
+export * from './protocol';
