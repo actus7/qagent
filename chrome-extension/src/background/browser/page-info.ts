@@ -158,6 +158,9 @@ export function collectPageFacts(limit: number, geometry: boolean, headingLimit:
       const type = (el as HTMLInputElement).type;
       if (['button', 'submit', 'reset', 'image'].includes(type)) return 'button';
       if (type === 'checkbox' || type === 'radio') return type;
+      if (type === 'search') return 'searchbox';
+      if (type === 'number') return 'spinbutton';
+      if (type === 'range') return 'slider';
       return 'textbox';
     }
     return tag;

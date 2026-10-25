@@ -213,6 +213,11 @@ function inputRole(type: string): string {
       return 'button';
     case 'range':
       return 'slider';
+    // ARIA implicit roles; the target resolver uses the same mapping.
+    case 'search':
+      return 'searchbox';
+    case 'number':
+      return 'spinbutton';
     default:
       return 'textbox';
   }

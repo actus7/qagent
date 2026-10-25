@@ -104,6 +104,10 @@ export function collectTargetCandidates(selector: string | null, defaultSelector
       if (type === 'checkbox') return 'checkbox';
       if (type === 'radio') return 'radio';
       if (['button', 'submit', 'reset', 'image'].includes(type)) return 'button';
+      // ARIA implicit roles, so a recorded `searchbox`/`spinbutton`/`slider` target finds its input again.
+      if (type === 'search') return 'searchbox';
+      if (type === 'number') return 'spinbutton';
+      if (type === 'range') return 'slider';
       return 'textbox';
     }
     return undefined;
