@@ -11,6 +11,9 @@ import { loadManagedPolicy } from '../managedPolicy';
 import { createTaskCollector, type TaskRunOutcome } from './taskCollector';
 import { listBridgeActions, runBridgeAction } from './actionRunner';
 import { McpBridgeError, type ParsedBridgeRequest, type RunTaskParams } from './protocol';
+import { createLogger } from '../../log';
+
+const logger = createLogger('McpBridge');
 
 const TAB_LOAD_TIMEOUT_MS = 15000;
 const TAB_POLL_MS = 250;
@@ -129,5 +132,7 @@ export function toBridgeResponse(
   if (outcome.error instanceof McpBridgeError) {
     return { type: 'response', id, ok: false, error: { code: outcome.error.code, message: outcome.error.message } };
   }
+  // The client gets a generic message; the cause stays in the extension's own log for diagnosis.
+  logger.error('MCP bridge request failed', outcome.error);
   return { type: 'response', id, ok: false, error: { code: 'INTERNAL', message: t('bg_mcp_internalError') } };
 }

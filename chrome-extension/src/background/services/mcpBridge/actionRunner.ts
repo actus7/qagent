@@ -83,15 +83,18 @@ export async function runBridgeAction(params: RunActionParams): Promise<RunActio
   }
   const action = bridgeActions().find(item => item.name() === params.action);
   if (!action) throw new McpBridgeError('INVALID_PARAMS', `Unknown action: ${params.action}`);
-  if (params.tabId !== undefined) {
-    // An explicit tab is the caller's choice: allow it, then make it the current tab.
-    if (browserContext instanceof ScopedBrowserContext) browserContext.setAllowedTabs([params.tabId]);
-    await browserContext.switchTab(params.tabId);
-  }
+  // The caller's tab, or the active one: outside a task the scoped context has no tab of its own.
+  const tabId = params.tabId ?? (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]?.id;
+  if (tabId === undefined) throw new McpBridgeError('TAB_UNAVAILABLE', t('bg_mcp_noActiveTab'));
+  if (browserContext instanceof ScopedBrowserContext) browserContext.setAllowedTabs([tabId]);
   try {
+    await browserContext.switchTab(tabId);
     return outcomeOf(await action.call(params.input));
   } catch (error) {
     if (error instanceof InvalidInputError) throw new McpBridgeError('INVALID_PARAMS', error.message);
-    throw error;
+    if (error instanceof McpBridgeError) throw error;
+    // A page or browser failure is the action's result, so the client sees why instead of a generic error.
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, isDone: false, extractedContent: null, error: wrapUntrustedContent(message) };
   }
 }
