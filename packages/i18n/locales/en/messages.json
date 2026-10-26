@@ -535,6 +535,60 @@
   "options_models_jev_status_off": {
     "message": "Disabled: the built-in rules decide the mode of each message."
   },
+  "options_models_jev_accel_header": {
+    "message": "Speed up with Jev"
+  },
+  "options_models_jev_accel_desc": {
+    "message": "Each switch is off by default and needs an API key. When Jev is not confident, the LLM decides as before."
+  },
+  "options_models_jev_accel_warning": {
+    "message": "The last option acts on page content without the LLM. Use it only on sites you trust."
+  },
+  "options_models_jev_accel_bold": {
+    "message": "Acts without the LLM"
+  },
+  "options_models_jev_threshold": {
+    "message": "Confidence"
+  },
+  "options_models_jev_threshold_default": {
+    "message": "Default"
+  },
+  "options_models_jev_threshold_help": {
+    "message": "Jev must reach this value to act. Lower means more Jev decisions and more risk."
+  },
+  "options_models_jev_feature_doneCheck": {
+    "message": "Confirm completion"
+  },
+  "options_models_jev_feature_doneCheck_help": {
+    "message": "After each step Jev checks whether the task is complete; if so, the task ends without another LLM step. Most conservative."
+  },
+  "options_models_jev_feature_toolRouting": {
+    "message": "Route tools"
+  },
+  "options_models_jev_feature_toolRouting_help": {
+    "message": "Jev offers the navigator only the action groups the task needs, so each LLM call is smaller. Core actions always stay."
+  },
+  "options_models_jev_feature_plannerSkip": {
+    "message": "Skip the planner for single steps"
+  },
+  "options_models_jev_feature_plannerSkip_help": {
+    "message": "Jev decides whether a task is one direct browser step; if so, the planner call is skipped."
+  },
+  "options_models_jev_feature_pluginRouting": {
+    "message": "Suggest plugins and workflows"
+  },
+  "options_models_jev_feature_pluginRouting_help": {
+    "message": "Jev picks a matching plugin tool or saved workflow and hints it to the first navigator step. The arguments still come from the LLM."
+  },
+  "options_models_jev_feature_elementFastPath": {
+    "message": "Act on elements without the LLM"
+  },
+  "options_models_jev_feature_elementFastPath_help": {
+    "message": "Jev picks the element and a click or fill for simple steps. Page text can steer this, so it is the boldest option with a high default threshold."
+  },
+  "exec_jev_doneCheck_note": {
+    "message": "Jev confirmed the task is complete. Last results:"
+  },
   "options_models_speechToText_header": {
     "message": "Speech to Text Model"
   },
@@ -558,6 +612,84 @@
   },
   "options_models_stt_desc": {
     "message": "Configure the Gemini model used to convert speech to text when using the microphone feature."
+  },
+  "options_models_catalog_fetchButton": {
+    "message": "Fetch models from provider"
+  },
+  "options_models_catalog_loading": {
+    "message": "Loading models..."
+  },
+  "options_models_catalog_retry": {
+    "message": "Try again"
+  },
+  "options_models_catalog_filterPlaceholder": {
+    "message": "Filter models"
+  },
+  "options_models_catalog_selectAllFiltered": {
+    "message": "Select all shown"
+  },
+  "options_models_catalog_selectedCount": {
+    "message": "$COUNT$ selected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "options_models_catalog_noMatches": {
+    "message": "No models match the filter."
+  },
+  "options_models_catalog_confirm": {
+    "message": "Use selected models"
+  },
+  "options_models_catalog_cancel": {
+    "message": "Cancel"
+  },
+  "options_models_catalog_loadFor": {
+    "message": "Load models from $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Ollama"
+      }
+    }
+  },
+  "options_models_catalog_errors_empty": {
+    "message": "The provider returned no models."
+  },
+  "options_models_catalog_errors_unknown": {
+    "message": "Could not fetch models."
+  },
+  "options_models_catalog_errors_missingBaseUrl": {
+    "message": "Enter a base URL to fetch models."
+  },
+  "options_models_catalog_errors_invalidBaseUrl": {
+    "message": "The base URL is not a valid http(s) URL."
+  },
+  "options_models_catalog_errors_unauthorized": {
+    "message": "The provider rejected the API key (401/403)."
+  },
+  "options_models_catalog_errors_http": {
+    "message": "The provider answered with HTTP $STATUS$.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "500"
+      }
+    }
+  },
+  "options_models_catalog_errors_network": {
+    "message": "Could not reach the provider. Check the base URL and your connection."
+  },
+  "options_models_catalog_errors_timeout": {
+    "message": "The provider took too long to respond."
+  },
+  "options_models_catalog_errors_invalidResponse": {
+    "message": "The provider's response is not a model list."
+  },
+  "options_models_catalog_errors_unsupported": {
+    "message": "This provider does not list models. Type the names instead."
   },
   "options_models_chooseModel": {
     "message": "Choose Model"
@@ -1280,7 +1412,10 @@
   },
   "report_exportHtml_a11y": { "message": "Export HTML report" },
   "report_exportMd_a11y": { "message": "Export Markdown report" },
-  "report_exportFailed": { "message": "Could not export the report: $ERROR$", "placeholders": { "error": { "content": "$1", "example": "no session" } } },
+  "report_exportFailed": {
+    "message": "Could not export the report: $ERROR$",
+    "placeholders": { "error": { "content": "$1", "example": "no session" } }
+  },
   "report_generatedAt": { "message": "Generated" },
   "report_models": { "message": "Models" },
   "report_noModels": { "message": "not configured" },
@@ -1288,7 +1423,9 @@
   "report_finalAnswer": { "message": "Final answer" },
   "report_noFinalAnswer": { "message": "No final answer was recorded." },
   "report_steps": { "message": "Steps of the last task" },
-  "report_noSteps": { "message": "No step history was stored for this session. Enable \"Replay historical tasks\" in settings to keep it." },
+  "report_noSteps": {
+    "message": "No step history was stored for this session. Enable \"Replay historical tasks\" in settings to keep it."
+  },
   "report_step": { "message": "Step" },
   "report_intent": { "message": "intent" },
   "report_result": { "message": "Result" },
@@ -1306,7 +1443,9 @@
   "options_test_noModel": { "message": "Add at least one model before testing." },
   "options_test_timeout": { "message": "The provider did not answer in time." },
   "options_general_notifyOnCompletion": { "message": "Notify when a task finishes or needs me" },
-  "options_general_notifyOnCompletion_desc": { "message": "Shows a Chrome notification when a task completes or fails while the side panel is closed." },
+  "options_general_notifyOnCompletion_desc": {
+    "message": "Shows a Chrome notification when a task completes or fails while the side panel is closed."
+  },
   "options_general_testNotification": { "message": "Test notification" },
   "options_general_testNotification_title": { "message": "QAgent" },
   "options_general_testNotification_body": { "message": "Notifications are working." },
@@ -1680,7 +1819,7 @@
   "options_mcp_token_copied": {
     "message": "Copied"
   },
-    "act_host_start": {
+  "act_host_start": {
     "message": "Running $LABEL$",
     "placeholders": {
       "label": {
@@ -1752,184 +1891,345 @@
       }
     }
   },
-  "options_tabs_schedules": {"message":"Scheduled tasks"},
-  "options_schedule_header": {"message":"Scheduled tasks"},
-  "options_schedule_intro": {"message":"Run a prompt automatically at a set time. Each run opens the start page in a background tab and records its outcome."},
-  "options_schedule_btnNew": {"message":"New task"},
-  "options_schedule_btnRunNow": {"message":"Run now"},
-  "options_schedule_btnEdit": {"message":"Edit"},
-  "options_schedule_btnDelete": {"message":"Delete"},
-  "options_schedule_btnSave": {"message":"Save"},
-  "options_schedule_btnCancel": {"message":"Cancel"},
-  "options_schedule_deleteConfirm": {"message":"Delete the scheduled task \"$NAME$\"?","placeholders":{"name":{"content":"$1","example":"name"}}},
-  "options_schedule_empty": {"message":"No scheduled tasks yet."},
-  "options_schedule_enabled": {"message":"Enabled"},
-  "options_schedule_nextRun": {"message":"Next run: $WHEN$","placeholders":{"when":{"content":"$1","example":"when"}}},
-  "options_schedule_nextRun_none": {"message":"No upcoming run"},
-  "options_schedule_lastRuns": {"message":"Recent runs"},
-  "options_schedule_noRuns": {"message":"No runs yet."},
-  "options_schedule_runStarted": {"message":"Run started. The result appears in the recent runs."},
-  "options_schedule_formNew": {"message":"New scheduled task"},
-  "options_schedule_formEdit": {"message":"Edit scheduled task"},
-  "options_schedule_freqDesc_once": {"message":"Once on $DATE$ at $TIME$","placeholders":{"date":{"content":"$1","example":"date"},"time":{"content":"$2","example":"time"}}},
-  "options_schedule_freqDesc_daily": {"message":"Daily at $TIME$","placeholders":{"time":{"content":"$1","example":"time"}}},
-  "options_schedule_freqDesc_weekly": {"message":"Every $WEEKDAY$ at $TIME$","placeholders":{"weekday":{"content":"$1","example":"weekday"},"time":{"content":"$2","example":"time"}}},
-  "options_schedule_freqDesc_monthly": {"message":"Day $DAY$ of each month at $TIME$","placeholders":{"day":{"content":"$1","example":"day"},"time":{"content":"$2","example":"time"}}},
-  "options_schedule_freq_once": {"message":"Once"},
-  "options_schedule_freq_daily": {"message":"Daily"},
-  "options_schedule_freq_weekly": {"message":"Weekly"},
-  "options_schedule_freq_monthly": {"message":"Monthly"},
-  "options_schedule_mode_act": {"message":"Act"},
-  "options_schedule_mode_plan": {"message":"Plan"},
-  "options_schedule_mode_chat": {"message":"Chat"},
-  "options_schedule_field_prompt": {"message":"Prompt"},
-  "options_schedule_field_prompt_hint": {"message":"What the agent should do, e.g. \"Check that the checkout page loads\""},
-  "options_schedule_field_mode": {"message":"Mode"},
-  "options_schedule_field_frequency": {"message":"Frequency"},
-  "options_schedule_field_startUrl": {"message":"Start URL"},
-  "options_schedule_field_startUrl_hint": {"message":"Opened in a background tab before the run. Required for Act mode."},
-  "options_schedule_field_date": {"message":"Date"},
-  "options_schedule_field_weekday": {"message":"Day of the week"},
-  "options_schedule_field_dayOfMonth": {"message":"Day of the month"},
-  "options_schedule_field_dayOfMonth_hint": {"message":"In months with fewer days, the task runs on the last day."},
-  "options_schedule_field_time": {"message":"Time"},
-  "options_schedule_field_enabled": {"message":"Enabled"},
-  "options_schedule_weekday_0": {"message":"Sunday"},
-  "options_schedule_weekday_1": {"message":"Monday"},
-  "options_schedule_weekday_2": {"message":"Tuesday"},
-  "options_schedule_weekday_3": {"message":"Wednesday"},
-  "options_schedule_weekday_4": {"message":"Thursday"},
-  "options_schedule_weekday_5": {"message":"Friday"},
-  "options_schedule_weekday_6": {"message":"Saturday"},
-  "options_schedule_outcome_completed": {"message":"completed"},
-  "options_schedule_outcome_failed": {"message":"failed"},
-  "options_schedule_outcome_cancelled": {"message":"cancelled"},
-  "options_schedule_outcome_skipped": {"message":"skipped"},
-  "options_schedule_outcome_blocked": {"message":"blocked"},
-  "options_schedule_error_promptRequired": {"message":"Enter a prompt."},
-  "options_schedule_error_startUrlRequired": {"message":"Act mode needs a start URL."},
-  "options_schedule_error_startUrlInvalid": {"message":"Use a full http or https address."},
-  "options_schedule_error_timeInvalid": {"message":"Enter a valid time."},
-  "options_schedule_error_dateInvalid": {"message":"Enter a valid date."},
-  "options_schedule_error_dateInPast": {"message":"The date is in the past. Choose a future date and time."},
-  "options_schedule_error_limit": {"message":"You can keep at most $MAX$ scheduled tasks. Delete one first.","placeholders":{"max":{"content":"$1","example":"max"}}},
-  "options_schedule_error_saveFailed": {"message":"Could not save the scheduled task. Try again."},
-  "options_schedule_error_runFailed": {"message":"Could not start the run. Check that the extension is enabled."},
-  "options_schedule_error_deleteFailed": {"message":"Could not delete the scheduled task."},
-  "options_schedule_error_loadFailed": {"message":"Could not load the scheduled tasks."},
-  "chat_schedule_btn_a11y": {"message":"Schedule task"},
-  "chat_schedule_title": {"message":"Schedule task"},
-  "chat_schedule_save": {"message":"Schedule"},
-  "chat_schedule_cancel": {"message":"Cancel"},
-  "chat_schedule_saved": {"message":"Scheduled. Next run: $WHEN$","placeholders":{"when":{"content":"$1","example":"when"}}},
-  "chat_schedule_openOptions": {"message":"Edit in settings"},
-  "chat_schedule_moreInOptions": {"message":"Weekly and monthly schedules and the full list are in settings."},
-  "chat_input_cmd_schedule": {"message":"Schedule this prompt"},
-  "report_screenshot": {"message":"Step screenshot"},
-  "report_screenshotHtmlOnly": {"message":"(screenshot available in the HTML report)"},
-  "act_callPluginTool_start": {"message":"Running tool $TOOL$ of plugin $PLUGIN$","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callPluginTool_notFound": {"message":"Plugin tool not found or disabled: $PLUGIN$ / $TOOL$","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callPluginTool_invalidArgs": {"message":"Invalid arguments for plugin tool $TOOL$","placeholders":{"tool":{"content":"$1","example":"TOOL"}}},
-  "act_callPluginTool_ok": {"message":"Plugin $PLUGIN$ ran tool $TOOL$","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callPluginTool_fail": {"message":"Plugin $PLUGIN$ tool $TOOL$ failed","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_runWorkflow_start": {"message":"Running workflow $NAME$","placeholders":{"name":{"content":"$1","example":"Checkout"}}},
-  "act_runWorkflow_notFound": {"message":"No saved workflow named $NAME$","placeholders":{"name":{"content":"$1","example":"Checkout"}}},
-  "act_runWorkflow_invalid": {"message":"Workflow $NAME$ cannot run: $ERROR$","placeholders":{"name":{"content":"$1","example":"Checkout"},"error":{"content":"$2","example":"Missing workflow variables: email"}}},
-  "act_runWorkflow_stepFail": {"message":"Workflow step $INDEX$ failed ($LABEL$)","placeholders":{"index":{"content":"$1","example":"3"},"label":{"content":"$2","example":"click"}}},
-  "act_runWorkflow_stopped": {"message":"Workflow $NAME$ stopped before it finished","placeholders":{"name":{"content":"$1","example":"Checkout"}}},
-  "act_runWorkflow_ok": {"message":"Workflow $NAME$ ran $COUNT$ actions","placeholders":{"name":{"content":"$1","example":"Checkout"},"count":{"content":"$2","example":"5"}}},
-  "act_mapSite_start": {"message":"Mapping the site"},
-  "act_mapSite_badUrl": {"message":"A site map needs an http or https address"},
-  "act_mapSite_empty": {"message":"No page of $HOST$ could be read for the site map","placeholders":{"host":{"content":"$1","example":"shop.example.com"}}},
-  "act_mapSite_userPlugin": {"message":"A browser plugin named $NAME$ already uses this site map id","placeholders":{"name":{"content":"$1","example":"Site map: shop.example.com"}}},
-  "act_mapSite_ok": {"message":"Site map of $HOST$ saved from $COUNT$ pages","placeholders":{"host":{"content":"$1","example":"shop.example.com"},"count":{"content":"$2","example":"12"}}},
-  "bg_record_buildFailed": {"message":"The workflow could not be saved from the recording"},
-  "act_listPlugins_start": {"message":"Listing browser plugins"},
-  "act_listPlugins_none": {"message":"No browser plugins are enabled"},
-  "act_listPlugins_ok": {"message":"Enabled browser plugins: $COUNT$","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "act_savePlugin_start": {"message":"Saving browser plugin"},
-  "act_savePlugin_ok": {"message":"Plugin saved: $NAME$","placeholders":{"name":{"content":"$1","example":"NAME"}}},
-  "act_savePlugin_fail": {"message":"The plugin was not saved: invalid definition"},
-  "options_tabs_plugins": {"message":"Plugins"},
-  "options_plugins_header": {"message":"Browser plugins"},
-  "options_plugins_intro": {"message":"Plugins add tools that run JavaScript in the page. The agent can call them during tasks, and it can create plugins itself."},
-  "options_plugins_toolsCount": {"message":"$COUNT$ tools","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "options_plugins_btnNew": {"message":"New plugin"},
-  "options_plugins_btnEdit": {"message":"Edit"},
-  "options_plugins_btnDelete": {"message":"Delete"},
-  "options_plugins_btnExport": {"message":"Export JSON"},
-  "options_plugins_btnImport": {"message":"Import"},
-  "options_plugins_btnSave": {"message":"Save plugin"},
-  "options_plugins_btnCancel": {"message":"Cancel"},
-  "options_plugins_btnAddTool": {"message":"Add tool"},
-  "options_plugins_btnRemoveTool": {"message":"Remove tool"},
-  "options_plugins_enabled": {"message":"Enabled"},
-  "options_plugins_empty": {"message":"No plugins yet. Create one, import a JSON file, or let the agent create one."},
-  "options_plugins_matchesAll": {"message":"Every site"},
-  "options_plugins_createdBy_user": {"message":"Created by you"},
-  "options_plugins_createdBy_agent": {"message":"Created by the agent"},
-  "options_plugins_deleteConfirm": {"message":"Delete the plugin \"$NAME$\"?","placeholders":{"name":{"content":"$1","example":"NAME"}}},
-  "options_plugins_importLabel": {"message":"Paste plugin JSON (one plugin or an array of plugins)"},
-  "options_plugins_importFile": {"message":"Choose JSON file"},
-  "options_plugins_imported": {"message":"Imported plugins: $COUNT$","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "options_plugins_form_titleNew": {"message":"New plugin"},
-  "options_plugins_form_titleEdit": {"message":"Edit plugin"},
-  "options_plugins_form_name": {"message":"Name"},
-  "options_plugins_form_description": {"message":"Description"},
-  "options_plugins_form_matches": {"message":"Sites (URL globs, comma separated)"},
-  "options_plugins_form_matchesHint": {"message":"Example: example.com, *.shop.com/cart*. Leave empty for every site."},
-  "options_plugins_form_instructions": {"message":"Instructions for the agent"},
-  "options_plugins_form_toolsHeader": {"message":"Tools"},
-  "options_plugins_form_toolName": {"message":"Tool name (snake_case)"},
-  "options_plugins_form_toolDescription": {"message":"Tool description"},
-  "options_plugins_form_toolParams": {"message":"Parameters (JSON object)"},
-  "options_plugins_form_toolParamsHint": {"message":"Example: {\"max\": {\"type\": \"number\", \"required\": false, \"description\": \"maximum items\"}}"},
-  "options_plugins_form_toolCode": {"message":"Code (body of an async function; receives args, returns a JSON value)"},
-  "options_plugins_error_loadFailed": {"message":"Could not load the plugins."},
-  "options_plugins_error_saveFailed": {"message":"Could not save the plugin."},
-  "options_plugins_error_deleteFailed": {"message":"Could not delete the plugin."},
-  "options_plugins_error_importFailed": {"message":"Could not import the plugins."},
-  "options_plugins_error_invalidJson": {"message":"The text is not valid JSON."},
-  "options_plugins_error_invalidParams": {"message":"The parameters must be a JSON object."},
-  "options_plugins_error_invalid": {"message":"Invalid plugin: $DETAIL$","placeholders":{"detail":{"content":"$1","example":"DETAIL"}}},
-  "act_listMcpTools_start": {"message":"Listing MCP tools"},
-  "act_listMcpTools_none": {"message":"No MCP servers are enabled"},
-  "act_listMcpTools_ok": {"message":"MCP tools from $COUNT$ enabled servers","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "act_callMcpTool_start": {"message":"Calling MCP tool $TOOL$ on $SERVER$","placeholders":{"tool":{"content":"$1","example":"TOOL"},"server":{"content":"$2","example":"SERVER"}}},
-  "act_callMcpTool_ok": {"message":"MCP tool finished: $TOOL$","placeholders":{"tool":{"content":"$1","example":"TOOL"}}},
-  "act_callMcpTool_fail": {"message":"MCP tool failed: $TOOL$","placeholders":{"tool":{"content":"$1","example":"TOOL"}}},
-  "act_callMcpTool_notFound": {"message":"No enabled MCP server named $SERVER$","placeholders":{"server":{"content":"$1","example":"SERVER"}}},
-  "act_webFetch_start": {"message":"Fetching $URL$","placeholders":{"url":{"content":"$1","example":"URL"}}},
-  "act_webFetch_ok": {"message":"Fetched $URL$","placeholders":{"url":{"content":"$1","example":"URL"}}},
-  "act_webFetch_fail": {"message":"Could not fetch $URL$","placeholders":{"url":{"content":"$1","example":"URL"}}},
-  "act_todoWrite_header": {"message":"Checklist: $DONE$ of $TOTAL$ done","placeholders":{"done":{"content":"$1","example":"DONE"},"total":{"content":"$2","example":"TOTAL"}}},
-  "options_tabs_mcp": {"message":"MCP"},
-  "options_mcpServers_header": {"message":"MCP servers"},
-  "options_mcp_intro": {"message":"Remote MCP servers (Streamable HTTP). The agent can list their tools and call them during tasks."},
-  "options_mcp_btnNew": {"message":"Add server"},
-  "options_mcp_btnEdit": {"message":"Edit"},
-  "options_mcp_btnDelete": {"message":"Delete"},
-  "options_mcp_btnSave": {"message":"Save"},
-  "options_mcp_btnCancel": {"message":"Cancel"},
-  "options_mcp_btnTest": {"message":"Test connection"},
-  "options_mcp_btnTesting": {"message":"Testing..."},
-  "options_mcp_empty": {"message":"No MCP servers yet."},
-  "options_mcp_enabled": {"message":"Enabled"},
-  "options_mcp_formNew": {"message":"New MCP server"},
-  "options_mcp_formEdit": {"message":"Edit MCP server"},
-  "options_mcp_fieldName": {"message":"Name"},
-  "options_mcp_fieldUrl": {"message":"Endpoint URL"},
-  "options_mcp_fieldHeaders": {"message":"Headers"},
-  "options_mcp_headersHint": {"message":"One per line, as Name: value (for example Authorization: Bearer ...). Stored on this device only."},
-  "options_mcp_testOk": {"message":"Connected: $COUNT$ tools ($NAMES$)","placeholders":{"count":{"content":"$1","example":"COUNT"},"names":{"content":"$2","example":"NAMES"}}},
-  "options_mcp_deleteConfirm": {"message":"Remove MCP server $NAME$?","placeholders":{"name":{"content":"$1","example":"NAME"}}},
-  "options_mcp_error_loadFailed": {"message":"Could not load MCP servers. See the console for details."},
-  "options_mcp_error_saveFailed": {"message":"Could not save the MCP server. See the console for details."},
-  "options_mcp_error_deleteFailed": {"message":"Could not remove the MCP server. See the console for details."},
-  "options_mcp_error_invalidUrl": {"message":"Enter a valid http:// or https:// URL."},
-  "options_mcp_error_invalidHeader": {"message":"Each header needs a name, as Name: value."},
-  "options_mcp_error_nameRequired": {"message":"Enter a name for the server."},
-  "options_mcp_error_testFailed": {"message":"Connection failed. See the console for details."},
+  "options_tabs_schedules": { "message": "Scheduled tasks" },
+  "options_schedule_header": { "message": "Scheduled tasks" },
+  "options_schedule_intro": {
+    "message": "Run a prompt automatically at a set time. Each run opens the start page in a background tab and records its outcome."
+  },
+  "options_schedule_btnNew": { "message": "New task" },
+  "options_schedule_btnRunNow": { "message": "Run now" },
+  "options_schedule_btnEdit": { "message": "Edit" },
+  "options_schedule_btnDelete": { "message": "Delete" },
+  "options_schedule_btnSave": { "message": "Save" },
+  "options_schedule_btnCancel": { "message": "Cancel" },
+  "options_schedule_deleteConfirm": {
+    "message": "Delete the scheduled task \"$NAME$\"?",
+    "placeholders": { "name": { "content": "$1", "example": "name" } }
+  },
+  "options_schedule_empty": { "message": "No scheduled tasks yet." },
+  "options_schedule_enabled": { "message": "Enabled" },
+  "options_schedule_nextRun": {
+    "message": "Next run: $WHEN$",
+    "placeholders": { "when": { "content": "$1", "example": "when" } }
+  },
+  "options_schedule_nextRun_none": { "message": "No upcoming run" },
+  "options_schedule_lastRuns": { "message": "Recent runs" },
+  "options_schedule_noRuns": { "message": "No runs yet." },
+  "options_schedule_runStarted": { "message": "Run started. The result appears in the recent runs." },
+  "options_schedule_formNew": { "message": "New scheduled task" },
+  "options_schedule_formEdit": { "message": "Edit scheduled task" },
+  "options_schedule_freqDesc_once": {
+    "message": "Once on $DATE$ at $TIME$",
+    "placeholders": { "date": { "content": "$1", "example": "date" }, "time": { "content": "$2", "example": "time" } }
+  },
+  "options_schedule_freqDesc_daily": {
+    "message": "Daily at $TIME$",
+    "placeholders": { "time": { "content": "$1", "example": "time" } }
+  },
+  "options_schedule_freqDesc_weekly": {
+    "message": "Every $WEEKDAY$ at $TIME$",
+    "placeholders": {
+      "weekday": { "content": "$1", "example": "weekday" },
+      "time": { "content": "$2", "example": "time" }
+    }
+  },
+  "options_schedule_freqDesc_monthly": {
+    "message": "Day $DAY$ of each month at $TIME$",
+    "placeholders": { "day": { "content": "$1", "example": "day" }, "time": { "content": "$2", "example": "time" } }
+  },
+  "options_schedule_freq_once": { "message": "Once" },
+  "options_schedule_freq_daily": { "message": "Daily" },
+  "options_schedule_freq_weekly": { "message": "Weekly" },
+  "options_schedule_freq_monthly": { "message": "Monthly" },
+  "options_schedule_mode_act": { "message": "Act" },
+  "options_schedule_mode_plan": { "message": "Plan" },
+  "options_schedule_mode_chat": { "message": "Chat" },
+  "options_schedule_field_prompt": { "message": "Prompt" },
+  "options_schedule_field_prompt_hint": {
+    "message": "What the agent should do, e.g. \"Check that the checkout page loads\""
+  },
+  "options_schedule_field_mode": { "message": "Mode" },
+  "options_schedule_field_frequency": { "message": "Frequency" },
+  "options_schedule_field_startUrl": { "message": "Start URL" },
+  "options_schedule_field_startUrl_hint": {
+    "message": "Opened in a background tab before the run. Required for Act mode."
+  },
+  "options_schedule_field_date": { "message": "Date" },
+  "options_schedule_field_weekday": { "message": "Day of the week" },
+  "options_schedule_field_dayOfMonth": { "message": "Day of the month" },
+  "options_schedule_field_dayOfMonth_hint": { "message": "In months with fewer days, the task runs on the last day." },
+  "options_schedule_field_time": { "message": "Time" },
+  "options_schedule_field_enabled": { "message": "Enabled" },
+  "options_schedule_weekday_0": { "message": "Sunday" },
+  "options_schedule_weekday_1": { "message": "Monday" },
+  "options_schedule_weekday_2": { "message": "Tuesday" },
+  "options_schedule_weekday_3": { "message": "Wednesday" },
+  "options_schedule_weekday_4": { "message": "Thursday" },
+  "options_schedule_weekday_5": { "message": "Friday" },
+  "options_schedule_weekday_6": { "message": "Saturday" },
+  "options_schedule_outcome_completed": { "message": "completed" },
+  "options_schedule_outcome_failed": { "message": "failed" },
+  "options_schedule_outcome_cancelled": { "message": "cancelled" },
+  "options_schedule_outcome_skipped": { "message": "skipped" },
+  "options_schedule_outcome_blocked": { "message": "blocked" },
+  "options_schedule_error_promptRequired": { "message": "Enter a prompt." },
+  "options_schedule_error_startUrlRequired": { "message": "Act mode needs a start URL." },
+  "options_schedule_error_startUrlInvalid": { "message": "Use a full http or https address." },
+  "options_schedule_error_timeInvalid": { "message": "Enter a valid time." },
+  "options_schedule_error_dateInvalid": { "message": "Enter a valid date." },
+  "options_schedule_error_dateInPast": { "message": "The date is in the past. Choose a future date and time." },
+  "options_schedule_error_limit": {
+    "message": "You can keep at most $MAX$ scheduled tasks. Delete one first.",
+    "placeholders": { "max": { "content": "$1", "example": "max" } }
+  },
+  "options_schedule_error_saveFailed": { "message": "Could not save the scheduled task. Try again." },
+  "options_schedule_error_runFailed": { "message": "Could not start the run. Check that the extension is enabled." },
+  "options_schedule_error_deleteFailed": { "message": "Could not delete the scheduled task." },
+  "options_schedule_error_loadFailed": { "message": "Could not load the scheduled tasks." },
+  "chat_schedule_btn_a11y": { "message": "Schedule task" },
+  "chat_schedule_title": { "message": "Schedule task" },
+  "chat_schedule_save": { "message": "Schedule" },
+  "chat_schedule_cancel": { "message": "Cancel" },
+  "chat_schedule_saved": {
+    "message": "Scheduled. Next run: $WHEN$",
+    "placeholders": { "when": { "content": "$1", "example": "when" } }
+  },
+  "chat_schedule_openOptions": { "message": "Edit in settings" },
+  "chat_schedule_moreInOptions": { "message": "Weekly and monthly schedules and the full list are in settings." },
+  "chat_input_cmd_schedule": { "message": "Schedule this prompt" },
+  "report_screenshot": { "message": "Step screenshot" },
+  "report_screenshotHtmlOnly": { "message": "(screenshot available in the HTML report)" },
+  "act_callPluginTool_start": {
+    "message": "Running tool $TOOL$ of plugin $PLUGIN$",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callPluginTool_notFound": {
+    "message": "Plugin tool not found or disabled: $PLUGIN$ / $TOOL$",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callPluginTool_invalidArgs": {
+    "message": "Invalid arguments for plugin tool $TOOL$",
+    "placeholders": { "tool": { "content": "$1", "example": "TOOL" } }
+  },
+  "act_callPluginTool_ok": {
+    "message": "Plugin $PLUGIN$ ran tool $TOOL$",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callPluginTool_fail": {
+    "message": "Plugin $PLUGIN$ tool $TOOL$ failed",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_runWorkflow_start": {
+    "message": "Running workflow $NAME$",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" } }
+  },
+  "act_runWorkflow_notFound": {
+    "message": "No saved workflow named $NAME$",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" } }
+  },
+  "act_runWorkflow_invalid": {
+    "message": "Workflow $NAME$ cannot run: $ERROR$",
+    "placeholders": {
+      "name": { "content": "$1", "example": "Checkout" },
+      "error": { "content": "$2", "example": "Missing workflow variables: email" }
+    }
+  },
+  "act_runWorkflow_stepFail": {
+    "message": "Workflow step $INDEX$ failed ($LABEL$)",
+    "placeholders": { "index": { "content": "$1", "example": "3" }, "label": { "content": "$2", "example": "click" } }
+  },
+  "act_runWorkflow_stopped": {
+    "message": "Workflow $NAME$ stopped before it finished",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" } }
+  },
+  "act_runWorkflow_ok": {
+    "message": "Workflow $NAME$ ran $COUNT$ actions",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" }, "count": { "content": "$2", "example": "5" } }
+  },
+  "act_mapSite_start": { "message": "Mapping the site" },
+  "act_mapSite_badUrl": { "message": "A site map needs an http or https address" },
+  "act_mapSite_empty": {
+    "message": "No page of $HOST$ could be read for the site map",
+    "placeholders": { "host": { "content": "$1", "example": "shop.example.com" } }
+  },
+  "act_mapSite_userPlugin": {
+    "message": "A browser plugin named $NAME$ already uses this site map id",
+    "placeholders": { "name": { "content": "$1", "example": "Site map: shop.example.com" } }
+  },
+  "act_mapSite_ok": {
+    "message": "Site map of $HOST$ saved from $COUNT$ pages",
+    "placeholders": {
+      "host": { "content": "$1", "example": "shop.example.com" },
+      "count": { "content": "$2", "example": "12" }
+    }
+  },
+  "bg_record_buildFailed": { "message": "The workflow could not be saved from the recording" },
+  "act_listPlugins_start": { "message": "Listing browser plugins" },
+  "act_listPlugins_none": { "message": "No browser plugins are enabled" },
+  "act_listPlugins_ok": {
+    "message": "Enabled browser plugins: $COUNT$",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "act_savePlugin_start": { "message": "Saving browser plugin" },
+  "act_savePlugin_ok": {
+    "message": "Plugin saved: $NAME$",
+    "placeholders": { "name": { "content": "$1", "example": "NAME" } }
+  },
+  "act_savePlugin_fail": { "message": "The plugin was not saved: invalid definition" },
+  "options_tabs_plugins": { "message": "Plugins" },
+  "options_plugins_header": { "message": "Browser plugins" },
+  "options_plugins_intro": {
+    "message": "Plugins add tools that run JavaScript in the page. The agent can call them during tasks, and it can create plugins itself."
+  },
+  "options_plugins_toolsCount": {
+    "message": "$COUNT$ tools",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "options_plugins_btnNew": { "message": "New plugin" },
+  "options_plugins_btnEdit": { "message": "Edit" },
+  "options_plugins_btnDelete": { "message": "Delete" },
+  "options_plugins_btnExport": { "message": "Export JSON" },
+  "options_plugins_btnImport": { "message": "Import" },
+  "options_plugins_btnSave": { "message": "Save plugin" },
+  "options_plugins_btnCancel": { "message": "Cancel" },
+  "options_plugins_btnAddTool": { "message": "Add tool" },
+  "options_plugins_btnRemoveTool": { "message": "Remove tool" },
+  "options_plugins_enabled": { "message": "Enabled" },
+  "options_plugins_empty": {
+    "message": "No plugins yet. Create one, import a JSON file, or let the agent create one."
+  },
+  "options_plugins_matchesAll": { "message": "Every site" },
+  "options_plugins_createdBy_user": { "message": "Created by you" },
+  "options_plugins_createdBy_agent": { "message": "Created by the agent" },
+  "options_plugins_deleteConfirm": {
+    "message": "Delete the plugin \"$NAME$\"?",
+    "placeholders": { "name": { "content": "$1", "example": "NAME" } }
+  },
+  "options_plugins_importLabel": { "message": "Paste plugin JSON (one plugin or an array of plugins)" },
+  "options_plugins_importFile": { "message": "Choose JSON file" },
+  "options_plugins_imported": {
+    "message": "Imported plugins: $COUNT$",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "options_plugins_form_titleNew": { "message": "New plugin" },
+  "options_plugins_form_titleEdit": { "message": "Edit plugin" },
+  "options_plugins_form_name": { "message": "Name" },
+  "options_plugins_form_description": { "message": "Description" },
+  "options_plugins_form_matches": { "message": "Sites (URL globs, comma separated)" },
+  "options_plugins_form_matchesHint": {
+    "message": "Example: example.com, *.shop.com/cart*. Leave empty for every site."
+  },
+  "options_plugins_form_instructions": { "message": "Instructions for the agent" },
+  "options_plugins_form_toolsHeader": { "message": "Tools" },
+  "options_plugins_form_toolName": { "message": "Tool name (snake_case)" },
+  "options_plugins_form_toolDescription": { "message": "Tool description" },
+  "options_plugins_form_toolParams": { "message": "Parameters (JSON object)" },
+  "options_plugins_form_toolParamsHint": {
+    "message": "Example: {\"max\": {\"type\": \"number\", \"required\": false, \"description\": \"maximum items\"}}"
+  },
+  "options_plugins_form_toolCode": {
+    "message": "Code (body of an async function; receives args, returns a JSON value)"
+  },
+  "options_plugins_error_loadFailed": { "message": "Could not load the plugins." },
+  "options_plugins_error_saveFailed": { "message": "Could not save the plugin." },
+  "options_plugins_error_deleteFailed": { "message": "Could not delete the plugin." },
+  "options_plugins_error_importFailed": { "message": "Could not import the plugins." },
+  "options_plugins_error_invalidJson": { "message": "The text is not valid JSON." },
+  "options_plugins_error_invalidParams": { "message": "The parameters must be a JSON object." },
+  "options_plugins_error_invalid": {
+    "message": "Invalid plugin: $DETAIL$",
+    "placeholders": { "detail": { "content": "$1", "example": "DETAIL" } }
+  },
+  "act_listMcpTools_start": { "message": "Listing MCP tools" },
+  "act_listMcpTools_none": { "message": "No MCP servers are enabled" },
+  "act_listMcpTools_ok": {
+    "message": "MCP tools from $COUNT$ enabled servers",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "act_callMcpTool_start": {
+    "message": "Calling MCP tool $TOOL$ on $SERVER$",
+    "placeholders": {
+      "tool": { "content": "$1", "example": "TOOL" },
+      "server": { "content": "$2", "example": "SERVER" }
+    }
+  },
+  "act_callMcpTool_ok": {
+    "message": "MCP tool finished: $TOOL$",
+    "placeholders": { "tool": { "content": "$1", "example": "TOOL" } }
+  },
+  "act_callMcpTool_fail": {
+    "message": "MCP tool failed: $TOOL$",
+    "placeholders": { "tool": { "content": "$1", "example": "TOOL" } }
+  },
+  "act_callMcpTool_notFound": {
+    "message": "No enabled MCP server named $SERVER$",
+    "placeholders": { "server": { "content": "$1", "example": "SERVER" } }
+  },
+  "act_webFetch_start": {
+    "message": "Fetching $URL$",
+    "placeholders": { "url": { "content": "$1", "example": "URL" } }
+  },
+  "act_webFetch_ok": { "message": "Fetched $URL$", "placeholders": { "url": { "content": "$1", "example": "URL" } } },
+  "act_webFetch_fail": {
+    "message": "Could not fetch $URL$",
+    "placeholders": { "url": { "content": "$1", "example": "URL" } }
+  },
+  "act_todoWrite_header": {
+    "message": "Checklist: $DONE$ of $TOTAL$ done",
+    "placeholders": { "done": { "content": "$1", "example": "DONE" }, "total": { "content": "$2", "example": "TOTAL" } }
+  },
+  "options_tabs_mcp": { "message": "MCP" },
+  "options_mcpServers_header": { "message": "MCP servers" },
+  "options_mcp_intro": {
+    "message": "Remote MCP servers (Streamable HTTP). The agent can list their tools and call them during tasks."
+  },
+  "options_mcp_btnNew": { "message": "Add server" },
+  "options_mcp_btnEdit": { "message": "Edit" },
+  "options_mcp_btnDelete": { "message": "Delete" },
+  "options_mcp_btnSave": { "message": "Save" },
+  "options_mcp_btnCancel": { "message": "Cancel" },
+  "options_mcp_btnTest": { "message": "Test connection" },
+  "options_mcp_btnTesting": { "message": "Testing..." },
+  "options_mcp_empty": { "message": "No MCP servers yet." },
+  "options_mcp_enabled": { "message": "Enabled" },
+  "options_mcp_formNew": { "message": "New MCP server" },
+  "options_mcp_formEdit": { "message": "Edit MCP server" },
+  "options_mcp_fieldName": { "message": "Name" },
+  "options_mcp_fieldUrl": { "message": "Endpoint URL" },
+  "options_mcp_fieldHeaders": { "message": "Headers" },
+  "options_mcp_headersHint": {
+    "message": "One per line, as Name: value (for example Authorization: Bearer ...). Stored on this device only."
+  },
+  "options_mcp_testOk": {
+    "message": "Connected: $COUNT$ tools ($NAMES$)",
+    "placeholders": {
+      "count": { "content": "$1", "example": "COUNT" },
+      "names": { "content": "$2", "example": "NAMES" }
+    }
+  },
+  "options_mcp_deleteConfirm": {
+    "message": "Remove MCP server $NAME$?",
+    "placeholders": { "name": { "content": "$1", "example": "NAME" } }
+  },
+  "options_mcp_error_loadFailed": { "message": "Could not load MCP servers. See the console for details." },
+  "options_mcp_error_saveFailed": { "message": "Could not save the MCP server. See the console for details." },
+  "options_mcp_error_deleteFailed": { "message": "Could not remove the MCP server. See the console for details." },
+  "options_mcp_error_invalidUrl": { "message": "Enter a valid http:// or https:// URL." },
+  "options_mcp_error_invalidHeader": { "message": "Each header needs a name, as Name: value." },
+  "options_mcp_error_nameRequired": { "message": "Enter a name for the server." },
+  "options_mcp_error_testFailed": { "message": "Connection failed. See the console for details." },
   "act_pageInfo_start": {
     "message": "Reading page structure"
   },

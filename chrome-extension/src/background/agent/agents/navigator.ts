@@ -31,6 +31,14 @@ import { HistoryTreeProcessor } from '@src/background/browser/dom/history/servic
 import { AgentStepRecord } from '../history';
 import { actionErrorForPrompt } from '../messages/utils';
 import { type DOMHistoryElement } from '@src/background/browser/dom/history/view';
+import type { DOMElementNode } from '@src/background/browser/dom/views';
+import { decideWithJev, isJevFeatureOn } from '@src/background/services/jev/runtime';
+import {
+  buildElementFastPathRequest,
+  buildFastPathElements,
+  decideElementFastPath,
+  type RawElement,
+} from '@src/background/services/jev/element-fast-path';
 
 const logger = createLogger('NavigatorAgent');
 const MAX_AGENT_STEP_HISTORY_ENTRIES = 300;
@@ -65,8 +73,10 @@ export class NavigatorActionRegistry {
     return this.actions[name];
   }
 
-  setupModelOutputSchema() {
-    const actionSchema = buildDynamicActionSchema(Object.values(this.actions));
+  /** The output schema over every registered action, or only over `names` when the step offers a subset. */
+  setupModelOutputSchema(names?: ReadonlySet<string>) {
+    const offered = Object.values(this.actions).filter(action => !names || names.has(action.name()));
+    const actionSchema = buildDynamicActionSchema(offered);
     return z.object({
       current_state: agentBrainSchema,
       action: z.array(actionSchema),
@@ -79,6 +89,20 @@ interface NavigatorResult {
 }
 
 type NavigatorOutputSchema = ReturnType<NavigatorActionRegistry['setupModelOutputSchema']>;
+
+/** Short text for an indexed element: tag, visible text and the attributes that name it. */
+const NAMING_ATTRIBUTES = ['aria-label', 'placeholder', 'name', 'type', 'value', 'title'];
+
+function describeElement(node: DOMElementNode): string {
+  const attributeValues = NAMING_ATTRIBUTES.map(attribute => node.attributes[attribute]);
+  return [node.tagName, node.getAllTextTillNextClickableElement(), ...attributeValues].filter(Boolean).join(' ');
+}
+
+function indexedInteractiveElements(state: BrowserState): RawElement[] {
+  return [...state.selectorMap.entries()]
+    .filter(([, node]) => node.isInteractive && node.isVisible)
+    .map(([index, node]) => ({ index, description: describeElement(node) }));
+}
 
 export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorResult> {
   private actionRegistry: NavigatorActionRegistry;
@@ -97,6 +121,41 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
       this.withStructuredOutput = false;
       logger.info(`[${this.modelName}] Navigator structured output disabled; using manual JSON extraction mode.`);
     }
+  }
+
+  /** Offers the model only `names` (ungrouped actions included); execution still resolves every registered action. */
+  restrictActions(names: ReadonlySet<string> | null): void {
+    this.modelOutputSchema = this.actionRegistry.setupModelOutputSchema(names ?? undefined);
+    this.structuredTools = undefined;
+  }
+
+  private async invokeModel(inputMessages: ModelMessage[]): Promise<this['ModelOutput']> {
+    this.context.jevRuntime?.metrics.recordLlmCall();
+    return this.invoke(inputMessages);
+  }
+
+  /** A single element action decided by Jev, or null so the LLM decides this step. */
+  private async tryElementFastPath(state: BrowserState): Promise<this['ModelOutput'] | null> {
+    const runtime = this.context.jevRuntime;
+    if (!runtime || !isJevFeatureOn(runtime, 'elementFastPath')) return null;
+    const elements = buildFastPathElements(indexedInteractiveElements(state));
+    if (elements.length === 0) return null;
+    const decision = await decideWithJev(
+      runtime,
+      'elementFastPath',
+      buildElementFastPathRequest(runtime.task, state.url, elements),
+      (answers, threshold) => decideElementFastPath(answers, elements, runtime.task, threshold),
+      this.context.controller.signal,
+    );
+    if (!decision) return null;
+    const action =
+      decision.kind === 'click'
+        ? { click: { selector: decision.ref } }
+        : { fill: { selector: decision.ref, text: decision.value } };
+    return {
+      current_state: { evaluation_previous_goal: 'Unknown', memory: '', next_goal: 'Jev fast path' },
+      action: [action],
+    } as this['ModelOutput'];
   }
 
   private isGeminiModel(): boolean {
@@ -191,7 +250,8 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         structuredOutput: this.withStructuredOutput,
       });
 
-      const modelOutput = await this.invoke(inputMessages);
+      // A Jev fast path decides the step without the LLM; everything after this point is the same either way.
+      const modelOutput = (await this.tryElementFastPath(currentState)) ?? (await this.invokeModel(inputMessages));
       logger.debug('Navigator model output received', modelOutput);
 
       // check if the task is paused or stopped

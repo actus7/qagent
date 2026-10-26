@@ -532,6 +532,60 @@
   "options_models_jev_status_off": {
     "message": "已停用：由內建規則決定每則訊息的模式。"
   },
+  "options_models_jev_accel_header": {
+    "message": "使用 Jev 加速"
+  },
+  "options_models_jev_accel_desc": {
+    "message": "每個開關預設關閉，且需要 API 金鑰。Jev 不確定時，仍由 LLM 決定。"
+  },
+  "options_models_jev_accel_warning": {
+    "message": "最後一個選項會在不使用 LLM 的情況下處理頁面內容。請只在信任的網站上使用。"
+  },
+  "options_models_jev_accel_bold": {
+    "message": "不經 LLM 直接執行"
+  },
+  "options_models_jev_threshold": {
+    "message": "信心值"
+  },
+  "options_models_jev_threshold_default": {
+    "message": "預設"
+  },
+  "options_models_jev_threshold_help": {
+    "message": "Jev 必須達到此數值才會執行。數值越低，Jev 決定越多，風險也越高。"
+  },
+  "options_models_jev_feature_doneCheck": {
+    "message": "確認任務完成"
+  },
+  "options_models_jev_feature_doneCheck_help": {
+    "message": "每個步驟後，Jev 會檢查任務是否完成；若完成，任務即結束，不再呼叫 LLM。最保守。"
+  },
+  "options_models_jev_feature_toolRouting": {
+    "message": "工具路由"
+  },
+  "options_models_jev_feature_toolRouting_help": {
+    "message": "Jev 只向導航器提供任務所需的動作群組，使每次 LLM 呼叫更小。核心動作永遠保留。"
+  },
+  "options_models_jev_feature_plannerSkip": {
+    "message": "單一步驟略過規劃器"
+  },
+  "options_models_jev_feature_plannerSkip_help": {
+    "message": "Jev 判斷任務是否為單一直接的瀏覽器步驟；若是，則略過規劃器呼叫。"
+  },
+  "options_models_jev_feature_pluginRouting": {
+    "message": "建議外掛與工作流程"
+  },
+  "options_models_jev_feature_pluginRouting_help": {
+    "message": "Jev 選出符合的外掛工具或已儲存的工作流程，並提示給第一個導航步驟。參數仍由 LLM 提供。"
+  },
+  "options_models_jev_feature_elementFastPath": {
+    "message": "不經 LLM 直接操作元素"
+  },
+  "options_models_jev_feature_elementFastPath_help": {
+    "message": "Jev 為簡單步驟選定元素與點擊或填寫操作。頁面文字可能影響結果，因此這是最激進的選項，預設門檻較高。"
+  },
+  "exec_jev_doneCheck_note": {
+    "message": "Jev 確認任務已完成。最後結果："
+  },
   "options_models_speechToText_header": {
     "message": "語音轉文字模型"
   },
@@ -555,6 +609,84 @@
   },
   "options_models_stt_desc": {
     "message": "設定在使用麥克風功能時，將語音轉換為文字所使用的 Gemini 模型。"
+  },
+  "options_models_catalog_fetchButton": {
+    "message": "從供應商取得模型"
+  },
+  "options_models_catalog_loading": {
+    "message": "正在取得模型..."
+  },
+  "options_models_catalog_retry": {
+    "message": "重試"
+  },
+  "options_models_catalog_filterPlaceholder": {
+    "message": "篩選模型"
+  },
+  "options_models_catalog_selectAllFiltered": {
+    "message": "全選目前顯示的模型"
+  },
+  "options_models_catalog_selectedCount": {
+    "message": "已選 $COUNT$ 個",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "options_models_catalog_noMatches": {
+    "message": "沒有符合篩選條件的模型。"
+  },
+  "options_models_catalog_confirm": {
+    "message": "使用所選模型"
+  },
+  "options_models_catalog_cancel": {
+    "message": "取消"
+  },
+  "options_models_catalog_loadFor": {
+    "message": "從 $NAME$ 載入模型",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Ollama"
+      }
+    }
+  },
+  "options_models_catalog_errors_empty": {
+    "message": "供應商未回傳任何模型。"
+  },
+  "options_models_catalog_errors_unknown": {
+    "message": "無法取得模型。"
+  },
+  "options_models_catalog_errors_missingBaseUrl": {
+    "message": "請輸入基礎 URL 以取得模型。"
+  },
+  "options_models_catalog_errors_invalidBaseUrl": {
+    "message": "基礎 URL 不是有效的 http(s) 網址。"
+  },
+  "options_models_catalog_errors_unauthorized": {
+    "message": "供應商拒絕了 API 金鑰（401/403）。"
+  },
+  "options_models_catalog_errors_http": {
+    "message": "供應商回應 HTTP $STATUS$。",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "500"
+      }
+    }
+  },
+  "options_models_catalog_errors_network": {
+    "message": "無法連線到供應商。請檢查基礎 URL 與網路。"
+  },
+  "options_models_catalog_errors_timeout": {
+    "message": "供應商回應逾時。"
+  },
+  "options_models_catalog_errors_invalidResponse": {
+    "message": "供應商的回應不是模型清單。"
+  },
+  "options_models_catalog_errors_unsupported": {
+    "message": "此供應商不提供模型清單，請手動輸入名稱。"
   },
   "options_models_chooseModel": {
     "message": "選擇模型"
@@ -1280,7 +1412,10 @@
   },
   "report_exportHtml_a11y": { "message": "匯出報告（HTML）" },
   "report_exportMd_a11y": { "message": "匯出 Markdown" },
-  "report_exportFailed": { "message": "無法匯出報告：$ERROR$", "placeholders": { "error": { "content": "$1", "example": "沒有工作階段" } } },
+  "report_exportFailed": {
+    "message": "無法匯出報告：$ERROR$",
+    "placeholders": { "error": { "content": "$1", "example": "沒有工作階段" } }
+  },
   "report_generatedAt": { "message": "產生時間" },
   "report_models": { "message": "模型" },
   "report_noModels": { "message": "未設定" },
@@ -1680,7 +1815,7 @@
   "options_mcp_token_copied": {
     "message": "已複製"
   },
-    "act_host_start": {
+  "act_host_start": {
     "message": "正在執行 $LABEL$",
     "placeholders": {
       "label": {
@@ -1752,184 +1887,331 @@
       }
     }
   },
-  "options_tabs_schedules": {"message":"排程任務"},
-  "options_schedule_header": {"message":"排程任務"},
-  "options_schedule_intro": {"message":"在指定時間自動執行提示詞。每次執行都會在背景分頁開啟起始頁面，並記錄結果。"},
-  "options_schedule_btnNew": {"message":"新增任務"},
-  "options_schedule_btnRunNow": {"message":"立即執行"},
-  "options_schedule_btnEdit": {"message":"編輯"},
-  "options_schedule_btnDelete": {"message":"刪除"},
-  "options_schedule_btnSave": {"message":"儲存"},
-  "options_schedule_btnCancel": {"message":"取消"},
-  "options_schedule_deleteConfirm": {"message":"要刪除排程任務「$NAME$」嗎？","placeholders":{"name":{"content":"$1","example":"name"}}},
-  "options_schedule_empty": {"message":"尚無排程任務。"},
-  "options_schedule_enabled": {"message":"啟用"},
-  "options_schedule_nextRun": {"message":"下次執行：$WHEN$","placeholders":{"when":{"content":"$1","example":"when"}}},
-  "options_schedule_nextRun_none": {"message":"沒有下次執行"},
-  "options_schedule_lastRuns": {"message":"最近執行"},
-  "options_schedule_noRuns": {"message":"尚未執行。"},
-  "options_schedule_runStarted": {"message":"已開始執行，結果會顯示在最近執行中。"},
-  "options_schedule_formNew": {"message":"新增排程任務"},
-  "options_schedule_formEdit": {"message":"編輯排程任務"},
-  "options_schedule_freqDesc_once": {"message":"僅執行一次：$DATE$ $TIME$","placeholders":{"date":{"content":"$1","example":"date"},"time":{"content":"$2","example":"time"}}},
-  "options_schedule_freqDesc_daily": {"message":"每天 $TIME$","placeholders":{"time":{"content":"$1","example":"time"}}},
-  "options_schedule_freqDesc_weekly": {"message":"每週$WEEKDAY$ $TIME$","placeholders":{"weekday":{"content":"$1","example":"weekday"},"time":{"content":"$2","example":"time"}}},
-  "options_schedule_freqDesc_monthly": {"message":"每月 $DAY$ 日 $TIME$","placeholders":{"day":{"content":"$1","example":"day"},"time":{"content":"$2","example":"time"}}},
-  "options_schedule_freq_once": {"message":"一次"},
-  "options_schedule_freq_daily": {"message":"每日"},
-  "options_schedule_freq_weekly": {"message":"每週"},
-  "options_schedule_freq_monthly": {"message":"每月"},
-  "options_schedule_mode_act": {"message":"執行"},
-  "options_schedule_mode_plan": {"message":"規劃"},
-  "options_schedule_mode_chat": {"message":"對話"},
-  "options_schedule_field_prompt": {"message":"提示詞"},
-  "options_schedule_field_prompt_hint": {"message":"代理程式要做什麼，例如「確認結帳頁面能載入」"},
-  "options_schedule_field_mode": {"message":"模式"},
-  "options_schedule_field_frequency": {"message":"頻率"},
-  "options_schedule_field_startUrl": {"message":"起始 URL"},
-  "options_schedule_field_startUrl_hint": {"message":"執行前會在背景分頁開啟。執行模式必填。"},
-  "options_schedule_field_date": {"message":"日期"},
-  "options_schedule_field_weekday": {"message":"星期"},
-  "options_schedule_field_dayOfMonth": {"message":"每月日期"},
-  "options_schedule_field_dayOfMonth_hint": {"message":"月份天數不足時，會在當月最後一天執行。"},
-  "options_schedule_field_time": {"message":"時間"},
-  "options_schedule_field_enabled": {"message":"啟用"},
-  "options_schedule_weekday_0": {"message":"星期日"},
-  "options_schedule_weekday_1": {"message":"星期一"},
-  "options_schedule_weekday_2": {"message":"星期二"},
-  "options_schedule_weekday_3": {"message":"星期三"},
-  "options_schedule_weekday_4": {"message":"星期四"},
-  "options_schedule_weekday_5": {"message":"星期五"},
-  "options_schedule_weekday_6": {"message":"星期六"},
-  "options_schedule_outcome_completed": {"message":"已完成"},
-  "options_schedule_outcome_failed": {"message":"失敗"},
-  "options_schedule_outcome_cancelled": {"message":"已取消"},
-  "options_schedule_outcome_skipped": {"message":"已略過"},
-  "options_schedule_outcome_blocked": {"message":"已封鎖"},
-  "options_schedule_error_promptRequired": {"message":"請輸入提示詞。"},
-  "options_schedule_error_startUrlRequired": {"message":"執行模式需要起始 URL。"},
-  "options_schedule_error_startUrlInvalid": {"message":"請使用完整的 http 或 https 網址。"},
-  "options_schedule_error_timeInvalid": {"message":"請輸入有效的時間。"},
-  "options_schedule_error_dateInvalid": {"message":"請輸入有效的日期。"},
-  "options_schedule_error_dateInPast": {"message":"日期已過。請選擇未來的日期和時間。"},
-  "options_schedule_error_limit": {"message":"最多只能保留 $MAX$ 個排程任務，請先刪除一個。","placeholders":{"max":{"content":"$1","example":"max"}}},
-  "options_schedule_error_saveFailed": {"message":"無法儲存排程任務，請再試一次。"},
-  "options_schedule_error_runFailed": {"message":"無法開始執行，請確認擴充功能已啟用。"},
-  "options_schedule_error_deleteFailed": {"message":"無法刪除排程任務。"},
-  "options_schedule_error_loadFailed": {"message":"無法載入排程任務。"},
-  "chat_schedule_btn_a11y": {"message":"排程任務"},
-  "chat_schedule_title": {"message":"排程任務"},
-  "chat_schedule_save": {"message":"排程"},
-  "chat_schedule_cancel": {"message":"取消"},
-  "chat_schedule_saved": {"message":"已排程。下次執行：$WHEN$","placeholders":{"when":{"content":"$1","example":"when"}}},
-  "chat_schedule_openOptions": {"message":"在設定中編輯"},
-  "chat_schedule_moreInOptions": {"message":"每週和每月排程及完整清單位於設定中。"},
-  "chat_input_cmd_schedule": {"message":"排程此提示詞"},
-  "report_screenshot": {"message":"步驟截圖"},
-  "report_screenshotHtmlOnly": {"message":"（截圖可在 HTML 報告中查看）"},
-  "act_callPluginTool_start": {"message":"正在執行外掛 $PLUGIN$ 的工具 $TOOL$","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callPluginTool_notFound": {"message":"找不到外掛工具或已停用：$PLUGIN$ / $TOOL$","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callPluginTool_invalidArgs": {"message":"外掛工具 $TOOL$ 的參數無效","placeholders":{"tool":{"content":"$1","example":"TOOL"}}},
-  "act_callPluginTool_ok": {"message":"外掛 $PLUGIN$ 已執行工具 $TOOL$","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callPluginTool_fail": {"message":"外掛 $PLUGIN$ 的工具 $TOOL$ 執行失敗","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_runWorkflow_start": {"message":"正在运行工作流 $NAME$","placeholders":{"name":{"content":"$1","example":"Checkout"}}},
-  "act_runWorkflow_notFound": {"message":"没有名为 $NAME$ 的已保存工作流","placeholders":{"name":{"content":"$1","example":"Checkout"}}},
-  "act_runWorkflow_invalid": {"message":"工作流 $NAME$ 无法运行：$ERROR$","placeholders":{"name":{"content":"$1","example":"Checkout"},"error":{"content":"$2","example":"缺少工作流变量：email"}}},
-  "act_runWorkflow_stepFail": {"message":"工作流第 $INDEX$ 步失败（$LABEL$）","placeholders":{"index":{"content":"$1","example":"3"},"label":{"content":"$2","example":"点击"}}},
-  "act_runWorkflow_stopped": {"message":"工作流 $NAME$ 在完成前已停止","placeholders":{"name":{"content":"$1","example":"Checkout"}}},
-  "act_runWorkflow_ok": {"message":"工作流 $NAME$ 已执行 $COUNT$ 个操作","placeholders":{"name":{"content":"$1","example":"Checkout"},"count":{"content":"$2","example":"5"}}},
-  "act_mapSite_start": {"message":"正在绘制网站地图"},
-  "act_mapSite_badUrl": {"message":"网站地图需要 http 或 https 地址"},
-  "act_mapSite_empty": {"message":"无法读取 $HOST$ 的任何页面来生成网站地图","placeholders":{"host":{"content":"$1","example":"shop.example.com"}}},
-  "act_mapSite_userPlugin": {"message":"已有名为 $NAME$ 的浏览器插件使用此网站地图 id","placeholders":{"name":{"content":"$1","example":"Site map: shop.example.com"}}},
-  "act_mapSite_ok": {"message":"已从 $COUNT$ 个页面保存 $HOST$ 的网站地图","placeholders":{"host":{"content":"$1","example":"shop.example.com"},"count":{"content":"$2","example":"12"}}},
-  "bg_record_buildFailed": {"message":"无法根据录制内容保存工作流"},
-  "act_listPlugins_start": {"message":"列出瀏覽器外掛"},
-  "act_listPlugins_none": {"message":"沒有已啟用的瀏覽器外掛"},
-  "act_listPlugins_ok": {"message":"已啟用的瀏覽器外掛：$COUNT$","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "act_savePlugin_start": {"message":"正在儲存瀏覽器外掛"},
-  "act_savePlugin_ok": {"message":"已儲存外掛：$NAME$","placeholders":{"name":{"content":"$1","example":"NAME"}}},
-  "act_savePlugin_fail": {"message":"外掛未儲存：定義無效"},
-  "options_tabs_plugins": {"message":"外掛"},
-  "options_plugins_header": {"message":"瀏覽器外掛"},
-  "options_plugins_intro": {"message":"外掛會新增可在頁面中執行 JavaScript 的工具。代理可在任務中呼叫它們，也能自行建立外掛。"},
-  "options_plugins_toolsCount": {"message":"$COUNT$ 個工具","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "options_plugins_btnNew": {"message":"新增外掛"},
-  "options_plugins_btnEdit": {"message":"編輯"},
-  "options_plugins_btnDelete": {"message":"刪除"},
-  "options_plugins_btnExport": {"message":"匯出 JSON"},
-  "options_plugins_btnImport": {"message":"匯入"},
-  "options_plugins_btnSave": {"message":"儲存外掛"},
-  "options_plugins_btnCancel": {"message":"取消"},
-  "options_plugins_btnAddTool": {"message":"新增工具"},
-  "options_plugins_btnRemoveTool": {"message":"移除工具"},
-  "options_plugins_enabled": {"message":"啟用"},
-  "options_plugins_empty": {"message":"尚無外掛。你可以建立一個、匯入 JSON 檔案，或讓代理自行建立。"},
-  "options_plugins_matchesAll": {"message":"所有網站"},
-  "options_plugins_createdBy_user": {"message":"由你建立"},
-  "options_plugins_createdBy_agent": {"message":"由代理建立"},
-  "options_plugins_deleteConfirm": {"message":"要刪除外掛「$NAME$」嗎？","placeholders":{"name":{"content":"$1","example":"NAME"}}},
-  "options_plugins_importLabel": {"message":"貼上外掛 JSON（單一外掛或外掛陣列）"},
-  "options_plugins_importFile": {"message":"選擇 JSON 檔案"},
-  "options_plugins_imported": {"message":"已匯入外掛：$COUNT$","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "options_plugins_form_titleNew": {"message":"新增外掛"},
-  "options_plugins_form_titleEdit": {"message":"編輯外掛"},
-  "options_plugins_form_name": {"message":"名稱"},
-  "options_plugins_form_description": {"message":"描述"},
-  "options_plugins_form_matches": {"message":"網站（URL 萬用字元，以逗號分隔）"},
-  "options_plugins_form_matchesHint": {"message":"範例：example.com, *.shop.com/cart*。留空表示所有網站。"},
-  "options_plugins_form_instructions": {"message":"給代理的說明"},
-  "options_plugins_form_toolsHeader": {"message":"工具"},
-  "options_plugins_form_toolName": {"message":"工具名稱（snake_case）"},
-  "options_plugins_form_toolDescription": {"message":"工具描述"},
-  "options_plugins_form_toolParams": {"message":"參數（JSON 物件）"},
-  "options_plugins_form_toolParamsHint": {"message":"範例：{\"max\": {\"type\": \"number\", \"required\": false, \"description\": \"最多項目數\"}}"},
-  "options_plugins_form_toolCode": {"message":"程式碼（async 函式的本體；接收 args，回傳可序列化為 JSON 的值）"},
-  "options_plugins_error_loadFailed": {"message":"無法載入外掛。"},
-  "options_plugins_error_saveFailed": {"message":"無法儲存外掛。"},
-  "options_plugins_error_deleteFailed": {"message":"無法刪除外掛。"},
-  "options_plugins_error_importFailed": {"message":"無法匯入外掛。"},
-  "options_plugins_error_invalidJson": {"message":"文字不是有效的 JSON。"},
-  "options_plugins_error_invalidParams": {"message":"參數必須是 JSON 物件。"},
-  "options_plugins_error_invalid": {"message":"外掛無效：$DETAIL$","placeholders":{"detail":{"content":"$1","example":"DETAIL"}}},
-  "act_listMcpTools_start": {"message":"正在列出 MCP 工具"},
-  "act_listMcpTools_none": {"message":"沒有啟用的 MCP 伺服器"},
-  "act_listMcpTools_ok": {"message":"來自 $COUNT$ 個已啟用伺服器的 MCP 工具","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "act_callMcpTool_start": {"message":"正在呼叫 $SERVER$ 上的 MCP 工具 $TOOL$","placeholders":{"server":{"content":"$1","example":"SERVER"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callMcpTool_ok": {"message":"MCP 工具完成：$TOOL$","placeholders":{"tool":{"content":"$1","example":"TOOL"}}},
-  "act_callMcpTool_fail": {"message":"MCP 工具失敗：$TOOL$","placeholders":{"tool":{"content":"$1","example":"TOOL"}}},
-  "act_callMcpTool_notFound": {"message":"找不到名為 $SERVER$ 的已啟用 MCP 伺服器","placeholders":{"server":{"content":"$1","example":"SERVER"}}},
-  "act_webFetch_start": {"message":"正在擷取 $URL$","placeholders":{"url":{"content":"$1","example":"URL"}}},
-  "act_webFetch_ok": {"message":"已擷取 $URL$","placeholders":{"url":{"content":"$1","example":"URL"}}},
-  "act_webFetch_fail": {"message":"無法擷取 $URL$","placeholders":{"url":{"content":"$1","example":"URL"}}},
-  "act_todoWrite_header": {"message":"清單：已完成 $DONE$ / $TOTAL$","placeholders":{"done":{"content":"$1","example":"DONE"},"total":{"content":"$2","example":"TOTAL"}}},
-  "options_tabs_mcp": {"message":"MCP"},
-  "options_mcpServers_header": {"message":"MCP 伺服器"},
-  "options_mcp_intro": {"message":"遠端 MCP 伺服器（Streamable HTTP）。代理可在任務中列出並呼叫它們的工具。"},
-  "options_mcp_btnNew": {"message":"新增伺服器"},
-  "options_mcp_btnEdit": {"message":"編輯"},
-  "options_mcp_btnDelete": {"message":"刪除"},
-  "options_mcp_btnSave": {"message":"儲存"},
-  "options_mcp_btnCancel": {"message":"取消"},
-  "options_mcp_btnTest": {"message":"測試連線"},
-  "options_mcp_btnTesting": {"message":"測試中..."},
-  "options_mcp_empty": {"message":"尚無 MCP 伺服器。"},
-  "options_mcp_enabled": {"message":"啟用"},
-  "options_mcp_formNew": {"message":"新增 MCP 伺服器"},
-  "options_mcp_formEdit": {"message":"編輯 MCP 伺服器"},
-  "options_mcp_fieldName": {"message":"名稱"},
-  "options_mcp_fieldUrl": {"message":"端點 URL"},
-  "options_mcp_fieldHeaders": {"message":"標頭"},
-  "options_mcp_headersHint": {"message":"每行一個，格式為 名稱: 值（例如 Authorization: Bearer ...）。僅儲存在此裝置上。"},
-  "options_mcp_testOk": {"message":"已連線：$COUNT$ 個工具（$NAMES$）","placeholders":{"count":{"content":"$1","example":"COUNT"},"names":{"content":"$2","example":"NAMES"}}},
-  "options_mcp_deleteConfirm": {"message":"要移除 MCP 伺服器 $NAME$ 嗎？","placeholders":{"name":{"content":"$1","example":"NAME"}}},
-  "options_mcp_error_loadFailed": {"message":"無法載入 MCP 伺服器。詳情請見主控台。"},
-  "options_mcp_error_saveFailed": {"message":"無法儲存 MCP 伺服器。詳情請見主控台。"},
-  "options_mcp_error_deleteFailed": {"message":"無法移除 MCP 伺服器。詳情請見主控台。"},
-  "options_mcp_error_invalidUrl": {"message":"請輸入以 http:// 或 https:// 開頭的有效 URL。"},
-  "options_mcp_error_invalidHeader": {"message":"每個標頭都需要名稱，格式為 名稱: 值。"},
-  "options_mcp_error_nameRequired": {"message":"請輸入伺服器名稱。"},
-  "options_mcp_error_testFailed": {"message":"連線失敗。詳情請見主控台。"},
+  "options_tabs_schedules": { "message": "排程任務" },
+  "options_schedule_header": { "message": "排程任務" },
+  "options_schedule_intro": { "message": "在指定時間自動執行提示詞。每次執行都會在背景分頁開啟起始頁面，並記錄結果。" },
+  "options_schedule_btnNew": { "message": "新增任務" },
+  "options_schedule_btnRunNow": { "message": "立即執行" },
+  "options_schedule_btnEdit": { "message": "編輯" },
+  "options_schedule_btnDelete": { "message": "刪除" },
+  "options_schedule_btnSave": { "message": "儲存" },
+  "options_schedule_btnCancel": { "message": "取消" },
+  "options_schedule_deleteConfirm": {
+    "message": "要刪除排程任務「$NAME$」嗎？",
+    "placeholders": { "name": { "content": "$1", "example": "name" } }
+  },
+  "options_schedule_empty": { "message": "尚無排程任務。" },
+  "options_schedule_enabled": { "message": "啟用" },
+  "options_schedule_nextRun": {
+    "message": "下次執行：$WHEN$",
+    "placeholders": { "when": { "content": "$1", "example": "when" } }
+  },
+  "options_schedule_nextRun_none": { "message": "沒有下次執行" },
+  "options_schedule_lastRuns": { "message": "最近執行" },
+  "options_schedule_noRuns": { "message": "尚未執行。" },
+  "options_schedule_runStarted": { "message": "已開始執行，結果會顯示在最近執行中。" },
+  "options_schedule_formNew": { "message": "新增排程任務" },
+  "options_schedule_formEdit": { "message": "編輯排程任務" },
+  "options_schedule_freqDesc_once": {
+    "message": "僅執行一次：$DATE$ $TIME$",
+    "placeholders": { "date": { "content": "$1", "example": "date" }, "time": { "content": "$2", "example": "time" } }
+  },
+  "options_schedule_freqDesc_daily": {
+    "message": "每天 $TIME$",
+    "placeholders": { "time": { "content": "$1", "example": "time" } }
+  },
+  "options_schedule_freqDesc_weekly": {
+    "message": "每週$WEEKDAY$ $TIME$",
+    "placeholders": {
+      "weekday": { "content": "$1", "example": "weekday" },
+      "time": { "content": "$2", "example": "time" }
+    }
+  },
+  "options_schedule_freqDesc_monthly": {
+    "message": "每月 $DAY$ 日 $TIME$",
+    "placeholders": { "day": { "content": "$1", "example": "day" }, "time": { "content": "$2", "example": "time" } }
+  },
+  "options_schedule_freq_once": { "message": "一次" },
+  "options_schedule_freq_daily": { "message": "每日" },
+  "options_schedule_freq_weekly": { "message": "每週" },
+  "options_schedule_freq_monthly": { "message": "每月" },
+  "options_schedule_mode_act": { "message": "執行" },
+  "options_schedule_mode_plan": { "message": "規劃" },
+  "options_schedule_mode_chat": { "message": "對話" },
+  "options_schedule_field_prompt": { "message": "提示詞" },
+  "options_schedule_field_prompt_hint": { "message": "代理程式要做什麼，例如「確認結帳頁面能載入」" },
+  "options_schedule_field_mode": { "message": "模式" },
+  "options_schedule_field_frequency": { "message": "頻率" },
+  "options_schedule_field_startUrl": { "message": "起始 URL" },
+  "options_schedule_field_startUrl_hint": { "message": "執行前會在背景分頁開啟。執行模式必填。" },
+  "options_schedule_field_date": { "message": "日期" },
+  "options_schedule_field_weekday": { "message": "星期" },
+  "options_schedule_field_dayOfMonth": { "message": "每月日期" },
+  "options_schedule_field_dayOfMonth_hint": { "message": "月份天數不足時，會在當月最後一天執行。" },
+  "options_schedule_field_time": { "message": "時間" },
+  "options_schedule_field_enabled": { "message": "啟用" },
+  "options_schedule_weekday_0": { "message": "星期日" },
+  "options_schedule_weekday_1": { "message": "星期一" },
+  "options_schedule_weekday_2": { "message": "星期二" },
+  "options_schedule_weekday_3": { "message": "星期三" },
+  "options_schedule_weekday_4": { "message": "星期四" },
+  "options_schedule_weekday_5": { "message": "星期五" },
+  "options_schedule_weekday_6": { "message": "星期六" },
+  "options_schedule_outcome_completed": { "message": "已完成" },
+  "options_schedule_outcome_failed": { "message": "失敗" },
+  "options_schedule_outcome_cancelled": { "message": "已取消" },
+  "options_schedule_outcome_skipped": { "message": "已略過" },
+  "options_schedule_outcome_blocked": { "message": "已封鎖" },
+  "options_schedule_error_promptRequired": { "message": "請輸入提示詞。" },
+  "options_schedule_error_startUrlRequired": { "message": "執行模式需要起始 URL。" },
+  "options_schedule_error_startUrlInvalid": { "message": "請使用完整的 http 或 https 網址。" },
+  "options_schedule_error_timeInvalid": { "message": "請輸入有效的時間。" },
+  "options_schedule_error_dateInvalid": { "message": "請輸入有效的日期。" },
+  "options_schedule_error_dateInPast": { "message": "日期已過。請選擇未來的日期和時間。" },
+  "options_schedule_error_limit": {
+    "message": "最多只能保留 $MAX$ 個排程任務，請先刪除一個。",
+    "placeholders": { "max": { "content": "$1", "example": "max" } }
+  },
+  "options_schedule_error_saveFailed": { "message": "無法儲存排程任務，請再試一次。" },
+  "options_schedule_error_runFailed": { "message": "無法開始執行，請確認擴充功能已啟用。" },
+  "options_schedule_error_deleteFailed": { "message": "無法刪除排程任務。" },
+  "options_schedule_error_loadFailed": { "message": "無法載入排程任務。" },
+  "chat_schedule_btn_a11y": { "message": "排程任務" },
+  "chat_schedule_title": { "message": "排程任務" },
+  "chat_schedule_save": { "message": "排程" },
+  "chat_schedule_cancel": { "message": "取消" },
+  "chat_schedule_saved": {
+    "message": "已排程。下次執行：$WHEN$",
+    "placeholders": { "when": { "content": "$1", "example": "when" } }
+  },
+  "chat_schedule_openOptions": { "message": "在設定中編輯" },
+  "chat_schedule_moreInOptions": { "message": "每週和每月排程及完整清單位於設定中。" },
+  "chat_input_cmd_schedule": { "message": "排程此提示詞" },
+  "report_screenshot": { "message": "步驟截圖" },
+  "report_screenshotHtmlOnly": { "message": "（截圖可在 HTML 報告中查看）" },
+  "act_callPluginTool_start": {
+    "message": "正在執行外掛 $PLUGIN$ 的工具 $TOOL$",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callPluginTool_notFound": {
+    "message": "找不到外掛工具或已停用：$PLUGIN$ / $TOOL$",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callPluginTool_invalidArgs": {
+    "message": "外掛工具 $TOOL$ 的參數無效",
+    "placeholders": { "tool": { "content": "$1", "example": "TOOL" } }
+  },
+  "act_callPluginTool_ok": {
+    "message": "外掛 $PLUGIN$ 已執行工具 $TOOL$",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callPluginTool_fail": {
+    "message": "外掛 $PLUGIN$ 的工具 $TOOL$ 執行失敗",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_runWorkflow_start": {
+    "message": "正在运行工作流 $NAME$",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" } }
+  },
+  "act_runWorkflow_notFound": {
+    "message": "没有名为 $NAME$ 的已保存工作流",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" } }
+  },
+  "act_runWorkflow_invalid": {
+    "message": "工作流 $NAME$ 无法运行：$ERROR$",
+    "placeholders": {
+      "name": { "content": "$1", "example": "Checkout" },
+      "error": { "content": "$2", "example": "缺少工作流变量：email" }
+    }
+  },
+  "act_runWorkflow_stepFail": {
+    "message": "工作流第 $INDEX$ 步失败（$LABEL$）",
+    "placeholders": { "index": { "content": "$1", "example": "3" }, "label": { "content": "$2", "example": "点击" } }
+  },
+  "act_runWorkflow_stopped": {
+    "message": "工作流 $NAME$ 在完成前已停止",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" } }
+  },
+  "act_runWorkflow_ok": {
+    "message": "工作流 $NAME$ 已执行 $COUNT$ 个操作",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" }, "count": { "content": "$2", "example": "5" } }
+  },
+  "act_mapSite_start": { "message": "正在绘制网站地图" },
+  "act_mapSite_badUrl": { "message": "网站地图需要 http 或 https 地址" },
+  "act_mapSite_empty": {
+    "message": "无法读取 $HOST$ 的任何页面来生成网站地图",
+    "placeholders": { "host": { "content": "$1", "example": "shop.example.com" } }
+  },
+  "act_mapSite_userPlugin": {
+    "message": "已有名为 $NAME$ 的浏览器插件使用此网站地图 id",
+    "placeholders": { "name": { "content": "$1", "example": "Site map: shop.example.com" } }
+  },
+  "act_mapSite_ok": {
+    "message": "已从 $COUNT$ 个页面保存 $HOST$ 的网站地图",
+    "placeholders": {
+      "host": { "content": "$1", "example": "shop.example.com" },
+      "count": { "content": "$2", "example": "12" }
+    }
+  },
+  "bg_record_buildFailed": { "message": "无法根据录制内容保存工作流" },
+  "act_listPlugins_start": { "message": "列出瀏覽器外掛" },
+  "act_listPlugins_none": { "message": "沒有已啟用的瀏覽器外掛" },
+  "act_listPlugins_ok": {
+    "message": "已啟用的瀏覽器外掛：$COUNT$",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "act_savePlugin_start": { "message": "正在儲存瀏覽器外掛" },
+  "act_savePlugin_ok": {
+    "message": "已儲存外掛：$NAME$",
+    "placeholders": { "name": { "content": "$1", "example": "NAME" } }
+  },
+  "act_savePlugin_fail": { "message": "外掛未儲存：定義無效" },
+  "options_tabs_plugins": { "message": "外掛" },
+  "options_plugins_header": { "message": "瀏覽器外掛" },
+  "options_plugins_intro": {
+    "message": "外掛會新增可在頁面中執行 JavaScript 的工具。代理可在任務中呼叫它們，也能自行建立外掛。"
+  },
+  "options_plugins_toolsCount": {
+    "message": "$COUNT$ 個工具",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "options_plugins_btnNew": { "message": "新增外掛" },
+  "options_plugins_btnEdit": { "message": "編輯" },
+  "options_plugins_btnDelete": { "message": "刪除" },
+  "options_plugins_btnExport": { "message": "匯出 JSON" },
+  "options_plugins_btnImport": { "message": "匯入" },
+  "options_plugins_btnSave": { "message": "儲存外掛" },
+  "options_plugins_btnCancel": { "message": "取消" },
+  "options_plugins_btnAddTool": { "message": "新增工具" },
+  "options_plugins_btnRemoveTool": { "message": "移除工具" },
+  "options_plugins_enabled": { "message": "啟用" },
+  "options_plugins_empty": { "message": "尚無外掛。你可以建立一個、匯入 JSON 檔案，或讓代理自行建立。" },
+  "options_plugins_matchesAll": { "message": "所有網站" },
+  "options_plugins_createdBy_user": { "message": "由你建立" },
+  "options_plugins_createdBy_agent": { "message": "由代理建立" },
+  "options_plugins_deleteConfirm": {
+    "message": "要刪除外掛「$NAME$」嗎？",
+    "placeholders": { "name": { "content": "$1", "example": "NAME" } }
+  },
+  "options_plugins_importLabel": { "message": "貼上外掛 JSON（單一外掛或外掛陣列）" },
+  "options_plugins_importFile": { "message": "選擇 JSON 檔案" },
+  "options_plugins_imported": {
+    "message": "已匯入外掛：$COUNT$",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "options_plugins_form_titleNew": { "message": "新增外掛" },
+  "options_plugins_form_titleEdit": { "message": "編輯外掛" },
+  "options_plugins_form_name": { "message": "名稱" },
+  "options_plugins_form_description": { "message": "描述" },
+  "options_plugins_form_matches": { "message": "網站（URL 萬用字元，以逗號分隔）" },
+  "options_plugins_form_matchesHint": { "message": "範例：example.com, *.shop.com/cart*。留空表示所有網站。" },
+  "options_plugins_form_instructions": { "message": "給代理的說明" },
+  "options_plugins_form_toolsHeader": { "message": "工具" },
+  "options_plugins_form_toolName": { "message": "工具名稱（snake_case）" },
+  "options_plugins_form_toolDescription": { "message": "工具描述" },
+  "options_plugins_form_toolParams": { "message": "參數（JSON 物件）" },
+  "options_plugins_form_toolParamsHint": {
+    "message": "範例：{\"max\": {\"type\": \"number\", \"required\": false, \"description\": \"最多項目數\"}}"
+  },
+  "options_plugins_form_toolCode": { "message": "程式碼（async 函式的本體；接收 args，回傳可序列化為 JSON 的值）" },
+  "options_plugins_error_loadFailed": { "message": "無法載入外掛。" },
+  "options_plugins_error_saveFailed": { "message": "無法儲存外掛。" },
+  "options_plugins_error_deleteFailed": { "message": "無法刪除外掛。" },
+  "options_plugins_error_importFailed": { "message": "無法匯入外掛。" },
+  "options_plugins_error_invalidJson": { "message": "文字不是有效的 JSON。" },
+  "options_plugins_error_invalidParams": { "message": "參數必須是 JSON 物件。" },
+  "options_plugins_error_invalid": {
+    "message": "外掛無效：$DETAIL$",
+    "placeholders": { "detail": { "content": "$1", "example": "DETAIL" } }
+  },
+  "act_listMcpTools_start": { "message": "正在列出 MCP 工具" },
+  "act_listMcpTools_none": { "message": "沒有啟用的 MCP 伺服器" },
+  "act_listMcpTools_ok": {
+    "message": "來自 $COUNT$ 個已啟用伺服器的 MCP 工具",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "act_callMcpTool_start": {
+    "message": "正在呼叫 $SERVER$ 上的 MCP 工具 $TOOL$",
+    "placeholders": {
+      "server": { "content": "$1", "example": "SERVER" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callMcpTool_ok": {
+    "message": "MCP 工具完成：$TOOL$",
+    "placeholders": { "tool": { "content": "$1", "example": "TOOL" } }
+  },
+  "act_callMcpTool_fail": {
+    "message": "MCP 工具失敗：$TOOL$",
+    "placeholders": { "tool": { "content": "$1", "example": "TOOL" } }
+  },
+  "act_callMcpTool_notFound": {
+    "message": "找不到名為 $SERVER$ 的已啟用 MCP 伺服器",
+    "placeholders": { "server": { "content": "$1", "example": "SERVER" } }
+  },
+  "act_webFetch_start": {
+    "message": "正在擷取 $URL$",
+    "placeholders": { "url": { "content": "$1", "example": "URL" } }
+  },
+  "act_webFetch_ok": { "message": "已擷取 $URL$", "placeholders": { "url": { "content": "$1", "example": "URL" } } },
+  "act_webFetch_fail": {
+    "message": "無法擷取 $URL$",
+    "placeholders": { "url": { "content": "$1", "example": "URL" } }
+  },
+  "act_todoWrite_header": {
+    "message": "清單：已完成 $DONE$ / $TOTAL$",
+    "placeholders": { "done": { "content": "$1", "example": "DONE" }, "total": { "content": "$2", "example": "TOTAL" } }
+  },
+  "options_tabs_mcp": { "message": "MCP" },
+  "options_mcpServers_header": { "message": "MCP 伺服器" },
+  "options_mcp_intro": { "message": "遠端 MCP 伺服器（Streamable HTTP）。代理可在任務中列出並呼叫它們的工具。" },
+  "options_mcp_btnNew": { "message": "新增伺服器" },
+  "options_mcp_btnEdit": { "message": "編輯" },
+  "options_mcp_btnDelete": { "message": "刪除" },
+  "options_mcp_btnSave": { "message": "儲存" },
+  "options_mcp_btnCancel": { "message": "取消" },
+  "options_mcp_btnTest": { "message": "測試連線" },
+  "options_mcp_btnTesting": { "message": "測試中..." },
+  "options_mcp_empty": { "message": "尚無 MCP 伺服器。" },
+  "options_mcp_enabled": { "message": "啟用" },
+  "options_mcp_formNew": { "message": "新增 MCP 伺服器" },
+  "options_mcp_formEdit": { "message": "編輯 MCP 伺服器" },
+  "options_mcp_fieldName": { "message": "名稱" },
+  "options_mcp_fieldUrl": { "message": "端點 URL" },
+  "options_mcp_fieldHeaders": { "message": "標頭" },
+  "options_mcp_headersHint": {
+    "message": "每行一個，格式為 名稱: 值（例如 Authorization: Bearer ...）。僅儲存在此裝置上。"
+  },
+  "options_mcp_testOk": {
+    "message": "已連線：$COUNT$ 個工具（$NAMES$）",
+    "placeholders": {
+      "count": { "content": "$1", "example": "COUNT" },
+      "names": { "content": "$2", "example": "NAMES" }
+    }
+  },
+  "options_mcp_deleteConfirm": {
+    "message": "要移除 MCP 伺服器 $NAME$ 嗎？",
+    "placeholders": { "name": { "content": "$1", "example": "NAME" } }
+  },
+  "options_mcp_error_loadFailed": { "message": "無法載入 MCP 伺服器。詳情請見主控台。" },
+  "options_mcp_error_saveFailed": { "message": "無法儲存 MCP 伺服器。詳情請見主控台。" },
+  "options_mcp_error_deleteFailed": { "message": "無法移除 MCP 伺服器。詳情請見主控台。" },
+  "options_mcp_error_invalidUrl": { "message": "請輸入以 http:// 或 https:// 開頭的有效 URL。" },
+  "options_mcp_error_invalidHeader": { "message": "每個標頭都需要名稱，格式為 名稱: 值。" },
+  "options_mcp_error_nameRequired": { "message": "請輸入伺服器名稱。" },
+  "options_mcp_error_testFailed": { "message": "連線失敗。詳情請見主控台。" },
   "act_pageInfo_start": {
     "message": "正在讀取頁面結構"
   },

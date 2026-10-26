@@ -3,10 +3,7 @@ import type { ScheduledTask } from '@extension/storage';
 export const BUSY_SKIP_DETAIL = 'ignorada: outra tarefa em execução';
 
 export type ScheduledRunDecision =
-  | { action: 'ignore' }
-  | { action: 'skip'; detail: string }
-  | { action: 'block'; detail: string }
-  | { action: 'run' };
+  { action: 'ignore' } | { action: 'skip'; detail: string } | { action: 'block'; detail: string } | { action: 'run' };
 
 export interface ScheduledRunInput {
   task: ScheduledTask | undefined;

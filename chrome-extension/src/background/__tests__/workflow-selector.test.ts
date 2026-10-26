@@ -61,7 +61,9 @@ describe('buildElementSelector', () => {
     const row = node('div', {}, list, 3);
     const button = node('button', {}, row, 2);
 
-    expect(buildElementSelector(button, uniqueOn(['#content']))).toBe('#content > div > div:nth-of-type(3) > button:nth-of-type(2)');
+    expect(buildElementSelector(button, uniqueOn(['#content']))).toBe(
+      '#content > div > div:nth-of-type(3) > button:nth-of-type(2)',
+    );
   });
 
   it('escapes quotes in attribute values', () => {

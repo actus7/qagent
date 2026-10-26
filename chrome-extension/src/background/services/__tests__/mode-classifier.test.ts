@@ -7,7 +7,7 @@ vi.mock('../assistant-model', () => ({ loadAssistantModel: vi.fn() }));
 vi.mock('../../log', () => ({ createLogger: () => ({ error: vi.fn(), warning: vi.fn(), info: vi.fn() }) }));
 vi.mock('ai', () => ({ generateText: vi.fn() }));
 
-import { jevStore } from '@extension/storage';
+import { jevStore, type JevConfig } from '@extension/storage';
 import { loadAssistantModel } from '../assistant-model';
 import { classifyMode } from '../mode-classifier';
 
@@ -21,7 +21,7 @@ const modelReplying = (content: string) => {
 
 describe('classifyMode', () => {
   beforeEach(() => {
-    getConfig.mockResolvedValue({ apiKey: '', model: 'jev-latest' });
+    getConfig.mockResolvedValue({ apiKey: '', model: 'jev-latest' } as JevConfig);
   });
   afterEach(() => {
     vi.clearAllMocks();
@@ -63,7 +63,7 @@ describe('classifyMode', () => {
   });
 
   it('prefers Jev over the model when a key is configured', async () => {
-    getConfig.mockResolvedValue({ apiKey: 'sk-test', model: 'jev-latest' });
+    getConfig.mockResolvedValue({ apiKey: 'sk-test', model: 'jev-latest' } as JevConfig);
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({

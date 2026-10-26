@@ -7,6 +7,7 @@ import type { EventManager } from './event/manager';
 import { type Actors, type EventData, type ExecutionState, AgentEvent } from './event/types';
 import { AgentStepHistory } from './history';
 import type { TaskMemoryAction } from './task-memory';
+import type { JevRuntime } from '@src/background/services/jev/runtime';
 
 export interface AgentOptions {
   maxSteps: number;
@@ -46,6 +47,8 @@ export class AgentContext {
   consecutiveFailures: number;
   nSteps: number;
   stepInfo: AgentStepInfo | null;
+  /** Jev settings and metrics for the running task; null when the task was not started with Jev. */
+  jevRuntime: JevRuntime | null = null;
   actionResults: ActionResult[];
   /** Outcome of every action in this run (the step's actionResults are replaced each step); feeds the task memory. */
   runActions: TaskMemoryAction[];

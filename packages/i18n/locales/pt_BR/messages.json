@@ -535,6 +535,60 @@
   "options_models_jev_status_off": {
     "message": "Desativado: as regras internas decidem o modo de cada mensagem."
   },
+  "options_models_jev_accel_header": {
+    "message": "Acelerar com Jev"
+  },
+  "options_models_jev_accel_desc": {
+    "message": "Cada chave começa desligada e precisa de uma chave de API. Quando o Jev não tem confiança, o LLM decide como antes."
+  },
+  "options_models_jev_accel_warning": {
+    "message": "A última opção age sobre o conteúdo da página sem o LLM. Use-a apenas em sites em que você confia."
+  },
+  "options_models_jev_accel_bold": {
+    "message": "Age sem o LLM"
+  },
+  "options_models_jev_threshold": {
+    "message": "Confiança"
+  },
+  "options_models_jev_threshold_default": {
+    "message": "Padrão"
+  },
+  "options_models_jev_threshold_help": {
+    "message": "O Jev precisa atingir este valor para agir. Valores menores geram mais decisões do Jev e mais risco."
+  },
+  "options_models_jev_feature_doneCheck": {
+    "message": "Confirmar conclusão"
+  },
+  "options_models_jev_feature_doneCheck_help": {
+    "message": "Após cada passo, o Jev verifica se a tarefa foi concluída; se sim, a tarefa termina sem outra chamada ao LLM. É a opção mais conservadora."
+  },
+  "options_models_jev_feature_toolRouting": {
+    "message": "Direcionar ferramentas"
+  },
+  "options_models_jev_feature_toolRouting_help": {
+    "message": "O Jev oferece ao navegador apenas os grupos de ações que a tarefa precisa, deixando cada chamada ao LLM menor. As ações principais sempre ficam."
+  },
+  "options_models_jev_feature_plannerSkip": {
+    "message": "Pular o planejador em passos únicos"
+  },
+  "options_models_jev_feature_plannerSkip_help": {
+    "message": "O Jev decide se a tarefa é um único passo direto no navegador; se for, a chamada ao planejador é pulada."
+  },
+  "options_models_jev_feature_pluginRouting": {
+    "message": "Sugerir plugins e fluxos"
+  },
+  "options_models_jev_feature_pluginRouting_help": {
+    "message": "O Jev escolhe uma ferramenta de plugin ou um fluxo salvo compatível e a sugere ao primeiro passo do navegador. Os argumentos ainda vêm do LLM."
+  },
+  "options_models_jev_feature_elementFastPath": {
+    "message": "Agir em elementos sem o LLM"
+  },
+  "options_models_jev_feature_elementFastPath_help": {
+    "message": "O Jev escolhe o elemento e um clique ou preenchimento em passos simples. O texto da página pode influenciar isso, por isso é a opção mais ousada, com limite padrão alto."
+  },
+  "exec_jev_doneCheck_note": {
+    "message": "O Jev confirmou que a tarefa foi concluída. Últimos resultados:"
+  },
   "options_models_speechToText_header": {
     "message": "Modelo de Fala para Texto"
   },
@@ -558,6 +612,84 @@
   },
   "options_models_stt_desc": {
     "message": "Configure o modelo Gemini usado para converter fala em texto ao usar o recurso de microfone."
+  },
+  "options_models_catalog_fetchButton": {
+    "message": "Buscar modelos do provedor"
+  },
+  "options_models_catalog_loading": {
+    "message": "Buscando modelos..."
+  },
+  "options_models_catalog_retry": {
+    "message": "Tentar novamente"
+  },
+  "options_models_catalog_filterPlaceholder": {
+    "message": "Filtrar modelos"
+  },
+  "options_models_catalog_selectAllFiltered": {
+    "message": "Selecionar todos os exibidos"
+  },
+  "options_models_catalog_selectedCount": {
+    "message": "$COUNT$ selecionados",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "options_models_catalog_noMatches": {
+    "message": "Nenhum modelo corresponde ao filtro."
+  },
+  "options_models_catalog_confirm": {
+    "message": "Usar modelos selecionados"
+  },
+  "options_models_catalog_cancel": {
+    "message": "Cancelar"
+  },
+  "options_models_catalog_loadFor": {
+    "message": "Carregar modelos de $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Ollama"
+      }
+    }
+  },
+  "options_models_catalog_errors_empty": {
+    "message": "O provedor não retornou modelos."
+  },
+  "options_models_catalog_errors_unknown": {
+    "message": "Não foi possível buscar os modelos."
+  },
+  "options_models_catalog_errors_missingBaseUrl": {
+    "message": "Informe a URL base para buscar os modelos."
+  },
+  "options_models_catalog_errors_invalidBaseUrl": {
+    "message": "A URL base não é uma URL http(s) válida."
+  },
+  "options_models_catalog_errors_unauthorized": {
+    "message": "O provedor recusou a chave de API (401/403)."
+  },
+  "options_models_catalog_errors_http": {
+    "message": "O provedor respondeu com HTTP $STATUS$.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "500"
+      }
+    }
+  },
+  "options_models_catalog_errors_network": {
+    "message": "Não foi possível acessar o provedor. Verifique a URL base e a conexão."
+  },
+  "options_models_catalog_errors_timeout": {
+    "message": "O provedor demorou demais para responder."
+  },
+  "options_models_catalog_errors_invalidResponse": {
+    "message": "A resposta do provedor não é uma lista de modelos."
+  },
+  "options_models_catalog_errors_unsupported": {
+    "message": "Este provedor não lista modelos. Digite os nomes manualmente."
   },
   "options_models_chooseModel": {
     "message": "Escolher Modelo"
@@ -1280,7 +1412,10 @@
   },
   "report_exportHtml_a11y": { "message": "Exportar relatório (HTML)" },
   "report_exportMd_a11y": { "message": "Exportar Markdown" },
-  "report_exportFailed": { "message": "Não foi possível exportar o relatório: $ERROR$", "placeholders": { "error": { "content": "$1", "example": "sem sessão" } } },
+  "report_exportFailed": {
+    "message": "Não foi possível exportar o relatório: $ERROR$",
+    "placeholders": { "error": { "content": "$1", "example": "sem sessão" } }
+  },
   "report_generatedAt": { "message": "Gerado em" },
   "report_models": { "message": "Modelos" },
   "report_noModels": { "message": "não configurado" },
@@ -1288,7 +1423,9 @@
   "report_finalAnswer": { "message": "Resposta final" },
   "report_noFinalAnswer": { "message": "Nenhuma resposta final foi registrada." },
   "report_steps": { "message": "Passos da última tarefa" },
-  "report_noSteps": { "message": "Nenhum histórico de passos foi salvo nesta sessão. Ative \"Repetir tarefas históricas\" nas configurações para mantê-lo." },
+  "report_noSteps": {
+    "message": "Nenhum histórico de passos foi salvo nesta sessão. Ative \"Repetir tarefas históricas\" nas configurações para mantê-lo."
+  },
   "report_step": { "message": "Passo" },
   "report_intent": { "message": "intenção" },
   "report_result": { "message": "Resultado" },
@@ -1306,7 +1443,9 @@
   "options_test_noModel": { "message": "Adicione pelo menos um modelo antes de testar." },
   "options_test_timeout": { "message": "O provedor não respondeu a tempo." },
   "options_general_notifyOnCompletion": { "message": "Notificar ao concluir ou quando precisar de mim" },
-  "options_general_notifyOnCompletion_desc": { "message": "Mostra uma notificação do Chrome quando uma tarefa termina ou falha com o painel lateral fechado." },
+  "options_general_notifyOnCompletion_desc": {
+    "message": "Mostra uma notificação do Chrome quando uma tarefa termina ou falha com o painel lateral fechado."
+  },
   "options_general_testNotification": { "message": "Testar notificação" },
   "options_general_testNotification_title": { "message": "QAgent" },
   "options_general_testNotification_body": { "message": "As notificações estão funcionando." },
@@ -1680,7 +1819,7 @@
   "options_mcp_token_copied": {
     "message": "Copiado"
   },
-    "act_host_start": {
+  "act_host_start": {
     "message": "Executando $LABEL$",
     "placeholders": {
       "label": {
@@ -1752,184 +1891,358 @@
       }
     }
   },
-  "options_tabs_schedules": {"message":"Tarefas agendadas"},
-  "options_schedule_header": {"message":"Tarefas agendadas"},
-  "options_schedule_intro": {"message":"Execute um prompt automaticamente em um horário definido. Cada execução abre a página inicial em uma aba em segundo plano e registra o resultado."},
-  "options_schedule_btnNew": {"message":"Nova tarefa"},
-  "options_schedule_btnRunNow": {"message":"Executar agora"},
-  "options_schedule_btnEdit": {"message":"Editar"},
-  "options_schedule_btnDelete": {"message":"Excluir"},
-  "options_schedule_btnSave": {"message":"Salvar"},
-  "options_schedule_btnCancel": {"message":"Cancelar"},
-  "options_schedule_deleteConfirm": {"message":"Excluir a tarefa agendada \"$NAME$\"?","placeholders":{"name":{"content":"$1","example":"name"}}},
-  "options_schedule_empty": {"message":"Nenhuma tarefa agendada ainda."},
-  "options_schedule_enabled": {"message":"Ativa"},
-  "options_schedule_nextRun": {"message":"Próxima execução: $WHEN$","placeholders":{"when":{"content":"$1","example":"when"}}},
-  "options_schedule_nextRun_none": {"message":"Sem próxima execução"},
-  "options_schedule_lastRuns": {"message":"Execuções recentes"},
-  "options_schedule_noRuns": {"message":"Nenhuma execução ainda."},
-  "options_schedule_runStarted": {"message":"Execução iniciada. O resultado aparece nas execuções recentes."},
-  "options_schedule_formNew": {"message":"Nova tarefa agendada"},
-  "options_schedule_formEdit": {"message":"Editar tarefa agendada"},
-  "options_schedule_freqDesc_once": {"message":"Uma vez em $DATE$ às $TIME$","placeholders":{"date":{"content":"$1","example":"date"},"time":{"content":"$2","example":"time"}}},
-  "options_schedule_freqDesc_daily": {"message":"Todo dia às $TIME$","placeholders":{"time":{"content":"$1","example":"time"}}},
-  "options_schedule_freqDesc_weekly": {"message":"Toda $WEEKDAY$ às $TIME$","placeholders":{"weekday":{"content":"$1","example":"weekday"},"time":{"content":"$2","example":"time"}}},
-  "options_schedule_freqDesc_monthly": {"message":"Dia $DAY$ de cada mês às $TIME$","placeholders":{"day":{"content":"$1","example":"day"},"time":{"content":"$2","example":"time"}}},
-  "options_schedule_freq_once": {"message":"Uma vez"},
-  "options_schedule_freq_daily": {"message":"Diária"},
-  "options_schedule_freq_weekly": {"message":"Semanal"},
-  "options_schedule_freq_monthly": {"message":"Mensal"},
-  "options_schedule_mode_act": {"message":"Agir"},
-  "options_schedule_mode_plan": {"message":"Planejar"},
-  "options_schedule_mode_chat": {"message":"Conversar"},
-  "options_schedule_field_prompt": {"message":"Prompt"},
-  "options_schedule_field_prompt_hint": {"message":"O que o agente deve fazer, ex.: \"Verificar se a página de checkout carrega\""},
-  "options_schedule_field_mode": {"message":"Modo"},
-  "options_schedule_field_frequency": {"message":"Frequência"},
-  "options_schedule_field_startUrl": {"message":"URL inicial"},
-  "options_schedule_field_startUrl_hint": {"message":"Aberta em uma aba em segundo plano antes da execução. Obrigatória no modo Agir."},
-  "options_schedule_field_date": {"message":"Data"},
-  "options_schedule_field_weekday": {"message":"Dia da semana"},
-  "options_schedule_field_dayOfMonth": {"message":"Dia do mês"},
-  "options_schedule_field_dayOfMonth_hint": {"message":"Em meses com menos dias, a tarefa roda no último dia."},
-  "options_schedule_field_time": {"message":"Horário"},
-  "options_schedule_field_enabled": {"message":"Ativa"},
-  "options_schedule_weekday_0": {"message":"domingo"},
-  "options_schedule_weekday_1": {"message":"segunda-feira"},
-  "options_schedule_weekday_2": {"message":"terça-feira"},
-  "options_schedule_weekday_3": {"message":"quarta-feira"},
-  "options_schedule_weekday_4": {"message":"quinta-feira"},
-  "options_schedule_weekday_5": {"message":"sexta-feira"},
-  "options_schedule_weekday_6": {"message":"sábado"},
-  "options_schedule_outcome_completed": {"message":"concluída"},
-  "options_schedule_outcome_failed": {"message":"falhou"},
-  "options_schedule_outcome_cancelled": {"message":"cancelada"},
-  "options_schedule_outcome_skipped": {"message":"ignorada"},
-  "options_schedule_outcome_blocked": {"message":"bloqueada"},
-  "options_schedule_error_promptRequired": {"message":"Informe um prompt."},
-  "options_schedule_error_startUrlRequired": {"message":"O modo Agir precisa de uma URL inicial."},
-  "options_schedule_error_startUrlInvalid": {"message":"Use um endereço completo http ou https."},
-  "options_schedule_error_timeInvalid": {"message":"Informe um horário válido."},
-  "options_schedule_error_dateInvalid": {"message":"Informe uma data válida."},
-  "options_schedule_error_dateInPast": {"message":"A data já passou. Escolha uma data e horário futuros."},
-  "options_schedule_error_limit": {"message":"Você pode manter no máximo $MAX$ tarefas agendadas. Exclua uma antes.","placeholders":{"max":{"content":"$1","example":"max"}}},
-  "options_schedule_error_saveFailed": {"message":"Não foi possível salvar a tarefa agendada. Tente novamente."},
-  "options_schedule_error_runFailed": {"message":"Não foi possível iniciar a execução. Verifique se a extensão está ativa."},
-  "options_schedule_error_deleteFailed": {"message":"Não foi possível excluir a tarefa agendada."},
-  "options_schedule_error_loadFailed": {"message":"Não foi possível carregar as tarefas agendadas."},
-  "chat_schedule_btn_a11y": {"message":"Agendar tarefa"},
-  "chat_schedule_title": {"message":"Agendar tarefa"},
-  "chat_schedule_save": {"message":"Agendar"},
-  "chat_schedule_cancel": {"message":"Cancelar"},
-  "chat_schedule_saved": {"message":"Agendada. Próxima execução: $WHEN$","placeholders":{"when":{"content":"$1","example":"when"}}},
-  "chat_schedule_openOptions": {"message":"Editar em configurações"},
-  "chat_schedule_moreInOptions": {"message":"Agendamentos semanais e mensais e a lista completa ficam nas configurações."},
-  "chat_input_cmd_schedule": {"message":"Agendar este prompt"},
-  "report_screenshot": {"message":"Captura do passo"},
-  "report_screenshotHtmlOnly": {"message":"(captura disponível no relatório HTML)"},
-  "act_callPluginTool_start": {"message":"Executando a ferramenta $TOOL$ do plugin $PLUGIN$","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callPluginTool_notFound": {"message":"Ferramenta do plugin não encontrada ou desativada: $PLUGIN$ / $TOOL$","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callPluginTool_invalidArgs": {"message":"Argumentos inválidos para a ferramenta do plugin $TOOL$","placeholders":{"tool":{"content":"$1","example":"TOOL"}}},
-  "act_callPluginTool_ok": {"message":"Plugin $PLUGIN$ executou a ferramenta $TOOL$","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_callPluginTool_fail": {"message":"A ferramenta $TOOL$ do plugin $PLUGIN$ falhou","placeholders":{"plugin":{"content":"$1","example":"PLUGIN"},"tool":{"content":"$2","example":"TOOL"}}},
-  "act_runWorkflow_start": {"message":"Executando o fluxo $NAME$","placeholders":{"name":{"content":"$1","example":"Checkout"}}},
-  "act_runWorkflow_notFound": {"message":"Nenhum fluxo salvo chamado $NAME$","placeholders":{"name":{"content":"$1","example":"Checkout"}}},
-  "act_runWorkflow_invalid": {"message":"O fluxo $NAME$ não pode ser executado: $ERROR$","placeholders":{"name":{"content":"$1","example":"Checkout"},"error":{"content":"$2","example":"Variáveis do fluxo ausentes: email"}}},
-  "act_runWorkflow_stepFail": {"message":"Passo $INDEX$ do fluxo falhou ($LABEL$)","placeholders":{"index":{"content":"$1","example":"3"},"label":{"content":"$2","example":"clique"}}},
-  "act_runWorkflow_stopped": {"message":"O fluxo $NAME$ foi interrompido antes de terminar","placeholders":{"name":{"content":"$1","example":"Checkout"}}},
-  "act_runWorkflow_ok": {"message":"O fluxo $NAME$ executou $COUNT$ ações","placeholders":{"name":{"content":"$1","example":"Checkout"},"count":{"content":"$2","example":"5"}}},
-  "act_mapSite_start": {"message":"Mapeando o site"},
-  "act_mapSite_badUrl": {"message":"O mapa do site precisa de um endereço http ou https"},
-  "act_mapSite_empty": {"message":"Nenhuma página de $HOST$ pôde ser lida para o mapa do site","placeholders":{"host":{"content":"$1","example":"loja.exemplo.com"}}},
-  "act_mapSite_userPlugin": {"message":"Já existe um plugin do navegador chamado $NAME$ com o id deste mapa","placeholders":{"name":{"content":"$1","example":"Site map: loja.exemplo.com"}}},
-  "act_mapSite_ok": {"message":"Mapa do site de $HOST$ salvo a partir de $COUNT$ páginas","placeholders":{"host":{"content":"$1","example":"loja.exemplo.com"},"count":{"content":"$2","example":"12"}}},
-  "bg_record_buildFailed": {"message":"Não foi possível salvar o fluxo a partir da gravação"},
-  "act_listPlugins_start": {"message":"Listando plugins do navegador"},
-  "act_listPlugins_none": {"message":"Nenhum plugin do navegador está ativo"},
-  "act_listPlugins_ok": {"message":"Plugins ativos do navegador: $COUNT$","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "act_savePlugin_start": {"message":"Salvando plugin do navegador"},
-  "act_savePlugin_ok": {"message":"Plugin salvo: $NAME$","placeholders":{"name":{"content":"$1","example":"NAME"}}},
-  "act_savePlugin_fail": {"message":"O plugin não foi salvo: definição inválida"},
-  "options_tabs_plugins": {"message":"Plugins"},
-  "options_plugins_header": {"message":"Plugins do navegador"},
-  "options_plugins_intro": {"message":"Plugins adicionam ferramentas que executam JavaScript na página. O agente pode chamá-las durante as tarefas e também pode criar plugins por conta própria."},
-  "options_plugins_toolsCount": {"message":"$COUNT$ ferramentas","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "options_plugins_btnNew": {"message":"Novo plugin"},
-  "options_plugins_btnEdit": {"message":"Editar"},
-  "options_plugins_btnDelete": {"message":"Excluir"},
-  "options_plugins_btnExport": {"message":"Exportar JSON"},
-  "options_plugins_btnImport": {"message":"Importar"},
-  "options_plugins_btnSave": {"message":"Salvar plugin"},
-  "options_plugins_btnCancel": {"message":"Cancelar"},
-  "options_plugins_btnAddTool": {"message":"Adicionar ferramenta"},
-  "options_plugins_btnRemoveTool": {"message":"Remover ferramenta"},
-  "options_plugins_enabled": {"message":"Ativo"},
-  "options_plugins_empty": {"message":"Nenhum plugin ainda. Crie um, importe um arquivo JSON ou peça ao agente para criar um."},
-  "options_plugins_matchesAll": {"message":"Todos os sites"},
-  "options_plugins_createdBy_user": {"message":"Criado por você"},
-  "options_plugins_createdBy_agent": {"message":"Criado pelo agente"},
-  "options_plugins_deleteConfirm": {"message":"Excluir o plugin \"$NAME$\"?","placeholders":{"name":{"content":"$1","example":"NAME"}}},
-  "options_plugins_importLabel": {"message":"Cole o JSON do plugin (um plugin ou uma lista de plugins)"},
-  "options_plugins_importFile": {"message":"Escolher arquivo JSON"},
-  "options_plugins_imported": {"message":"Plugins importados: $COUNT$","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "options_plugins_form_titleNew": {"message":"Novo plugin"},
-  "options_plugins_form_titleEdit": {"message":"Editar plugin"},
-  "options_plugins_form_name": {"message":"Nome"},
-  "options_plugins_form_description": {"message":"Descrição"},
-  "options_plugins_form_matches": {"message":"Sites (globs de URL, separados por vírgula)"},
-  "options_plugins_form_matchesHint": {"message":"Exemplo: example.com, *.loja.com/carrinho*. Deixe vazio para todos os sites."},
-  "options_plugins_form_instructions": {"message":"Instruções para o agente"},
-  "options_plugins_form_toolsHeader": {"message":"Ferramentas"},
-  "options_plugins_form_toolName": {"message":"Nome da ferramenta (snake_case)"},
-  "options_plugins_form_toolDescription": {"message":"Descrição da ferramenta"},
-  "options_plugins_form_toolParams": {"message":"Parâmetros (objeto JSON)"},
-  "options_plugins_form_toolParamsHint": {"message":"Exemplo: {\"max\": {\"type\": \"number\", \"required\": false, \"description\": \"máximo de itens\"}}"},
-  "options_plugins_form_toolCode": {"message":"Código (corpo de uma função async; recebe args e retorna um valor JSON)"},
-  "options_plugins_error_loadFailed": {"message":"Não foi possível carregar os plugins."},
-  "options_plugins_error_saveFailed": {"message":"Não foi possível salvar o plugin."},
-  "options_plugins_error_deleteFailed": {"message":"Não foi possível excluir o plugin."},
-  "options_plugins_error_importFailed": {"message":"Não foi possível importar os plugins."},
-  "options_plugins_error_invalidJson": {"message":"O texto não é um JSON válido."},
-  "options_plugins_error_invalidParams": {"message":"Os parâmetros devem ser um objeto JSON."},
-  "options_plugins_error_invalid": {"message":"Plugin inválido: $DETAIL$","placeholders":{"detail":{"content":"$1","example":"DETAIL"}}},
-  "act_listMcpTools_start": {"message":"Listando ferramentas MCP"},
-  "act_listMcpTools_none": {"message":"Nenhum servidor MCP está ativado"},
-  "act_listMcpTools_ok": {"message":"Ferramentas MCP de $COUNT$ servidores ativados","placeholders":{"count":{"content":"$1","example":"COUNT"}}},
-  "act_callMcpTool_start": {"message":"Chamando a ferramenta MCP $TOOL$ em $SERVER$","placeholders":{"tool":{"content":"$1","example":"TOOL"},"server":{"content":"$2","example":"SERVER"}}},
-  "act_callMcpTool_ok": {"message":"Ferramenta MCP concluída: $TOOL$","placeholders":{"tool":{"content":"$1","example":"TOOL"}}},
-  "act_callMcpTool_fail": {"message":"Ferramenta MCP falhou: $TOOL$","placeholders":{"tool":{"content":"$1","example":"TOOL"}}},
-  "act_callMcpTool_notFound": {"message":"Nenhum servidor MCP ativado chamado $SERVER$","placeholders":{"server":{"content":"$1","example":"SERVER"}}},
-  "act_webFetch_start": {"message":"Buscando $URL$","placeholders":{"url":{"content":"$1","example":"URL"}}},
-  "act_webFetch_ok": {"message":"Página obtida: $URL$","placeholders":{"url":{"content":"$1","example":"URL"}}},
-  "act_webFetch_fail": {"message":"Não foi possível obter $URL$","placeholders":{"url":{"content":"$1","example":"URL"}}},
-  "act_todoWrite_header": {"message":"Checklist: $DONE$ de $TOTAL$ concluídos","placeholders":{"done":{"content":"$1","example":"DONE"},"total":{"content":"$2","example":"TOTAL"}}},
-  "options_tabs_mcp": {"message":"MCP"},
-  "options_mcpServers_header": {"message":"Servidores MCP"},
-  "options_mcp_intro": {"message":"Servidores MCP remotos (Streamable HTTP). O agente pode listar as ferramentas e chamá-las durante as tarefas."},
-  "options_mcp_btnNew": {"message":"Adicionar servidor"},
-  "options_mcp_btnEdit": {"message":"Editar"},
-  "options_mcp_btnDelete": {"message":"Excluir"},
-  "options_mcp_btnSave": {"message":"Salvar"},
-  "options_mcp_btnCancel": {"message":"Cancelar"},
-  "options_mcp_btnTest": {"message":"Testar conexão"},
-  "options_mcp_btnTesting": {"message":"Testando..."},
-  "options_mcp_empty": {"message":"Nenhum servidor MCP ainda."},
-  "options_mcp_enabled": {"message":"Ativado"},
-  "options_mcp_formNew": {"message":"Novo servidor MCP"},
-  "options_mcp_formEdit": {"message":"Editar servidor MCP"},
-  "options_mcp_fieldName": {"message":"Nome"},
-  "options_mcp_fieldUrl": {"message":"URL do endpoint"},
-  "options_mcp_fieldHeaders": {"message":"Cabeçalhos"},
-  "options_mcp_headersHint": {"message":"Um por linha, como Nome: valor (por exemplo Authorization: Bearer ...). Fica salvo somente neste dispositivo."},
-  "options_mcp_testOk": {"message":"Conectado: $COUNT$ ferramentas ($NAMES$)","placeholders":{"count":{"content":"$1","example":"COUNT"},"names":{"content":"$2","example":"NAMES"}}},
-  "options_mcp_deleteConfirm": {"message":"Remover o servidor MCP $NAME$?","placeholders":{"name":{"content":"$1","example":"NAME"}}},
-  "options_mcp_error_loadFailed": {"message":"Não foi possível carregar os servidores MCP. Veja o console para detalhes."},
-  "options_mcp_error_saveFailed": {"message":"Não foi possível salvar o servidor MCP. Veja o console para detalhes."},
-  "options_mcp_error_deleteFailed": {"message":"Não foi possível remover o servidor MCP. Veja o console para detalhes."},
-  "options_mcp_error_invalidUrl": {"message":"Informe uma URL válida começando com http:// ou https://."},
-  "options_mcp_error_invalidHeader": {"message":"Cada cabeçalho precisa de um nome, como Nome: valor."},
-  "options_mcp_error_nameRequired": {"message":"Informe um nome para o servidor."},
-  "options_mcp_error_testFailed": {"message":"A conexão falhou. Veja o console para detalhes."},
+  "options_tabs_schedules": { "message": "Tarefas agendadas" },
+  "options_schedule_header": { "message": "Tarefas agendadas" },
+  "options_schedule_intro": {
+    "message": "Execute um prompt automaticamente em um horário definido. Cada execução abre a página inicial em uma aba em segundo plano e registra o resultado."
+  },
+  "options_schedule_btnNew": { "message": "Nova tarefa" },
+  "options_schedule_btnRunNow": { "message": "Executar agora" },
+  "options_schedule_btnEdit": { "message": "Editar" },
+  "options_schedule_btnDelete": { "message": "Excluir" },
+  "options_schedule_btnSave": { "message": "Salvar" },
+  "options_schedule_btnCancel": { "message": "Cancelar" },
+  "options_schedule_deleteConfirm": {
+    "message": "Excluir a tarefa agendada \"$NAME$\"?",
+    "placeholders": { "name": { "content": "$1", "example": "name" } }
+  },
+  "options_schedule_empty": { "message": "Nenhuma tarefa agendada ainda." },
+  "options_schedule_enabled": { "message": "Ativa" },
+  "options_schedule_nextRun": {
+    "message": "Próxima execução: $WHEN$",
+    "placeholders": { "when": { "content": "$1", "example": "when" } }
+  },
+  "options_schedule_nextRun_none": { "message": "Sem próxima execução" },
+  "options_schedule_lastRuns": { "message": "Execuções recentes" },
+  "options_schedule_noRuns": { "message": "Nenhuma execução ainda." },
+  "options_schedule_runStarted": { "message": "Execução iniciada. O resultado aparece nas execuções recentes." },
+  "options_schedule_formNew": { "message": "Nova tarefa agendada" },
+  "options_schedule_formEdit": { "message": "Editar tarefa agendada" },
+  "options_schedule_freqDesc_once": {
+    "message": "Uma vez em $DATE$ às $TIME$",
+    "placeholders": { "date": { "content": "$1", "example": "date" }, "time": { "content": "$2", "example": "time" } }
+  },
+  "options_schedule_freqDesc_daily": {
+    "message": "Todo dia às $TIME$",
+    "placeholders": { "time": { "content": "$1", "example": "time" } }
+  },
+  "options_schedule_freqDesc_weekly": {
+    "message": "Toda $WEEKDAY$ às $TIME$",
+    "placeholders": {
+      "weekday": { "content": "$1", "example": "weekday" },
+      "time": { "content": "$2", "example": "time" }
+    }
+  },
+  "options_schedule_freqDesc_monthly": {
+    "message": "Dia $DAY$ de cada mês às $TIME$",
+    "placeholders": { "day": { "content": "$1", "example": "day" }, "time": { "content": "$2", "example": "time" } }
+  },
+  "options_schedule_freq_once": { "message": "Uma vez" },
+  "options_schedule_freq_daily": { "message": "Diária" },
+  "options_schedule_freq_weekly": { "message": "Semanal" },
+  "options_schedule_freq_monthly": { "message": "Mensal" },
+  "options_schedule_mode_act": { "message": "Agir" },
+  "options_schedule_mode_plan": { "message": "Planejar" },
+  "options_schedule_mode_chat": { "message": "Conversar" },
+  "options_schedule_field_prompt": { "message": "Prompt" },
+  "options_schedule_field_prompt_hint": {
+    "message": "O que o agente deve fazer, ex.: \"Verificar se a página de checkout carrega\""
+  },
+  "options_schedule_field_mode": { "message": "Modo" },
+  "options_schedule_field_frequency": { "message": "Frequência" },
+  "options_schedule_field_startUrl": { "message": "URL inicial" },
+  "options_schedule_field_startUrl_hint": {
+    "message": "Aberta em uma aba em segundo plano antes da execução. Obrigatória no modo Agir."
+  },
+  "options_schedule_field_date": { "message": "Data" },
+  "options_schedule_field_weekday": { "message": "Dia da semana" },
+  "options_schedule_field_dayOfMonth": { "message": "Dia do mês" },
+  "options_schedule_field_dayOfMonth_hint": { "message": "Em meses com menos dias, a tarefa roda no último dia." },
+  "options_schedule_field_time": { "message": "Horário" },
+  "options_schedule_field_enabled": { "message": "Ativa" },
+  "options_schedule_weekday_0": { "message": "domingo" },
+  "options_schedule_weekday_1": { "message": "segunda-feira" },
+  "options_schedule_weekday_2": { "message": "terça-feira" },
+  "options_schedule_weekday_3": { "message": "quarta-feira" },
+  "options_schedule_weekday_4": { "message": "quinta-feira" },
+  "options_schedule_weekday_5": { "message": "sexta-feira" },
+  "options_schedule_weekday_6": { "message": "sábado" },
+  "options_schedule_outcome_completed": { "message": "concluída" },
+  "options_schedule_outcome_failed": { "message": "falhou" },
+  "options_schedule_outcome_cancelled": { "message": "cancelada" },
+  "options_schedule_outcome_skipped": { "message": "ignorada" },
+  "options_schedule_outcome_blocked": { "message": "bloqueada" },
+  "options_schedule_error_promptRequired": { "message": "Informe um prompt." },
+  "options_schedule_error_startUrlRequired": { "message": "O modo Agir precisa de uma URL inicial." },
+  "options_schedule_error_startUrlInvalid": { "message": "Use um endereço completo http ou https." },
+  "options_schedule_error_timeInvalid": { "message": "Informe um horário válido." },
+  "options_schedule_error_dateInvalid": { "message": "Informe uma data válida." },
+  "options_schedule_error_dateInPast": { "message": "A data já passou. Escolha uma data e horário futuros." },
+  "options_schedule_error_limit": {
+    "message": "Você pode manter no máximo $MAX$ tarefas agendadas. Exclua uma antes.",
+    "placeholders": { "max": { "content": "$1", "example": "max" } }
+  },
+  "options_schedule_error_saveFailed": { "message": "Não foi possível salvar a tarefa agendada. Tente novamente." },
+  "options_schedule_error_runFailed": {
+    "message": "Não foi possível iniciar a execução. Verifique se a extensão está ativa."
+  },
+  "options_schedule_error_deleteFailed": { "message": "Não foi possível excluir a tarefa agendada." },
+  "options_schedule_error_loadFailed": { "message": "Não foi possível carregar as tarefas agendadas." },
+  "chat_schedule_btn_a11y": { "message": "Agendar tarefa" },
+  "chat_schedule_title": { "message": "Agendar tarefa" },
+  "chat_schedule_save": { "message": "Agendar" },
+  "chat_schedule_cancel": { "message": "Cancelar" },
+  "chat_schedule_saved": {
+    "message": "Agendada. Próxima execução: $WHEN$",
+    "placeholders": { "when": { "content": "$1", "example": "when" } }
+  },
+  "chat_schedule_openOptions": { "message": "Editar em configurações" },
+  "chat_schedule_moreInOptions": {
+    "message": "Agendamentos semanais e mensais e a lista completa ficam nas configurações."
+  },
+  "chat_input_cmd_schedule": { "message": "Agendar este prompt" },
+  "report_screenshot": { "message": "Captura do passo" },
+  "report_screenshotHtmlOnly": { "message": "(captura disponível no relatório HTML)" },
+  "act_callPluginTool_start": {
+    "message": "Executando a ferramenta $TOOL$ do plugin $PLUGIN$",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callPluginTool_notFound": {
+    "message": "Ferramenta do plugin não encontrada ou desativada: $PLUGIN$ / $TOOL$",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callPluginTool_invalidArgs": {
+    "message": "Argumentos inválidos para a ferramenta do plugin $TOOL$",
+    "placeholders": { "tool": { "content": "$1", "example": "TOOL" } }
+  },
+  "act_callPluginTool_ok": {
+    "message": "Plugin $PLUGIN$ executou a ferramenta $TOOL$",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_callPluginTool_fail": {
+    "message": "A ferramenta $TOOL$ do plugin $PLUGIN$ falhou",
+    "placeholders": {
+      "plugin": { "content": "$1", "example": "PLUGIN" },
+      "tool": { "content": "$2", "example": "TOOL" }
+    }
+  },
+  "act_runWorkflow_start": {
+    "message": "Executando o fluxo $NAME$",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" } }
+  },
+  "act_runWorkflow_notFound": {
+    "message": "Nenhum fluxo salvo chamado $NAME$",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" } }
+  },
+  "act_runWorkflow_invalid": {
+    "message": "O fluxo $NAME$ não pode ser executado: $ERROR$",
+    "placeholders": {
+      "name": { "content": "$1", "example": "Checkout" },
+      "error": { "content": "$2", "example": "Variáveis do fluxo ausentes: email" }
+    }
+  },
+  "act_runWorkflow_stepFail": {
+    "message": "Passo $INDEX$ do fluxo falhou ($LABEL$)",
+    "placeholders": { "index": { "content": "$1", "example": "3" }, "label": { "content": "$2", "example": "clique" } }
+  },
+  "act_runWorkflow_stopped": {
+    "message": "O fluxo $NAME$ foi interrompido antes de terminar",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" } }
+  },
+  "act_runWorkflow_ok": {
+    "message": "O fluxo $NAME$ executou $COUNT$ ações",
+    "placeholders": { "name": { "content": "$1", "example": "Checkout" }, "count": { "content": "$2", "example": "5" } }
+  },
+  "act_mapSite_start": { "message": "Mapeando o site" },
+  "act_mapSite_badUrl": { "message": "O mapa do site precisa de um endereço http ou https" },
+  "act_mapSite_empty": {
+    "message": "Nenhuma página de $HOST$ pôde ser lida para o mapa do site",
+    "placeholders": { "host": { "content": "$1", "example": "loja.exemplo.com" } }
+  },
+  "act_mapSite_userPlugin": {
+    "message": "Já existe um plugin do navegador chamado $NAME$ com o id deste mapa",
+    "placeholders": { "name": { "content": "$1", "example": "Site map: loja.exemplo.com" } }
+  },
+  "act_mapSite_ok": {
+    "message": "Mapa do site de $HOST$ salvo a partir de $COUNT$ páginas",
+    "placeholders": {
+      "host": { "content": "$1", "example": "loja.exemplo.com" },
+      "count": { "content": "$2", "example": "12" }
+    }
+  },
+  "bg_record_buildFailed": { "message": "Não foi possível salvar o fluxo a partir da gravação" },
+  "act_listPlugins_start": { "message": "Listando plugins do navegador" },
+  "act_listPlugins_none": { "message": "Nenhum plugin do navegador está ativo" },
+  "act_listPlugins_ok": {
+    "message": "Plugins ativos do navegador: $COUNT$",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "act_savePlugin_start": { "message": "Salvando plugin do navegador" },
+  "act_savePlugin_ok": {
+    "message": "Plugin salvo: $NAME$",
+    "placeholders": { "name": { "content": "$1", "example": "NAME" } }
+  },
+  "act_savePlugin_fail": { "message": "O plugin não foi salvo: definição inválida" },
+  "options_tabs_plugins": { "message": "Plugins" },
+  "options_plugins_header": { "message": "Plugins do navegador" },
+  "options_plugins_intro": {
+    "message": "Plugins adicionam ferramentas que executam JavaScript na página. O agente pode chamá-las durante as tarefas e também pode criar plugins por conta própria."
+  },
+  "options_plugins_toolsCount": {
+    "message": "$COUNT$ ferramentas",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "options_plugins_btnNew": { "message": "Novo plugin" },
+  "options_plugins_btnEdit": { "message": "Editar" },
+  "options_plugins_btnDelete": { "message": "Excluir" },
+  "options_plugins_btnExport": { "message": "Exportar JSON" },
+  "options_plugins_btnImport": { "message": "Importar" },
+  "options_plugins_btnSave": { "message": "Salvar plugin" },
+  "options_plugins_btnCancel": { "message": "Cancelar" },
+  "options_plugins_btnAddTool": { "message": "Adicionar ferramenta" },
+  "options_plugins_btnRemoveTool": { "message": "Remover ferramenta" },
+  "options_plugins_enabled": { "message": "Ativo" },
+  "options_plugins_empty": {
+    "message": "Nenhum plugin ainda. Crie um, importe um arquivo JSON ou peça ao agente para criar um."
+  },
+  "options_plugins_matchesAll": { "message": "Todos os sites" },
+  "options_plugins_createdBy_user": { "message": "Criado por você" },
+  "options_plugins_createdBy_agent": { "message": "Criado pelo agente" },
+  "options_plugins_deleteConfirm": {
+    "message": "Excluir o plugin \"$NAME$\"?",
+    "placeholders": { "name": { "content": "$1", "example": "NAME" } }
+  },
+  "options_plugins_importLabel": { "message": "Cole o JSON do plugin (um plugin ou uma lista de plugins)" },
+  "options_plugins_importFile": { "message": "Escolher arquivo JSON" },
+  "options_plugins_imported": {
+    "message": "Plugins importados: $COUNT$",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "options_plugins_form_titleNew": { "message": "Novo plugin" },
+  "options_plugins_form_titleEdit": { "message": "Editar plugin" },
+  "options_plugins_form_name": { "message": "Nome" },
+  "options_plugins_form_description": { "message": "Descrição" },
+  "options_plugins_form_matches": { "message": "Sites (globs de URL, separados por vírgula)" },
+  "options_plugins_form_matchesHint": {
+    "message": "Exemplo: example.com, *.loja.com/carrinho*. Deixe vazio para todos os sites."
+  },
+  "options_plugins_form_instructions": { "message": "Instruções para o agente" },
+  "options_plugins_form_toolsHeader": { "message": "Ferramentas" },
+  "options_plugins_form_toolName": { "message": "Nome da ferramenta (snake_case)" },
+  "options_plugins_form_toolDescription": { "message": "Descrição da ferramenta" },
+  "options_plugins_form_toolParams": { "message": "Parâmetros (objeto JSON)" },
+  "options_plugins_form_toolParamsHint": {
+    "message": "Exemplo: {\"max\": {\"type\": \"number\", \"required\": false, \"description\": \"máximo de itens\"}}"
+  },
+  "options_plugins_form_toolCode": {
+    "message": "Código (corpo de uma função async; recebe args e retorna um valor JSON)"
+  },
+  "options_plugins_error_loadFailed": { "message": "Não foi possível carregar os plugins." },
+  "options_plugins_error_saveFailed": { "message": "Não foi possível salvar o plugin." },
+  "options_plugins_error_deleteFailed": { "message": "Não foi possível excluir o plugin." },
+  "options_plugins_error_importFailed": { "message": "Não foi possível importar os plugins." },
+  "options_plugins_error_invalidJson": { "message": "O texto não é um JSON válido." },
+  "options_plugins_error_invalidParams": { "message": "Os parâmetros devem ser um objeto JSON." },
+  "options_plugins_error_invalid": {
+    "message": "Plugin inválido: $DETAIL$",
+    "placeholders": { "detail": { "content": "$1", "example": "DETAIL" } }
+  },
+  "act_listMcpTools_start": { "message": "Listando ferramentas MCP" },
+  "act_listMcpTools_none": { "message": "Nenhum servidor MCP está ativado" },
+  "act_listMcpTools_ok": {
+    "message": "Ferramentas MCP de $COUNT$ servidores ativados",
+    "placeholders": { "count": { "content": "$1", "example": "COUNT" } }
+  },
+  "act_callMcpTool_start": {
+    "message": "Chamando a ferramenta MCP $TOOL$ em $SERVER$",
+    "placeholders": {
+      "tool": { "content": "$1", "example": "TOOL" },
+      "server": { "content": "$2", "example": "SERVER" }
+    }
+  },
+  "act_callMcpTool_ok": {
+    "message": "Ferramenta MCP concluída: $TOOL$",
+    "placeholders": { "tool": { "content": "$1", "example": "TOOL" } }
+  },
+  "act_callMcpTool_fail": {
+    "message": "Ferramenta MCP falhou: $TOOL$",
+    "placeholders": { "tool": { "content": "$1", "example": "TOOL" } }
+  },
+  "act_callMcpTool_notFound": {
+    "message": "Nenhum servidor MCP ativado chamado $SERVER$",
+    "placeholders": { "server": { "content": "$1", "example": "SERVER" } }
+  },
+  "act_webFetch_start": {
+    "message": "Buscando $URL$",
+    "placeholders": { "url": { "content": "$1", "example": "URL" } }
+  },
+  "act_webFetch_ok": {
+    "message": "Página obtida: $URL$",
+    "placeholders": { "url": { "content": "$1", "example": "URL" } }
+  },
+  "act_webFetch_fail": {
+    "message": "Não foi possível obter $URL$",
+    "placeholders": { "url": { "content": "$1", "example": "URL" } }
+  },
+  "act_todoWrite_header": {
+    "message": "Checklist: $DONE$ de $TOTAL$ concluídos",
+    "placeholders": { "done": { "content": "$1", "example": "DONE" }, "total": { "content": "$2", "example": "TOTAL" } }
+  },
+  "options_tabs_mcp": { "message": "MCP" },
+  "options_mcpServers_header": { "message": "Servidores MCP" },
+  "options_mcp_intro": {
+    "message": "Servidores MCP remotos (Streamable HTTP). O agente pode listar as ferramentas e chamá-las durante as tarefas."
+  },
+  "options_mcp_btnNew": { "message": "Adicionar servidor" },
+  "options_mcp_btnEdit": { "message": "Editar" },
+  "options_mcp_btnDelete": { "message": "Excluir" },
+  "options_mcp_btnSave": { "message": "Salvar" },
+  "options_mcp_btnCancel": { "message": "Cancelar" },
+  "options_mcp_btnTest": { "message": "Testar conexão" },
+  "options_mcp_btnTesting": { "message": "Testando..." },
+  "options_mcp_empty": { "message": "Nenhum servidor MCP ainda." },
+  "options_mcp_enabled": { "message": "Ativado" },
+  "options_mcp_formNew": { "message": "Novo servidor MCP" },
+  "options_mcp_formEdit": { "message": "Editar servidor MCP" },
+  "options_mcp_fieldName": { "message": "Nome" },
+  "options_mcp_fieldUrl": { "message": "URL do endpoint" },
+  "options_mcp_fieldHeaders": { "message": "Cabeçalhos" },
+  "options_mcp_headersHint": {
+    "message": "Um por linha, como Nome: valor (por exemplo Authorization: Bearer ...). Fica salvo somente neste dispositivo."
+  },
+  "options_mcp_testOk": {
+    "message": "Conectado: $COUNT$ ferramentas ($NAMES$)",
+    "placeholders": {
+      "count": { "content": "$1", "example": "COUNT" },
+      "names": { "content": "$2", "example": "NAMES" }
+    }
+  },
+  "options_mcp_deleteConfirm": {
+    "message": "Remover o servidor MCP $NAME$?",
+    "placeholders": { "name": { "content": "$1", "example": "NAME" } }
+  },
+  "options_mcp_error_loadFailed": {
+    "message": "Não foi possível carregar os servidores MCP. Veja o console para detalhes."
+  },
+  "options_mcp_error_saveFailed": {
+    "message": "Não foi possível salvar o servidor MCP. Veja o console para detalhes."
+  },
+  "options_mcp_error_deleteFailed": {
+    "message": "Não foi possível remover o servidor MCP. Veja o console para detalhes."
+  },
+  "options_mcp_error_invalidUrl": { "message": "Informe uma URL válida começando com http:// ou https://." },
+  "options_mcp_error_invalidHeader": { "message": "Cada cabeçalho precisa de um nome, como Nome: valor." },
+  "options_mcp_error_nameRequired": { "message": "Informe um nome para o servidor." },
+  "options_mcp_error_testFailed": { "message": "A conexão falhou. Veja o console para detalhes." },
   "act_pageInfo_start": {
     "message": "Lendo a estrutura da página"
   },
@@ -1979,7 +2292,9 @@
       "method": { "content": "$3", "example": "cdp" }
     }
   },
-  "act_screenshot_cut": { "message": "A página é mais alta que o limite de captura, então a parte de baixo está faltando." },
+  "act_screenshot_cut": {
+    "message": "A página é mais alta que o limite de captura, então a parte de baixo está faltando."
+  },
   "act_theme_start": { "message": "Lendo o tema da página" },
   "act_theme_ok": { "message": "Tema lido" },
   "act_contrast_start": { "message": "Verificando o contraste do texto" },

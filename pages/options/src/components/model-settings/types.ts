@@ -20,5 +20,11 @@ export interface AvailableModel {
 
 export type ProviderMap = Record<string, ProviderConfig>;
 
+/** A stored provider that has no models yet and can load them from its model catalog. */
+export interface CatalogProviderEntry {
+  id: string;
+  name: string;
+}
+
 /** Provider fields that hold a list of strings and are edited as tags. */
 export type ListField = 'modelNames' | 'azureDeploymentNames';

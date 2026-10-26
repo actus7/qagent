@@ -1,9 +1,4 @@
-import {
-  agentModelStore,
-  AgentNameEnum,
-  generalSettingsStore,
-  llmProviderStore,
-} from '@extension/storage';
+import { agentModelStore, AgentNameEnum, generalSettingsStore, llmProviderStore } from '@extension/storage';
 import { t } from '@extension/i18n';
 import type { AssistantAttachment, AssistantTaskOptions } from '@extension/shared';
 import { Executor } from '../agent/executor';

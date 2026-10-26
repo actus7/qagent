@@ -51,7 +51,8 @@ export function needsAutoCompaction(messages: ChatMessage[], budget = CONTEXT_CH
 
 function buildTranscript(summary: string | null, recent: ChatMessage[]): string {
   const lines = trimToBudget(recent, MAX_TRANSCRIPT_CHARS).map(
-    message => `${message.actor === Actors.USER ? 'User' : 'Assistant'}: ${message.content.slice(0, MAX_MESSAGE_CHARS)}`,
+    message =>
+      `${message.actor === Actors.USER ? 'User' : 'Assistant'}: ${message.content.slice(0, MAX_MESSAGE_CHARS)}`,
   );
   const previous = summary ? `Earlier summary:\n${summary}\n\n` : '';
   return `${previous}Messages to fold into the summary:\n${lines.join('\n\n')}`;

@@ -26,7 +26,11 @@ function completion(body: Record<string, unknown>) {
         role: 'assistant',
         content: null,
         tool_calls: [
-          { id: 'call_1', type: 'function', function: { name: tools[0].function.name, arguments: JSON.stringify(answer) } },
+          {
+            id: 'call_1',
+            type: 'function',
+            function: { name: tools[0].function.name, arguments: JSON.stringify(answer) },
+          },
         ],
       }
     : { role: 'assistant', content: JSON.stringify(answer) };

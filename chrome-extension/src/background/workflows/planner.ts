@@ -11,7 +11,9 @@ export interface PlannedCall {
 export type WorkflowPlan = { ok: true; calls: PlannedCall[] } | { ok: false; error: string };
 
 const compactTarget = (target: WorkflowTarget): WorkflowTarget =>
-  Object.fromEntries(Object.entries(target).filter(([, value]) => value !== undefined && value !== '')) as WorkflowTarget;
+  Object.fromEntries(
+    Object.entries(target).filter(([, value]) => value !== undefined && value !== ''),
+  ) as WorkflowTarget;
 
 /** A select is replayed as two clicks: open the field, then pick the option by its text. Works for custom dropdowns. */
 function callsFor(step: WorkflowStep): PlannedCall[] {

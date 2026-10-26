@@ -158,7 +158,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
   protected withStructuredOutput: boolean;
   protected callOptions?: CallOptions;
   protected modelOutputToolName: string;
-  private structuredTools?: Record<string, ReturnType<typeof tool>>;
+  protected structuredTools?: Record<string, ReturnType<typeof tool>>;
   protected requestsPerMinute?: number;
   protected rateLimitKey: string;
   declare ModelOutput: z.infer<T>;

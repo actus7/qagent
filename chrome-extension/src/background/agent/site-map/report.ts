@@ -24,7 +24,11 @@ export interface PageReport {
   quirks: string[];
 }
 
-const stripTags = (fragment: string): string => fragment.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const stripTags = (fragment: string): string =>
+  fragment
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const clipHeading = (text: string): string => text.slice(0, MAX_HEADING_CHARS);
 

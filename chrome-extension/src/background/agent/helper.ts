@@ -22,7 +22,10 @@ const logger = createLogger('agent/helper');
 const maxOutputTokens = 1024 * 4;
 
 /** Per-call sampling settings; the AI SDK takes them on each call rather than on the model. */
-export type ChatModelSettings = Pick<LanguageModelCallOptions, 'temperature' | 'topP' | 'maxOutputTokens' | 'reasoning'>;
+export type ChatModelSettings = Pick<
+  LanguageModelCallOptions,
+  'temperature' | 'topP' | 'maxOutputTokens' | 'reasoning'
+>;
 
 /** A configured language model plus what the agents need to know about it. */
 export interface ChatModel {
@@ -247,7 +250,11 @@ export function createChatModel(providerConfig: ProviderConfig, modelConfig: Mod
       // ponytail: Ollama's OpenAI-compatible endpoint cannot set num_ctx; set the context window on the Ollama
       // model itself (Modelfile `PARAMETER num_ctx`) or add a native Ollama provider if that proves too limiting.
       return createOpenAICompatibleModel(
-        { ...providerConfig, apiKey: apiKey || 'ollama', baseUrl: `${providerConfig.baseUrl ?? 'http://localhost:11434'}/v1` },
+        {
+          ...providerConfig,
+          apiKey: apiKey || 'ollama',
+          baseUrl: `${providerConfig.baseUrl ?? 'http://localhost:11434'}/v1`,
+        },
         modelConfig,
         { name: 'ollama' },
       );

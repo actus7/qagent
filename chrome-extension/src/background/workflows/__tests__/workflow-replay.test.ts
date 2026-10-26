@@ -21,7 +21,9 @@ describe('normalizeRecording', () => {
       { kind: 'click', url, element: button, at },
       { kind: 'click', url, element: button, at },
     ];
-    expect(normalizeRecording(steps)).toEqual([{ kind: 'click', target: { selector: 'button.pay', text: 'Pay', role: 'button' } }]);
+    expect(normalizeRecording(steps)).toEqual([
+      { kind: 'click', target: { selector: 'button.pay', text: 'Pay', role: 'button' } },
+    ]);
   });
 
   it('merges consecutive typing in one field so only the last value remains', () => {
@@ -36,7 +38,14 @@ describe('normalizeRecording', () => {
 
   it('turns a redacted value into a secret variable instead of storing it', () => {
     const steps: RecordedStep[] = [
-      { kind: 'type', url, field: { role: 'textbox', name: 'Senha', selector: '#pw' }, value: '[REDIGIDO]', redacted: true, at },
+      {
+        kind: 'type',
+        url,
+        field: { role: 'textbox', name: 'Senha', selector: '#pw' },
+        value: '[REDIGIDO]',
+        redacted: true,
+        at,
+      },
     ];
     expect(normalizeRecording(steps)[0]).toMatchObject({ kind: 'fill', value: '{{secret_1}}' });
   });
@@ -81,8 +90,16 @@ describe('planWorkflowReplay', () => {
     expect(plan).toEqual({
       ok: true,
       calls: [
-        { action: 'go_to_url', input: { url: 'https://shop.example.com/rio' }, label: 'open https://shop.example.com/rio' },
-        { action: 'fill', input: { target: { selector: '#email', text: 'Email', role: 'textbox' }, text: 'a@b.com' }, label: 'fill' },
+        {
+          action: 'go_to_url',
+          input: { url: 'https://shop.example.com/rio' },
+          label: 'open https://shop.example.com/rio',
+        },
+        {
+          action: 'fill',
+          input: { target: { selector: '#email', text: 'Email', role: 'textbox' }, text: 'a@b.com' },
+          label: 'fill',
+        },
         { action: 'click', input: { target: { text: 'Country', role: 'combobox' } }, label: 'open dropdown' },
         { action: 'click', input: { target: { text: 'Brasil', role: 'option' } }, label: 'choose Brasil' },
         { action: 'press', input: { key: 'Enter' }, label: 'press Enter' },

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { t } from '@extension/i18n';
+import { fetchProviderModels } from '@extension/shared';
 import { ProviderTypeEnum, agentModelStore, getDefaultProviderConfig, llmProviderStore } from '@extension/storage';
 import type { ProviderConfig } from '@extension/storage';
 import { PROVIDER_SCROLL_DELAY_MS } from './constants';
@@ -17,7 +18,7 @@ import {
   sortProviderEntries,
   withPendingEntry,
 } from './providerUtils';
-import type { AvailableModel, ProviderMap } from './types';
+import type { AvailableModel, CatalogProviderEntry, ProviderMap } from './types';
 
 interface UseProviderSettingsOptions {
   /** Called when agents were reset because the provider or one of its models was removed. */
@@ -220,8 +221,11 @@ export function useProviderSettings({ onAgentModelsReset }: UseProviderSettingsO
     }
   };
 
-  const handleSave = async (providerId: string) => {
-    const config = withPendingEntry(providerId, providers[providerId], newModelInputs[providerId]);
+  /** `modelNamesOverride` lets the model catalog confirm a selection in the same save. */
+  const handleSave = async (providerId: string, modelNamesOverride?: string[]) => {
+    const current = providers[providerId];
+    const stored = current && modelNamesOverride ? { ...current, modelNames: modelNamesOverride } : current;
+    const config = withPendingEntry(providerId, stored, newModelInputs[providerId]);
     if (!config) {
       return;
     }
@@ -352,6 +356,34 @@ export function useProviderSettings({ onAgentModelsReset }: UseProviderSettingsO
     }
   };
 
+  /** Stored, non-Azure providers that currently offer no models, so the agent picker can load them. */
+  const providersWithoutModels = useMemo<CatalogProviderEntry[]>(() => {
+    const withModels = new Set(availableModels.map(entry => entry.provider));
+    return Object.entries(providers)
+      .filter(
+        ([providerId, config]) =>
+          providersFromStorage.has(providerId) &&
+          config.type !== ProviderTypeEnum.AzureOpenAI &&
+          !withModels.has(providerId),
+      )
+      .map(([providerId, config]) => ({ id: providerId, name: config.name || providerId }));
+  }, [providers, providersFromStorage, availableModels]);
+
+  /** Fetches the provider's model list and stores it as modelNames. Returns how many models were stored. */
+  const loadCatalogModels = async (providerId: string): Promise<number> => {
+    const stored = await llmProviderStore.getProvider(providerId);
+    if (!stored) {
+      return 0;
+    }
+    const models = await fetchProviderModels({ ...stored, type: stored.type ?? '' });
+    if (models.length === 0) {
+      return 0;
+    }
+    await llmProviderStore.setProvider(providerId, { ...stored, modelNames: models });
+    setProviders(prev => ({ ...prev, [providerId]: { ...(prev[providerId] ?? stored), modelNames: models } }));
+    return models.length;
+  };
+
   const sortedProviders = useMemo(
     () => sortProviderEntries(providers, providersFromStorage, modifiedProviders),
     [providers, providersFromStorage, modifiedProviders],
@@ -379,6 +411,8 @@ export function useProviderSettings({ onAgentModelsReset }: UseProviderSettingsO
     removeAzureDeployment,
     handleAzureApiVersionChange,
     handleSave,
+    loadCatalogModels,
+    providersWithoutModels,
     handleDelete,
     handleCancelProvider,
     handleProviderSelection,

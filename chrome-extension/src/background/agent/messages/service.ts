@@ -83,7 +83,10 @@ export default class MessageManager {
     // Add sensitive data info if sensitive data is provided
     if (this.settings.sensitiveData) {
       const info = `Here are placeholders for sensitive data: ${Object.keys(this.settings.sensitiveData)}`;
-      this.addMessageWithTokens(userMessage(`${info}\nTo use them, write <secret>the placeholder name</secret>`), 'init');
+      this.addMessageWithTokens(
+        userMessage(`${info}\nTo use them, write <secret>the placeholder name</secret>`),
+        'init',
+      );
     }
 
     // Add example output
@@ -289,7 +292,9 @@ export default class MessageManager {
     if (typeof message.content === 'string') {
       return { ...message, content: replaceSensitive(message.content) } as ModelMessage;
     }
-    const content = message.content.map(part => (part.type === 'text' ? { ...part, text: replaceSensitive(part.text) } : part));
+    const content = message.content.map(part =>
+      part.type === 'text' ? { ...part, text: replaceSensitive(part.text) } : part,
+    );
     return { ...message, content } as ModelMessage;
   }
 
@@ -338,9 +343,7 @@ export default class MessageManager {
           `Removed ${images} image(s) with ${removed} tokens - total tokens now: ${this.history.totalTokens}/${this.settings.maxInputTokens}`,
         );
       }
-      const text = lastMsg.message.content
-        .map(part => (part.type === 'text' ? part.text : ''))
-        .join('');
+      const text = lastMsg.message.content.map(part => (part.type === 'text' ? part.text : '')).join('');
       this.history.messages[this.history.messages.length - 1] = {
         ...lastMsg,
         message: { ...lastMsg.message, content: text } as ModelMessage,
@@ -351,7 +354,11 @@ export default class MessageManager {
     if (diff <= 0) return;
 
     const trimmed = this.history.messages[this.history.messages.length - 1];
-    if (trimmed.message.role !== 'user' || typeof trimmed.message.content !== 'string' || trimmed.metadata.tokens <= 0) {
+    if (
+      trimmed.message.role !== 'user' ||
+      typeof trimmed.message.content !== 'string' ||
+      trimmed.metadata.tokens <= 0
+    ) {
       this.trimToTokenBudget();
       return;
     }

@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { extractRequestId, parseBridgeRequest } from '../mcpBridge/protocol';
 
 const frame = (overrides: Record<string, unknown> = {}) =>
-  JSON.stringify({ type: 'request', id: 'req-1', method: 'run_task', params: { task: 'Abrir o carrinho' }, ...overrides });
+  JSON.stringify({
+    type: 'request',
+    id: 'req-1',
+    method: 'run_task',
+    params: { task: 'Abrir o carrinho' },
+    ...overrides,
+  });
 
 describe('parseBridgeRequest', () => {
   it('accepts a run_task request and applies the defaults', () => {
@@ -37,8 +43,9 @@ describe('parseBridgeRequest', () => {
     expect(() => parseBridgeRequest(frame({ params: { task: 'x', permission: 'auto' } }))).toThrow();
     expect(() => parseBridgeRequest(frame({ params: { task: 'x', url: 'javascript:alert(1)' } }))).toThrow();
     expect(() => parseBridgeRequest(frame({ params: { task: 'x', url: 'file:///etc/passwd' } }))).toThrow();
-    expect(parseBridgeRequest(frame({ params: { task: 'x', url: 'https://example.com' } })))
-      .toMatchObject({ params: { url: 'https://example.com' } });
+    expect(parseBridgeRequest(frame({ params: { task: 'x', url: 'https://example.com' } }))).toMatchObject({
+      params: { url: 'https://example.com' },
+    });
   });
 
   it('accepts list, status and cancel requests only with empty params', () => {

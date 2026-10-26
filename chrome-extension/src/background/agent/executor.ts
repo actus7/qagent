@@ -25,7 +25,33 @@ import {
 } from './agents/errors';
 import { chatHistoryStore } from '@extension/storage/lib/chat';
 import type { AgentStepHistory } from './history';
-import type { GeneralSettingsConfig } from '@extension/storage';
+import {
+  browserPluginsStore,
+  DEFAULT_JEV_CONFIG,
+  jevStore,
+  workflowsStore,
+  type GeneralSettingsConfig,
+} from '@extension/storage';
+import { decideWithJev, isJevFeatureOn, type JevRuntime } from '@src/background/services/jev/runtime';
+import { JevTaskMetrics } from '@src/background/services/jev/metrics';
+import {
+  buildDoneCheckFinalAnswer,
+  buildDoneCheckRequest,
+  decideDoneCheck,
+} from '@src/background/services/jev/done-check';
+import { buildPlannerSkipRequest, decidePlannerSkip } from '@src/background/services/jev/planner-skip';
+import {
+  actionNamesForGroups,
+  hostOf,
+  buildToolRoutingRequest,
+  selectActionGroups,
+} from '@src/background/services/jev/tool-routing';
+import {
+  buildPluginRoutingRequest,
+  buildRoutingCandidates,
+  decidePluginRouting,
+  pluginHintText,
+} from '@src/background/services/jev/plugin-routing';
 import { analytics } from '../services/analytics';
 import { createLoopDetectionState, evaluateLoopDetection, type LoopDetectionState } from './loop-detection';
 import type { AssistantAttachment } from '@extension/shared';
@@ -36,6 +62,9 @@ import { userMessage } from './messages/model-messages';
 const logger = createLogger('Executor');
 const MAX_TASK_CHAIN_LENGTH = 50;
 const PAUSE_POLL_INTERVAL_MS = 200;
+// Jev done-check sees the last few action results and a bounded page text, so its question stays small
+const DONE_CHECK_RESULTS = 5;
+const DONE_CHECK_PAGE_CHARS = 4000;
 // The system prompt is built from the first task, so a QA follow-up needs its own note for the full report.
 const QA_FOLLOW_UP_NOTE =
   'This follow-up is a QA/test request: in the done action, give the full structured QA report (Relatório Final) described in the system instructions, and a complete final_answer.';
@@ -64,6 +93,10 @@ export class Executor {
   private plannerDisabledForTask = false;
   private readonly reportStyle: ReportStyle;
   private tasks: string[] = [];
+  private jevRuntime: JevRuntime | null = null;
+  private routedHost: string | null = null;
+  private toolsRestricted = false;
+  private readonly allActionNames: string[];
   constructor(
     task: string,
     taskId: string,
@@ -99,7 +132,9 @@ export class Executor {
     this.plannerPrompt = new PlannerPrompt(this.reportStyle);
 
     const actionBuilder = new ActionBuilder(context);
-    const navigatorActionRegistry = new NavigatorActionRegistry(actionBuilder.buildDefaultActions());
+    const defaultActions = actionBuilder.buildDefaultActions();
+    this.allActionNames = defaultActions.map(action => action.name());
+    const navigatorActionRegistry = new NavigatorActionRegistry(defaultActions);
 
     // Initialize agents with their respective prompts
     this.navigator = new NavigatorAgent(navigatorActionRegistry, {
@@ -196,10 +231,18 @@ export class Executor {
     // Single-goal requests run without planner calls: the navigator starts directly and its done is final
     this.plannerDisabledForTask = isSimpleTask(currentTask);
     this.loopDetectionState = createLoopDetectionState();
+    this.routedHost = null;
+    this.jevRuntime = await this.loadJevRuntime(currentTask);
+    this.context.jevRuntime = this.jevRuntime;
+    if (this.toolsRestricted) {
+      this.navigator.restrictActions(null);
+      this.toolsRestricted = false;
+    }
     const allowedMaxSteps = this.context.options.maxSteps;
 
     try {
       this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_START, this.context.taskId);
+      await this.applyJevPreflight(currentTask);
 
       // Track task start
       void analytics.trackTaskStart(this.context.taskId);
@@ -218,6 +261,8 @@ export class Executor {
         if (await this.shouldStop()) {
           break;
         }
+
+        await this.routeToolsForHost(currentTask);
 
         // Run planner periodically for guidance
         if (
@@ -242,6 +287,12 @@ export class Executor {
           logger.info('🔄 Navigator indicates completion - will be validated by next planner run');
           // ponytail: without a planner there is no validation cycle, so the navigator's done is final
           if (this.plannerDisabledForTask) break;
+        }
+
+        // A clean step that Jev confirms as complete finishes the task, so the next navigator call is skipped
+        if (!navigatorDone && this.isCleanStep() && (await this.checkDoneWithJev(currentTask))) {
+          navigatorDone = true;
+          break;
         }
       }
 
@@ -304,6 +355,7 @@ export class Executor {
         void analytics.trackTaskFailed(this.context.taskId, errorCategory);
       }
     } finally {
+      this.logTaskTiming();
       if (import.meta.env.DEV) {
         logger.debug('Executor history', JSON.stringify(this.context.history, null, 2));
       }
@@ -340,6 +392,7 @@ export class Executor {
 
       // Execute planner
       this.context.messageManager.cutMessages();
+      this.jevRuntime?.metrics.recordLlmCall();
       const planOutput = await this.planner.execute();
       if (planOutput.result) {
         this.context.messageManager.addPlan(JSON.stringify(planOutput.result), positionForPlan);
@@ -447,6 +500,109 @@ export class Executor {
       }
     }
     return false;
+  }
+
+  private async loadJevRuntime(task: string): Promise<JevRuntime> {
+    const config = await jevStore.getConfig().catch(error => {
+      logger.error('Could not read Jev settings; Jev features stay off for this task', error);
+      return DEFAULT_JEV_CONFIG;
+    });
+    return { config, metrics: new JevTaskMetrics(), task };
+  }
+
+  /** Decisions made before the first planner call: skipping the planner and hinting at a plugin or workflow. */
+  private async applyJevPreflight(task: string): Promise<void> {
+    const runtime = this.jevRuntime;
+    if (!runtime) return;
+    // QA and report tasks keep the planner: its validation writes the structured report
+    if (!this.plannerDisabledForTask && this.reportStyle === 'concise' && isJevFeatureOn(runtime, 'plannerSkip')) {
+      const singleStep = await decideWithJev(
+        runtime,
+        'plannerSkip',
+        buildPlannerSkipRequest(task),
+        decidePlannerSkip,
+        this.context.controller.signal,
+      );
+      if (singleStep) this.plannerDisabledForTask = true;
+    }
+    if (isJevFeatureOn(runtime, 'pluginRouting')) {
+      await this.addPluginRoutingHint(runtime, task);
+    }
+  }
+
+  private async addPluginRoutingHint(runtime: JevRuntime, task: string): Promise<void> {
+    try {
+      const url = (await this.context.browserContext.getCachedState()).url;
+      const [plugins, workflows] = await Promise.all([browserPluginsStore.getAll(), workflowsStore.getAll()]);
+      const candidates = buildRoutingCandidates(plugins, workflows, url);
+      if (candidates.length === 0) return;
+      const hit = await decideWithJev(
+        runtime,
+        'pluginRouting',
+        buildPluginRoutingRequest(task, url, candidates),
+        (answers, threshold) => decidePluginRouting(answers, candidates, threshold),
+        this.context.controller.signal,
+      );
+      if (hit) this.context.messageManager.addMessageWithTokens(userMessage(pluginHintText(hit)), null);
+    } catch (error) {
+      logger.error('Plugin routing skipped; the navigator sees the full plugin list', error);
+    }
+  }
+
+  /** Narrows the offered actions once per task, and again when the host changes. */
+  private async routeToolsForHost(task: string): Promise<void> {
+    const runtime = this.jevRuntime;
+    if (!runtime || !isJevFeatureOn(runtime, 'toolRouting')) return;
+    const host = hostOf((await this.context.browserContext.getCachedState()).url);
+    // A blank page has no host yet; routing waits for the first real page
+    if (!host || host === this.routedHost) return;
+    this.routedHost = host;
+    const groups = await decideWithJev(
+      runtime,
+      'toolRouting',
+      buildToolRoutingRequest(task, host),
+      selectActionGroups,
+      this.context.controller.signal,
+    );
+    if (groups) {
+      this.navigator.restrictActions(actionNamesForGroups(this.allActionNames, groups));
+      this.toolsRestricted = true;
+    }
+  }
+
+  private isCleanStep(): boolean {
+    const { consecutiveFailures, paused, stopped } = this.context;
+    return consecutiveFailures === 0 && !paused && !stopped;
+  }
+
+  /** Jev done-check: when confident, the task finishes with the last results as its final answer, like a done action. */
+  private async checkDoneWithJev(task: string): Promise<boolean> {
+    const runtime = this.jevRuntime;
+    if (!runtime || !isJevFeatureOn(runtime, 'doneCheck')) return false;
+    const state = await this.context.browserContext.getCachedState();
+    const recentResults = this.context.runActions
+      .slice(-DONE_CHECK_RESULTS)
+      .flatMap(action => (action.content?.trim() ? [action.content] : []));
+    const pageText = state.elementTree
+      .clickableElementsToString(this.context.options.includeAttributes)
+      .slice(0, DONE_CHECK_PAGE_CHARS);
+    const complete = await decideWithJev(
+      runtime,
+      'doneCheck',
+      buildDoneCheckRequest({ task, url: state.url, title: state.title, pageText, recentResults }),
+      decideDoneCheck,
+      this.context.controller.signal,
+    );
+    if (!complete) return false;
+    this.context.finalAnswer = buildDoneCheckFinalAnswer(t('exec_jev_doneCheck_note'), recentResults);
+    this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, this.context.finalAnswer);
+    return true;
+  }
+
+  /** Timing and call counts for the task, logged only in chat debug mode. */
+  private logTaskTiming(): void {
+    if (!this.generalSettings?.chatDebugMode || !this.jevRuntime) return;
+    logger.info('Task timing', JSON.stringify({ taskId: this.context.taskId, ...this.jevRuntime.metrics.summary() }));
   }
 
   private async shouldStop(): Promise<boolean> {

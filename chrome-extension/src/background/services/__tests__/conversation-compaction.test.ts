@@ -4,12 +4,7 @@ import type * as StorageModule from '@extension/storage';
 import type * as CompactionModule from '../conversation-compaction';
 import { installChromeStorageMock } from '../../__tests__/utils/chromeStorageMock';
 import { fakeChatModel } from '../../__tests__/utils/fakeChatModel';
-import {
-  COMPACTION_KIND,
-  needsAutoCompaction,
-  selectContext,
-  trimToBudget,
-} from '../conversation-compaction';
+import { COMPACTION_KIND, needsAutoCompaction, selectContext, trimToBudget } from '../conversation-compaction';
 
 // One mock instance shared with the modules re-imported after vi.resetModules()
 const ai = vi.hoisted(() => ({ generateText: vi.fn() }));

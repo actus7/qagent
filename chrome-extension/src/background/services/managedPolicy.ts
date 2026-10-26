@@ -36,7 +36,10 @@ export function registerManagedPolicyListener(): void {
 /** Refuses the task when a configured model agent uses a provider outside allowedProviders. */
 export async function assertManagedProvidersAllowed(policy: ManagedPolicy): Promise<void> {
   if (policy.allowedProviders.length === 0) return;
-  const [models, providers] = await Promise.all([agentModelStore.getAllAgentModels(), llmProviderStore.getAllProviders()]);
+  const [models, providers] = await Promise.all([
+    agentModelStore.getAllAgentModels(),
+    llmProviderStore.getAllProviders(),
+  ]);
   for (const model of Object.values(models)) {
     const providerConfig = providers[model.provider];
     if (!providerConfig) continue;

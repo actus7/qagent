@@ -65,7 +65,9 @@ export async function loadConversationContext(
 
 export async function getConversationContext(taskId: string): Promise<ModelMessage[]> {
   const { summary, messages } = await loadConversationContext(taskId);
-  return summary ? [userMessage(`Summary of the earlier conversation (context only):\n${summary}`), ...messages] : messages;
+  return summary
+    ? [userMessage(`Summary of the earlier conversation (context only):\n${summary}`), ...messages]
+    : messages;
 }
 
 export async function streamBrowserAnswer(args: {

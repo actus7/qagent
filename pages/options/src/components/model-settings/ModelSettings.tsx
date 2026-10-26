@@ -16,7 +16,12 @@ export const ModelSettings = () => {
     <section className="space-y-6">
       <ProviderSection settings={providerSettings} />
 
-      <AgentModelsSection availableModels={providerSettings.availableModels} agentSettings={agentSettings} />
+      <AgentModelsSection
+        availableModels={providerSettings.availableModels}
+        catalogProviders={providerSettings.providersWithoutModels}
+        onLoadCatalog={providerSettings.loadCatalogModels}
+        agentSettings={agentSettings}
+      />
 
       <SpeechToTextSection
         selectedModel={speechToText.selectedSpeechToTextModel}

@@ -3,15 +3,22 @@ import { AgentNameEnum } from '@extension/storage';
 import { AgentModelSelector } from './AgentModelSelector';
 import { SECTION_CARD_CLASS } from './constants';
 import type { AgentModelSettings } from './useAgentModelSettings';
-import type { AvailableModel } from './types';
+import type { AvailableModel, CatalogProviderEntry } from './types';
 
 interface AgentModelsSectionProps {
   availableModels: AvailableModel[];
+  catalogProviders: CatalogProviderEntry[];
+  onLoadCatalog: (providerId: string) => Promise<number>;
   agentSettings: AgentModelSettings;
 }
 
 /** "Agent models" card: one selector per agent (Planner, then Navigator). */
-export function AgentModelsSection({ availableModels, agentSettings }: AgentModelsSectionProps) {
+export function AgentModelsSection({
+  availableModels,
+  catalogProviders,
+  onLoadCatalog,
+  agentSettings,
+}: AgentModelsSectionProps) {
   const { selectedModels, modelParameters, reasoningEffort } = agentSettings;
 
   return (
@@ -23,6 +30,8 @@ export function AgentModelsSection({ availableModels, agentSettings }: AgentMode
             <AgentModelSelector
               agentName={agentName}
               availableModels={availableModels}
+              catalogProviders={catalogProviders}
+              onLoadCatalog={onLoadCatalog}
               selectedModel={selectedModels[agentName]}
               parameters={modelParameters[agentName]}
               reasoningEffort={reasoningEffort[agentName]}

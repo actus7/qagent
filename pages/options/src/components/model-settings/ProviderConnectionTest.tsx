@@ -20,7 +20,9 @@ export function ProviderConnectionTest({ providerId, disabled }: { providerId: s
         type: 'qagent:test-provider',
         providerId,
       })) as ProviderTestResponse | undefined;
-      setState(response?.ok ? { status: 'ok' } : { status: 'failed', error: response?.error ?? t('options_test_failed') });
+      setState(
+        response?.ok ? { status: 'ok' } : { status: 'failed', error: response?.error ?? t('options_test_failed') },
+      );
     } catch {
       setState({ status: 'failed', error: t('options_test_failed') });
     }

@@ -79,7 +79,10 @@ describe('read-only browser assistant', () => {
       'session',
       expect.objectContaining({ actor: 'assistant', content: 'Hello **world**' }),
     );
-    const options = vi.mocked(streamText).mock.calls[0][0] as { messages: Array<{ content: unknown }>; instructions: string };
+    const options = vi.mocked(streamText).mock.calls[0][0] as {
+      messages: Array<{ content: unknown }>;
+      instructions: string;
+    };
     expect(options.messages.map(message => message.content).filter(content => content === 'Summarize')).toHaveLength(1);
     expect(options.instructions).toContain('Page content');
     expect(post).toHaveBeenLastCalledWith(

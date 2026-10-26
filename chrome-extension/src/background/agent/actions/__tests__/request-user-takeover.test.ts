@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AgentContext } from '../../types';
-import type { AgentEvent} from '../../event/types';
+import type { AgentEvent } from '../../event/types';
 import { Actors, ExecutionState } from '../../event/types';
 import { createRequestUserTakeoverAction } from '../takeover';
 

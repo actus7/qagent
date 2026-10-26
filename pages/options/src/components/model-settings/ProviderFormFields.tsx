@@ -175,6 +175,7 @@ export function ProviderFormFields({ providerId, config, isNewProvider, settings
           onInputChange={value => settings.handleModelsChange(providerId, value)}
           onInputKeyDown={event => settings.handleModelInputKeyDown(event, providerId)}
           onRemoveModel={model => settings.removeModel(providerId, model)}
+          onConfirmModelNames={modelNames => void settings.handleSave(providerId, modelNames)}
         />
       )}
 

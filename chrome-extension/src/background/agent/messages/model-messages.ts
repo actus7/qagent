@@ -53,7 +53,8 @@ export function messageText(message: ModelMessage): string {
     .map(part => {
       if (part.type === 'text') return (part as TextPart).text;
       if (part.type === 'tool-call') return JSON.stringify(part.input);
-      if (part.type === 'tool-result') return part.output.type === 'text' ? part.output.value : JSON.stringify(part.output);
+      if (part.type === 'tool-result')
+        return part.output.type === 'text' ? part.output.value : JSON.stringify(part.output);
       return '';
     })
     .join('');

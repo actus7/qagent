@@ -1,9 +1,4 @@
-import {
-  type BrowserContextConfig,
-  type BrowserState,
-  DEFAULT_BROWSER_CONTEXT_CONFIG,
-  type TabInfo,
-} from '../views';
+import { type BrowserContextConfig, type BrowserState, DEFAULT_BROWSER_CONTEXT_CONFIG, type TabInfo } from '../views';
 import { createLogger } from '@src/background/log';
 import type { BrowserContextLike, BrowserEngineName, BrowserPageLike } from '../types';
 import type { AgentBrowserCompanionClient } from './client';

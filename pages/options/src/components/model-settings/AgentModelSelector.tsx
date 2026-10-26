@@ -2,14 +2,24 @@ import { t } from '@extension/i18n';
 import { AgentNameEnum, normalizeReasoningEffort } from '@extension/storage';
 import type { ReasoningEffort } from '@extension/storage';
 import { MAX_REQUESTS_PER_MINUTE, MIN_REQUESTS_PER_MINUTE, PANEL_CLASS, SELECT_CLASS } from './constants';
+import { CatalogLoadLinks } from './CatalogLoadLinks';
 import { ModelOptions } from './ModelOptions';
 import { ParameterSlider } from './ParameterSlider';
 import { getDefaultReasoningEffort, isAnthropicModel, isOpenAIReasoningModel } from './modelUtils';
-import type { AgentModelParameters, AvailableModel, ParameterChangeOptions, ParameterName } from './types';
+import type {
+  AgentModelParameters,
+  AvailableModel,
+  CatalogProviderEntry,
+  ParameterChangeOptions,
+  ParameterName,
+} from './types';
 
 interface AgentModelSelectorProps {
   agentName: AgentNameEnum;
   availableModels: AvailableModel[];
+  /** Providers with no models yet; their catalog can be loaded from here. */
+  catalogProviders: CatalogProviderEntry[];
+  onLoadCatalog: (providerId: string) => Promise<number>;
   selectedModel: string;
   parameters: AgentModelParameters;
   reasoningEffort: ReasoningEffort | undefined;
@@ -33,6 +43,8 @@ function getAgentDescription(agentName: AgentNameEnum): string {
 export function AgentModelSelector({
   agentName,
   availableModels,
+  catalogProviders,
+  onLoadCatalog,
   selectedModel,
   parameters,
   reasoningEffort,
@@ -67,6 +79,10 @@ export function AgentModelSelector({
             </option>
             <ModelOptions models={availableModels} />
           </select>
+        </div>
+
+        <div className="pl-24">
+          <CatalogLoadLinks providers={catalogProviders} onLoad={onLoadCatalog} />
         </div>
 
         {hasModel && (

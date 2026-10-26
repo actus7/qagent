@@ -106,7 +106,13 @@ describe('buildProcedureText', () => {
 
   it('describes Enter presses and submissions as their own lines', () => {
     const steps: RecordedStep[] = [
-      { kind: 'press', url: 'https://app.test/', field: { role: 'textbox', name: 'Busca', selector: '#q' }, key: 'Enter', at: 1 },
+      {
+        kind: 'press',
+        url: 'https://app.test/',
+        field: { role: 'textbox', name: 'Busca', selector: '#q' },
+        key: 'Enter',
+        at: 1,
+      },
       { kind: 'submit', url: 'https://app.test/', element: { role: 'form', name: 'Login', selector: 'form' }, at: 2 },
     ];
 

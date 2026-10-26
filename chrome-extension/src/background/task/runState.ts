@@ -75,7 +75,9 @@ function defaultRecoveryDeps(): RecoveryDeps {
  * because a live worker clears it in the task's finally block. The task is marked interrupted, its context is kept
  * as follow-up memory, and the chat gets a notice that a follow-up resumes it.
  */
-export async function recoverInterruptedTask(deps: RecoveryDeps = defaultRecoveryDeps()): Promise<RunningTaskRecord | null> {
+export async function recoverInterruptedTask(
+  deps: RecoveryDeps = defaultRecoveryDeps(),
+): Promise<RunningTaskRecord | null> {
   const area = deps.area ?? chrome.storage.session;
   const record = await readRunningTask(area);
   if (!record || record.status !== 'running') return null;

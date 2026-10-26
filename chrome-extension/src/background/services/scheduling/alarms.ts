@@ -24,10 +24,7 @@ export function alarmPlan(tasks: ScheduledTask[], now: number): Map<string, numb
 }
 
 /** Makes the schedule alarms match storage: one per enabled schedule, and no leftovers from deleted ones. */
-export async function syncScheduleAlarms(
-  tasks?: ScheduledTask[],
-  now: number = Date.now(),
-): Promise<void> {
+export async function syncScheduleAlarms(tasks?: ScheduledTask[], now: number = Date.now()): Promise<void> {
   const plan = alarmPlan(tasks ?? (await scheduledTasksStore.getTasks()), now);
   const existing = await chrome.alarms.getAll();
   await Promise.all(
@@ -35,7 +32,5 @@ export async function syncScheduleAlarms(
       .filter(alarm => alarm.name.startsWith(SCHEDULE_ALARM_PREFIX) && !plan.has(alarm.name))
       .map(alarm => chrome.alarms.clear(alarm.name)),
   );
-  await Promise.all(
-    [...plan].map(([name, when]) => chrome.alarms.create(name, { when })),
-  );
+  await Promise.all([...plan].map(([name, when]) => chrome.alarms.create(name, { when })));
 }

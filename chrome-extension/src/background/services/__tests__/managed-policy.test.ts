@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_MANAGED_POLICY, isManagedProviderAllowed, parseManagedPolicy, type ManagedPolicy } from '@extension/shared';
+import {
+  EMPTY_MANAGED_POLICY,
+  isManagedProviderAllowed,
+  parseManagedPolicy,
+  type ManagedPolicy,
+} from '@extension/shared';
 
 const policy = (overrides: Partial<ManagedPolicy>): ManagedPolicy => ({ ...EMPTY_MANAGED_POLICY, ...overrides });
 
