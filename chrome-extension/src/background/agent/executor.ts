@@ -271,11 +271,18 @@ export class Executor {
           !this.plannerDisabledForTask &&
           (context.nSteps % context.options.planningInterval === 0 || navigatorDone)
         ) {
+          const validatingDone = navigatorDone;
           navigatorDone = false;
           latestPlanOutput = await this.runPlanner();
 
           // Check if task is complete after planner run
           if (this.checkTaskCompletion(latestPlanOutput)) {
+            break;
+          }
+          // A planner that cannot answer (e.g. a model without tool calling) must not keep a finished task
+          // running until maxSteps: the navigator's done stands.
+          if (validatingDone && !latestPlanOutput?.result) {
+            navigatorDone = true;
             break;
           }
         }

@@ -63,6 +63,18 @@ describe('Executor planner skipping for simple tasks', () => {
     expect((internals as { plannerDisabledForTask: boolean }).plannerDisabledForTask).toBe(false);
   });
 
+  it("accepts the navigator's done when the planner fails to validate it, instead of looping", async () => {
+    const { executor, internals, emitEvent } = createExecutor('Abra a página de preços e me diga o preço do plano Pro');
+    (internals.context as { options: { maxSteps: number } }).options.maxSteps = 10;
+    // A model without tool calling: the planner returns an error result, it does not throw.
+    internals.runPlanner = vi.fn().mockResolvedValue({ id: 'planner', error: 'required tool was not called' });
+
+    await executor.execute();
+
+    expect(internals.navigate).toHaveBeenCalledTimes(1);
+    expect(emitEvent).toHaveBeenCalledWith(Actors.SYSTEM, ExecutionState.TASK_OK, 'task-simple');
+  });
+
   it('adds a QA note to a QA follow-up when the session uses the concise style', () => {
     const { executor, internals, addMessageWithTokens } = createExecutor('Abra a página de preços');
     internals.tasks = ['Abra a página de preços'];
