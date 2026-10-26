@@ -14,7 +14,8 @@ AQgent is a browser extension that operates as an automated QA (Quality Assuranc
 
 - `pnpm install` - Install dependencies
 - `pnpm dev` - Start development mode with hot reload
-- `pnpm build` - Build production version
+- `pnpm build` - Build production version (Chrome/Edge, into `dist/`)
+- `pnpm build:firefox` - Firefox build into `dist-firefox/` (keeps `dist/` intact); `pnpm build:all` builds both
 - `pnpm type-check` - Run TypeScript type checking
 - `pnpm lint` - Run ESLint with auto-fix
 - `pnpm prettier` - Format code with Prettier

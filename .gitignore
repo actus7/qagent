@@ -10,6 +10,8 @@
 **/dist
 **/build
 **/dist-zip
+/dist-firefox
+/.dist-chrome-parked
 
 # env
 **/.env.local
