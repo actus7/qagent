@@ -1,7 +1,7 @@
 import { useCallback, useRef, type MutableRefObject } from 'react';
 import { t } from '@extension/i18n';
 import { Actors, type Message } from '@extension/storage';
-import { EventType, type AgentEvent } from '@src/types/event';
+import { EventType, ExecutionState, type AgentEvent } from '@src/types/event';
 import { rejectTabCapture, resolveTabCapture } from '@src/lib/tab-capture';
 import { publishWorkflowRecording } from '@src/store/workflowRecordingStore';
 import {
@@ -14,8 +14,12 @@ import {
   type SidePanelResponseMessage,
 } from '@src/types/port';
 
+// Debug cards are shown, never stored: persisting each one rewrote the whole session per log line.
+const MAX_DEBUG_CARDS = 300;
+
 interface UseSidePanelConnectionArgs {
-  appendMessage: (message: Message) => void;
+  /** `sessionId: null` shows the message without saving it to the chat history. */
+  appendMessage: (message: Message, sessionId?: string | null) => void;
   handleTaskStateRef: MutableRefObject<(event: AgentEvent) => void>;
   toAgentEvent: (message: ExecutionPortEventMessage) => AgentEvent | null;
   chatDebugModeRef: MutableRefObject<boolean>;
@@ -51,18 +55,23 @@ export const useSidePanelConnection = ({
 }: UseSidePanelConnectionArgs) => {
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const heartbeatIntervalRef = useRef<number | null>(null);
+  const debugCardCountRef = useRef(0);
 
   const appendDebugMessage = useCallback(
     (label: string, payload: unknown, actor: Actors = Actors.SYSTEM) => {
-      if (!chatDebugModeRef.current) {
+      if (!chatDebugModeRef.current || debugCardCountRef.current >= MAX_DEBUG_CARDS) {
         return;
       }
+      debugCardCountRef.current += 1;
 
-      appendMessage({
-        actor,
-        content: formatDebugPayload(label, payload),
-        timestamp: Date.now(),
-      });
+      appendMessage(
+        {
+          actor,
+          content: formatDebugPayload(label, payload),
+          timestamp: Date.now(),
+        },
+        null,
+      );
     },
     [appendMessage, chatDebugModeRef],
   );
@@ -113,6 +122,8 @@ export const useSidePanelConnection = ({
             appendDebugMessage('connection.message.invalidExecutionEvent', message);
             return;
           }
+          // Each task gets its own debug-card budget, so the end-of-task timing log is always shown.
+          if (event.state === ExecutionState.TASK_START) debugCardCountRef.current = 0;
           handleTaskStateRef.current(event);
         } else if (message.type === 'debug_log') {
           appendDebugMessage(
