@@ -54,7 +54,8 @@ import {
 } from '@src/background/services/jev/plugin-routing';
 import { analytics } from '../services/analytics';
 import { createLoopDetectionState, evaluateLoopDetection, type LoopDetectionState } from './loop-detection';
-import type { AssistantAttachment } from '@extension/shared';
+import { isManagedProviderAllowed, type AssistantAttachment } from '@extension/shared';
+import { getManagedPolicy } from '../state/managedPolicyState';
 import { buildImageContentParts, indexFileAttachments } from '../services/assistant-attachments';
 import { isSimpleTask, reportStyleFor, type ReportStyle } from './task-kind';
 import { userMessage } from './messages/model-messages';
@@ -507,6 +508,10 @@ export class Executor {
       logger.error('Could not read Jev settings; Jev features stay off for this task', error);
       return DEFAULT_JEV_CONFIG;
     });
+    // Jev receives page content, so an organisation that restricts providers must list it to use it.
+    if (!isManagedProviderAllowed({ id: 'jev', type: 'jev' }, getManagedPolicy())) {
+      return { config: DEFAULT_JEV_CONFIG, metrics: new JevTaskMetrics(), task };
+    }
     return { config, metrics: new JevTaskMetrics(), task };
   }
 
@@ -578,7 +583,8 @@ export class Executor {
   /** Jev done-check: when confident, the task finishes with the last results as its final answer, like a done action. */
   private async checkDoneWithJev(task: string): Promise<boolean> {
     const runtime = this.jevRuntime;
-    if (!runtime || !isJevFeatureOn(runtime, 'doneCheck')) return false;
+    // QA and report tasks need the LLM's structured report; a Jev "done" would replace it with a short summary.
+    if (!runtime || this.reportStyle !== 'concise' || !isJevFeatureOn(runtime, 'doneCheck')) return false;
     const state = await this.context.browserContext.getCachedState();
     const recentResults = this.context.runActions
       .slice(-DONE_CHECK_RESULTS)

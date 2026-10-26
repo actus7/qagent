@@ -1,8 +1,9 @@
-import { inferMode, resolveMode, type AssistantMode, type AssistantTaskOptions } from '@extension/shared';
+import { inferMode, isManagedProviderAllowed, resolveMode, type AssistantMode, type AssistantTaskOptions } from '@extension/shared';
 import { jevStore } from '@extension/storage';
 import { generateText } from 'ai';
 import { createLogger } from '../log';
 import { loadAssistantModel } from './assistant-model';
+import { getManagedPolicy } from '../state/managedPolicyState';
 
 const logger = createLogger('mode-classifier');
 
@@ -35,7 +36,9 @@ export async function classifyMode(
   if (guess !== 'chat' || isShortReply) return guess;
 
   const jev = await jevStore.getConfig().catch(() => null);
-  if (jev?.apiKey) {
+  // An organisation that restricts providers must list Jev before message text is sent to it.
+  const jevAllowed = isManagedProviderAllowed({ id: 'jev', type: 'jev' }, getManagedPolicy());
+  if (jev?.apiKey && jevAllowed) {
     return resolveMode(text, previous, jev, error => logger.error('Jev mode inference failed:', error));
   }
 

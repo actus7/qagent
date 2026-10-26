@@ -10,6 +10,8 @@ vi.mock('ai', () => ({ generateText: vi.fn() }));
 import { jevStore, type JevConfig } from '@extension/storage';
 import { loadAssistantModel } from '../assistant-model';
 import { classifyMode } from '../mode-classifier';
+import { setManagedPolicy } from '../../state/managedPolicyState';
+import { EMPTY_MANAGED_POLICY } from '@extension/shared';
 
 const getConfig = vi.mocked(jevStore.getConfig);
 const loadModel = vi.mocked(loadAssistantModel);
@@ -75,5 +77,18 @@ describe('classifyMode', () => {
     );
     expect(await classifyMode('Me meve até a definição de variáveis de ambiente', 'chat', 'navigator')).toBe('act');
     expect(loadModel).not.toHaveBeenCalled();
+  });
+
+  it('skips Jev when the managed policy restricts providers and does not list it', async () => {
+    getConfig.mockResolvedValue({ apiKey: 'sk-test', model: 'jev-latest' } as JevConfig);
+    setManagedPolicy({ ...EMPTY_MANAGED_POLICY, allowedProviders: ['openai'] });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    modelReplying('act');
+
+    expect(await classifyMode('Me meve até a definição de variáveis de ambiente', 'chat', 'navigator')).toBe('act');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(loadModel).toHaveBeenCalled();
+    setManagedPolicy(EMPTY_MANAGED_POLICY);
   });
 });
