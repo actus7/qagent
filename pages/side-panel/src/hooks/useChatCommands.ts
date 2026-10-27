@@ -32,7 +32,6 @@ export const useChatCommands = ({
     setCurrentSessionId,
     setIsFollowUpMode,
     setIsHistoricalSession,
-    setIsReplaying,
   } = useSidePanelActions();
   const { ensureConnection, sendMessage } = connection;
 
@@ -115,7 +114,6 @@ export const useChatCommands = ({
         content: t('chat_replay_starting', historyData.task),
         timestamp: Date.now(),
       });
-      setIsReplaying(true);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       appendMessage({
@@ -123,6 +121,9 @@ export const useChatCommands = ({
         content: t('chat_replay_failed', errorMessage),
         timestamp: Date.now(),
       });
+      // The replay never started, so the composer must not stay locked behind the stop button.
+      setInputEnabled(true);
+      setShowStopButton(false);
     }
   };
 

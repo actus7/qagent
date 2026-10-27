@@ -87,7 +87,7 @@ function createOverlay(): void {
   stopBtn.title = 'Stop agent';
   stopBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
   stopBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'qagent:cancel' });
+    chrome.runtime.sendMessage({ type: 'qagent:cancel' }).catch(() => undefined);
   });
   statusBar.appendChild(stopBtn);
 
@@ -136,24 +136,30 @@ function placeCursor(point: AgentPoint): void {
   cursorPoint = point;
 }
 
-/** Glides the cursor along the curved path; `onArrive` runs once it is on the target. Reduced motion jumps. */
-function moveCursorTo(target: AgentPoint, onArrive: () => void): void {
+/**
+ * Glides the cursor along the curved path; `onSettle(true)` runs once it is on the target, `onSettle(false)`
+ * when a newer glide or the overlay teardown cancels it. Reduced motion jumps.
+ */
+function moveCursorTo(target: AgentPoint, onSettle: (arrived: boolean) => void): void {
   const token = ++glideToken;
   const from = cursorPoint;
   if (!from || prefersReducedMotion()) {
     placeCursor(target);
-    onArrive();
+    onSettle(true);
     return;
   }
 
   const durationMs = glideDurationMs(from, target);
   const startedAt = performance.now();
   const step = (now: number): void => {
-    if (token !== glideToken) return;
+    if (token !== glideToken) {
+      onSettle(false);
+      return;
+    }
     const { point, done } = glideFrame(from, target, now - startedAt, durationMs);
     placeCursor(point);
     if (done) {
-      onArrive();
+      onSettle(true);
       return;
     }
     requestAnimationFrame(step);
@@ -245,9 +251,10 @@ chrome.runtime.onMessage.addListener((message: OverlayMessage, _sender, sendResp
       // A tab the agent just opened or switched to may not have the overlay yet; the cursor must still show.
       createOverlay();
       const target = { x: message.x, y: message.y };
-      moveCursorTo(target, () => {
+      moveCursorTo(target, arrived => {
         // Ripple where the cursor actually landed (after scrolling), so the click is seen on the target
-        createRipple(target.x, target.y);
+        if (arrived) createRipple(target.x, target.y);
+        // A superseded glide still answers, or the sender's action waits on a reply that never comes
         sendResponse({ ok: true });
       });
       // Reply after the glide finishes, so the action starts once the cursor has arrived.

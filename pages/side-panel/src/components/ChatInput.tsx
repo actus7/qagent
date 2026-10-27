@@ -11,6 +11,7 @@ import {
   type AssistantAttachment,
   type PixelRect,
   type SlashCommandItem,
+  useLanguage,
 } from '@extension/shared';
 import { Button } from '@src/components/ui/button';
 import { Textarea } from '@src/components/ui/textarea';
@@ -25,7 +26,7 @@ import {
   prepareImageAttachment,
 } from '@src/lib/attachment-files';
 
-interface SavedPrompt {
+export interface SavedPrompt {
   id: number;
   title: string;
   content: string;
@@ -138,7 +139,10 @@ export default function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const submittingRef = useRef(false);
   const listboxId = useId();
-  const commands = useMemo(() => buildSlashCommands(savedPrompts), [savedPrompts]);
+  const { currentLocale } = useLanguage();
+  // currentLocale is a dep so the t() descriptions follow a language switch
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const commands = useMemo(() => buildSlashCommands(savedPrompts), [savedPrompts, currentLocale]);
 
   const suggestions = useComposerSuggestions({
     text,

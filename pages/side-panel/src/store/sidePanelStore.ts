@@ -22,7 +22,6 @@ interface SidePanelState {
   hasConfiguredModels: boolean | null;
   isRecording: boolean;
   isProcessingSpeech: boolean;
-  isReplaying: boolean;
   replayEnabled: boolean;
   chatDebugMode: boolean;
   showSetupRequiredModal: boolean;
@@ -42,7 +41,6 @@ interface SidePanelActions {
   setHasConfiguredModels: (value: boolean | null) => void;
   setIsRecording: (value: boolean) => void;
   setIsProcessingSpeech: (value: boolean) => void;
-  setIsReplaying: (value: boolean) => void;
   setReplayEnabled: (value: boolean) => void;
   setChatDebugMode: (value: boolean) => void;
   setShowSetupRequiredModal: (value: boolean) => void;
@@ -65,7 +63,6 @@ const initialState: SidePanelState = {
   hasConfiguredModels: null,
   isRecording: false,
   isProcessingSpeech: false,
-  isReplaying: false,
   replayEnabled: false,
   chatDebugMode: false,
   showSetupRequiredModal: false,
@@ -89,7 +86,6 @@ export const useSidePanelStore = create<SidePanelStore>()((set, get) => ({
   setHasConfiguredModels: hasConfiguredModels => set({ hasConfiguredModels }),
   setIsRecording: isRecording => set({ isRecording }),
   setIsProcessingSpeech: isProcessingSpeech => set({ isProcessingSpeech }),
-  setIsReplaying: isReplaying => set({ isReplaying }),
   setReplayEnabled: replayEnabled => set({ replayEnabled }),
   setChatDebugMode: chatDebugMode => set({ chatDebugMode }),
   setShowSetupRequiredModal: showSetupRequiredModal => set({ showSetupRequiredModal }),

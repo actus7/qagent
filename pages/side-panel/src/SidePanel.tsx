@@ -107,6 +107,11 @@ const SidePanel = () => {
     }
   }, []);
 
+  // Stable identity: ChatInput re-registers its setter in an effect that depends on this callback.
+  const registerInputSetter = useCallback((setter: (text: string) => void) => {
+    setInputTextRef.current = setter;
+  }, []);
+
   // "Perguntar ao QAgent": quote the context in the composer and scope the task to the clicked tab
   useContextPrefill({
     onPrefill: payload => {
@@ -458,9 +463,7 @@ const SidePanel = () => {
             onSchedule={prompt => setSchedulePrompt(prompt)}
             onStopTask={handleStopTask}
             onMicToggle={handleMicClick}
-            onRegisterInputSetter={setter => {
-              setInputTextRef.current = setter;
-            }}
+            onRegisterInputSetter={registerInputSetter}
             replaySessionId={replaySessionId}
           />
         </>

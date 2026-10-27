@@ -34,7 +34,7 @@ export const toAgentEvent = (message: ExecutionPortEventMessage): AgentEvent | n
   return new AgentEvent(message.actor, message.state, message.data, message.timestamp, EventType.EXECUTION);
 };
 
-export type TaskDisplayResult =
+type TaskDisplayResult =
   | { ok: true; skip: boolean; displayProgress: boolean }
   | { ok: false; error: string; detail: string };
 

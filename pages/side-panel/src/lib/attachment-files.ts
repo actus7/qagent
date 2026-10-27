@@ -1,5 +1,4 @@
 import {
-  ASSISTANT_IMAGE_MIME_TYPES,
   ASSISTANT_IMAGE_MAX_LONG_SIDE,
   ASSISTANT_MAX_FILE_BYTES,
   ASSISTANT_MAX_IMAGE_BYTES,
@@ -10,7 +9,7 @@ import {
   type PixelRect,
 } from '@extension/shared';
 
-export type AttachmentReadError = 'imageUnsupported' | 'imageTooLarge' | 'fileTooLarge';
+type AttachmentReadError ='imageUnsupported' | 'imageTooLarge' | 'fileTooLarge';
 
 export class AttachmentReadFailure extends Error {
   constructor(readonly reason: AttachmentReadError) {
@@ -100,5 +99,3 @@ export async function prepareBinaryAttachment(file: File): Promise<AssistantAtta
 function fixDataUrlType(dataUrl: string, mimeType: string): string {
   return dataUrl.startsWith('data:;') ? `data:${mimeType};${dataUrl.slice('data:;'.length)}` : dataUrl;
 }
-
-export const IMAGE_ACCEPT = ASSISTANT_IMAGE_MIME_TYPES.join(',');

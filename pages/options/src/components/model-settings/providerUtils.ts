@@ -4,7 +4,7 @@ import type { ProviderConfig } from '@extension/storage';
 import { BASE_URL_PROVIDER_TYPES } from './constants';
 import type { AvailableModel, ListField, ProviderMap } from './types';
 
-export type ProviderSaveError = 'spacesInName' | 'baseUrlRequired' | 'invalidBaseUrl' | 'insecureBaseUrl' | 'noModels';
+type ProviderSaveError = 'spacesInName' | 'baseUrlRequired' | 'invalidBaseUrl' | 'insecureBaseUrl' | 'noModels';
 
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
 

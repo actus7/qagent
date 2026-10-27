@@ -1,13 +1,7 @@
 import type { AssistantAttachment } from '@extension/shared';
 import type { assistantCopy } from '../lib/assistant-copy';
 import type { AssistantWorkspace } from '../hooks/useAssistantWorkspace';
-
-interface SavedPrompt {
-  id: number;
-  title: string;
-  content: string;
-}
-import ChatInput from './ChatInput';
+import ChatInput, { type SavedPrompt } from './ChatInput';
 import ManagedPolicyNotice from './ManagedPolicyNotice';
 import ModelControls from './ModelControls';
 import PageContext from './PageContext';

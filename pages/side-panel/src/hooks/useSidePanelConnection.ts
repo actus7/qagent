@@ -177,21 +177,19 @@ export const useSidePanelConnection = ({
         }
       });
 
-      portRef.current.onDisconnect.addListener(() => {
-        const error = chrome.runtime.lastError;
-        appendDebugMessage('connection.closed', {
-          reason: error?.message ?? 'port disconnected',
-        });
-        portRef.current = null;
-        if (heartbeatIntervalRef.current) {
-          clearInterval(heartbeatIntervalRef.current);
-          heartbeatIntervalRef.current = null;
-        }
+      // `port.disconnect()` never fires our own onDisconnect, so a heartbeat failure resets the UI through here too
+      const handleConnectionLost = (reason: string) => {
+        appendDebugMessage('connection.closed', { reason });
+        stopConnection();
         setBrowserStatus({ connected: false, authenticated: false, message: 'Port disconnected' });
         setBrowserFrame(null);
         resetRunState();
         setInputEnabled(true);
         setShowStopButton(false);
+      };
+
+      portRef.current.onDisconnect.addListener(() => {
+        handleConnectionLost(chrome.runtime.lastError?.message ?? 'port disconnected');
       });
 
       if (heartbeatIntervalRef.current) {
@@ -204,13 +202,12 @@ export const useSidePanelConnection = ({
             portRef.current.postMessage({ type: 'heartbeat' });
           } catch (error) {
             console.error('Heartbeat failed:', error);
-            appendDebugMessage('connection.heartbeat.failed', {
-              error: error instanceof Error ? error.message : String(error),
-            });
-            stopConnection();
+            handleConnectionLost(
+              `heartbeat failed: ${error instanceof Error ? error.message : String(error)}`,
+            );
           }
         } else {
-          stopConnection();
+          handleConnectionLost('heartbeat found no open port');
         }
       }, 25000);
     } catch (error) {

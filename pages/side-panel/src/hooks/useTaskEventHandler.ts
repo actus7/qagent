@@ -21,8 +21,7 @@ const TERMINAL_TASK_STATES: ExecutionState[] = [
 
 /** Applies the UI state changes triggered by a task-level (SYSTEM actor) event. */
 const useSystemStateEffects = () => {
-  const { setIsHistoricalSession, setIsFollowUpMode, setInputEnabled, setShowStopButton, setIsReplaying } =
-    useSidePanelActions();
+  const { setIsHistoricalSession, setIsFollowUpMode, setInputEnabled, setShowStopButton } = useSidePanelActions();
 
   return useCallback(
     (state: ExecutionState) => {
@@ -36,22 +35,17 @@ const useSystemStateEffects = () => {
           setIsFollowUpMode(true);
           setInputEnabled(true);
           setShowStopButton(false);
-          setIsReplaying(false);
           break;
         case ExecutionState.TASK_CANCEL:
           setIsFollowUpMode(false);
           setInputEnabled(true);
           setShowStopButton(false);
-          setIsReplaying(false);
-          break;
-        case ExecutionState.TASK_PAUSE:
-          setIsReplaying(false);
           break;
         default:
           break;
       }
     },
-    [setIsFollowUpMode, setIsHistoricalSession, setInputEnabled, setIsReplaying, setShowStopButton],
+    [setIsFollowUpMode, setIsHistoricalSession, setInputEnabled, setShowStopButton],
   );
 };
 
@@ -118,7 +112,7 @@ export const useTaskEventHandler = ({
           actor,
           content: formatDebugEvent(event),
           timestamp: timestamp,
-        });
+        }, null);
       }
     },
     [

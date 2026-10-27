@@ -107,8 +107,8 @@ export const useVoiceInput = ({ appendMessage, connection, isRecording }: UseVoi
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
+      // sendRecording (from onstop) turns the spinner on only when there is audio to send
       setIsRecording(false);
-      setIsProcessingSpeech(true);
       recordingTimerRef.current = null;
     }, MAX_RECORDING_MS);
 

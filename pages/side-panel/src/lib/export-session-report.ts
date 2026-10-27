@@ -10,7 +10,7 @@ import {
   type StepScreenshot,
 } from '@extension/shared';
 
-export type ReportFormat = 'html' | 'markdown';
+type ReportFormat = 'html' | 'markdown';
 
 const reportLabels = (): ReportLabels => ({
   title: t('report_exportHtml_a11y'),
@@ -47,7 +47,7 @@ async function fetchStepScreenshots(taskId: string): Promise<StepScreenshot[]> {
 }
 
 /** Builds the report for a chat session. Steps come from the stored history of its last task, when one was kept. */
-export async function buildSessionReport(sessionId: string, format: ReportFormat): Promise<string> {
+async function buildSessionReport(sessionId: string, format: ReportFormat): Promise<string> {
   const session = await chatHistoryStore.getSession(sessionId);
   if (!session) throw new Error('Session not found');
   const [stored, models, screenshots] = await Promise.all([

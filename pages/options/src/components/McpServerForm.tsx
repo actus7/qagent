@@ -7,7 +7,7 @@ import { t } from '@extension/i18n';
 const INPUT_CLASS = 'w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground';
 
 /** One "Name: value" header per line; null when a line has no name. */
-export function parseHeaderLines(text: string): Record<string, string> | null {
+function parseHeaderLines(text: string): Record<string, string> | null {
   const headers: Record<string, string> = {};
   for (const line of text.split('\n')) {
     if (line.trim() === '') continue;

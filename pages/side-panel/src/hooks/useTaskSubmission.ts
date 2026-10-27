@@ -173,6 +173,7 @@ export const useTaskSubmission = ({
       });
     } catch (err) {
       console.error('cancel_task error', errorText(err));
+      setIsStopping(false);
       appendMessage({
         actor: Actors.SYSTEM,
         content: errorText(err),

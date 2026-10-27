@@ -7,7 +7,10 @@ let pending: { resolve: (dataUrl: string) => void; reject: (error: Error) => voi
 
 /** Sends the request via `send` and resolves with the PNG data URL, or rejects on error or timeout. */
 export function requestTabCapture(send: () => void): Promise<string> {
-  pending?.reject(new Error('capture superseded'));
+  if (pending) {
+    window.clearTimeout(pending.timer);
+    pending.reject(new Error('capture superseded'));
+  }
   return new Promise<string>((resolve, reject) => {
     const timer = window.setTimeout(() => {
       if (pending?.timer === timer) pending = null;

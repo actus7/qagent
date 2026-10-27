@@ -99,9 +99,12 @@ export function useProviderSettings({ onAgentModelsReset }: UseProviderSettingsO
   // Refresh the model list whenever stored providers change
   useEffect(() => {
     let active = true;
+    let latestLoad = 0;
     const updateAvailableModels = async () => {
+      // Overlapping loads can resolve out of order; only the newest one may apply
+      const load = ++latestLoad;
       const models = await loadAvailableModels();
-      if (active) {
+      if (active && load === latestLoad) {
         setAvailableModels(models);
       }
     };
@@ -214,10 +217,15 @@ export function useProviderSettings({ onAgentModelsReset }: UseProviderSettingsO
     });
   };
 
+  // The provider is already saved/removed here, so a failed agent reset must not report the save as failed
   const notifyIfAgentsReset = async (providerId: string, keepModelNames: string[]) => {
-    const resetAgents = await agentModelStore.resetAgentModelsForProvider(providerId, keepModelNames);
-    if (resetAgents.length > 0) {
-      onAgentModelsReset?.();
+    try {
+      const resetAgents = await agentModelStore.resetAgentModelsForProvider(providerId, keepModelNames);
+      if (resetAgents.length > 0) {
+        onAgentModelsReset?.();
+      }
+    } catch (error) {
+      console.error('Error resetting agent models for provider:', error);
     }
   };
 

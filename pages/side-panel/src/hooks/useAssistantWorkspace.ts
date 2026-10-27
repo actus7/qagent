@@ -9,7 +9,7 @@ export interface WorkspaceTab {
   active: boolean;
   favIconUrl?: string;
 }
-export interface WorkspaceModel {
+interface WorkspaceModel {
   agent: 'navigator' | 'planner';
   label: string;
 }
