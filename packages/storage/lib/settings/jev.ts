@@ -89,7 +89,7 @@ export const jevStore: JevStorage = {
     return sanitize((await storage.get()) ?? DEFAULT_JEV_CONFIG);
   },
   async updateConfig(settings: Partial<JevConfig>) {
-    const current = await this.getConfig();
-    await storage.set(sanitize({ ...current, ...settings }));
+    // Merged inside the write, so two concurrent updates cannot drop each other's changes.
+    await storage.set(prev => sanitize({ ...sanitize(prev), ...settings }));
   },
 };

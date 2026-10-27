@@ -1,6 +1,7 @@
 import { StorageEnum } from '../base/enums';
 import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
+import { upsertById } from '../base/collection';
 
 /** A readable element reference recorded on the page: role, visible name and the CSS selector that found it. */
 export interface WorkflowTarget {
@@ -37,7 +38,8 @@ export interface WorkflowsConfig {
   workflows: Workflow[];
 }
 
-export const WORKFLOW_LIMIT = 50;
+const WORKFLOW_LIMIT = 50;
+const WORKFLOW_LIMIT_ERROR = `Workflow limit reached (${WORKFLOW_LIMIT}). Remove a workflow before adding another.`;
 
 type WorkflowsStorage = BaseStorage<WorkflowsConfig> & {
   getAll: () => Promise<Workflow[]>;
@@ -66,16 +68,9 @@ export const workflowsStore: WorkflowsStorage = {
     return (await this.getAll()).find(workflow => workflow.id === ref || workflow.name.trim().toLowerCase() === wanted);
   },
   async save(workflow: Workflow) {
-    await storage.set(prev => {
-      const exists = prev.workflows.some(item => item.id === workflow.id);
-      if (!exists && prev.workflows.length >= WORKFLOW_LIMIT) {
-        throw new Error(`Workflow limit reached (${WORKFLOW_LIMIT}). Remove a workflow before adding another.`);
-      }
-      const workflows = exists
-        ? prev.workflows.map(item => (item.id === workflow.id ? workflow : item))
-        : [...prev.workflows, workflow];
-      return { workflows };
-    });
+    await storage.set(prev => ({
+      workflows: upsertById(prev.workflows, workflow, WORKFLOW_LIMIT, WORKFLOW_LIMIT_ERROR),
+    }));
   },
   async remove(id: string) {
     await storage.set(prev => ({ workflows: prev.workflows.filter(workflow => workflow.id !== id) }));

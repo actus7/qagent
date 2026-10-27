@@ -8,18 +8,6 @@ import { SessionAccessLevelEnum, StorageEnum } from './enums';
 const chrome = globalThis.chrome;
 
 /**
- * Sets or updates an arbitrary cache with a new value or the result of an update function.
- */
-async function updateCache<D>(valueOrUpdate: ValueOrUpdate<D>, cache: D | null): Promise<D> {
-  if (typeof valueOrUpdate === 'function') {
-    const updater = valueOrUpdate as (prev: D) => Promise<D> | D;
-    return await updater(cache as D);
-  }
-
-  return valueOrUpdate;
-}
-
-/**
  * If one session storage needs access from content scripts, we need to enable it globally.
  * @default false
  */
@@ -43,8 +31,9 @@ function checkStoragePermission(storageEnum: StorageEnum): void {
  */
 export function createStorage<D = string>(key: string, fallback: D, config?: StorageConfig<D>): BaseStorage<D> {
   let cache: D | null = null;
-  let initedCache = false;
   let listeners: Array<() => void> = [];
+  // Writes run one at a time: each one starts after the previous write has stored its value.
+  let writeQueue: Promise<void> = Promise.resolve();
 
   const storageEnum = config?.storageEnum ?? StorageEnum.Local;
   const liveUpdate = config?.liveUpdate ?? false;
@@ -86,14 +75,22 @@ export function createStorage<D = string>(key: string, fallback: D, config?: Sto
     listeners.forEach(listener => listener());
   };
 
-  const set = async (valueOrUpdate: ValueOrUpdate<D>) => {
-    if (!initedCache) {
-      cache = await get();
-    }
-    cache = await updateCache(valueOrUpdate, cache);
+  const applyWrite = async (valueOrUpdate: ValueOrUpdate<D>) => {
+    // An update reads the stored value, not the cache: a context without liveUpdate may be behind other writers.
+    cache =
+      typeof valueOrUpdate === 'function'
+        ? await (valueOrUpdate as (prev: D) => Promise<D> | D)(await get())
+        : valueOrUpdate;
 
     await chrome?.storage[storageEnum].set({ [key]: serialize(cache) });
     _emitChange();
+  };
+
+  const set = (valueOrUpdate: ValueOrUpdate<D>): Promise<void> => {
+    const write = writeQueue.then(() => applyWrite(valueOrUpdate));
+    // A failed write must not block the writes queued after it.
+    writeQueue = write.catch(() => undefined);
+    return write;
   };
 
   const subscribe = (listener: () => void) => {
@@ -109,24 +106,23 @@ export function createStorage<D = string>(key: string, fallback: D, config?: Sto
   };
 
   get().then(data => {
-    cache = data;
-    initedCache = true;
+    // A write that finished before this read must not be replaced by the older stored value.
+    if (cache === null) cache = data;
     _emitChange();
   });
 
   // Listener for live updates from the browser
-  async function _updateFromStorageOnChanged(changes: { [key: string]: chrome.storage.StorageChange }) {
+  function _updateFromStorageOnChanged(changes: { [key: string]: chrome.storage.StorageChange }) {
     // Check if the key we are listening for is in the changes object
     if (changes[key] === undefined) return;
 
-    const valueOrUpdate: ValueOrUpdate<D> = deserialize(changes[key].newValue as string);
+    const next: D = deserialize(changes[key].newValue as string);
 
-    if (cache === valueOrUpdate) return;
+    if (cache === next) return;
     // our own set() already updated the cache and notified; re-emitting would render every subscriber twice
     if (cache !== null && JSON.stringify(changes[key].newValue) === JSON.stringify(serialize(cache))) return;
 
-    cache = await updateCache(valueOrUpdate, cache);
-
+    cache = next;
     _emitChange();
   }
 

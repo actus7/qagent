@@ -4,7 +4,7 @@
 export const MCP_PROTOCOL_VERSION = '2025-06-18';
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
-export const JSON_RPC_ERROR = {
+const JSON_RPC_ERROR = {
   parse: -32700,
   invalidRequest: -32600,
   methodNotFound: -32601,

@@ -138,37 +138,34 @@ async function ensureQuickStartLocalized(locale: SupportedLocale): Promise<Favor
 
   if (state.prompts.length === 0 && state.nextId === 1) {
     const defaultPrompts = createDefaultFavoritePrompts(locale);
-    await favoritesStorage.set({
-      nextId: defaultPrompts.length + 1,
-      prompts: defaultPrompts,
-    });
-    const initialized = await favoritesStorage.get();
-    return sortByIdDesc(initialized.prompts);
+    await favoritesStorage.set(prev =>
+      prev.prompts.length === 0 && prev.nextId === 1
+        ? { nextId: defaultPrompts.length + 1, prompts: defaultPrompts }
+        : prev,
+    );
+    return sortByIdDesc(defaultPrompts);
   }
 
-  let hasChanges = false;
-  const localizedPrompts = state.prompts.map(prompt => {
+  // Write only when a template needs localizing, so reads stay free of writes in the common case.
+  const needsLocalizing = state.prompts.some(prompt => {
     const localized = localizePrompt(prompt, locale);
-    if (
+    return (
       localized.templateId !== prompt.templateId ||
       localized.title !== prompt.title ||
       localized.content !== prompt.content
-    ) {
-      hasChanges = true;
-    }
-    return localized;
+    );
   });
-
-  if (hasChanges) {
-    await favoritesStorage.set(prev => ({
-      ...prev,
-      prompts: localizedPrompts,
-    }));
-    const updated = await favoritesStorage.get();
-    return sortByIdDesc(updated.prompts);
+  if (!needsLocalizing) {
+    return sortByIdDesc(state.prompts);
   }
 
-  return sortByIdDesc(state.prompts);
+  // Localized from the value the write reads, so a prompt saved meanwhile is not overwritten.
+  let localizedPrompts: FavoritePrompt[] = state.prompts;
+  await favoritesStorage.set(prev => {
+    localizedPrompts = prev.prompts.map(prompt => localizePrompt(prompt, locale));
+    return { ...prev, prompts: localizedPrompts };
+  });
+  return sortByIdDesc(localizedPrompts);
 }
 
 // Define the favorite prompt type
@@ -209,87 +206,63 @@ const favoritesStorage: BaseStorage<FavoritesStorage> = createStorage('favorites
 });
 
 /**
+ * Changes the fields of one prompt. Returns undefined, and writes nothing, when no prompt has the id.
+ */
+async function editPrompt(id: number, edit: { title: string; content?: string }): Promise<FavoritePrompt | undefined> {
+  let updatedPrompt: FavoritePrompt | undefined;
+
+  await favoritesStorage.set(prev => {
+    if (!prev.prompts.some(prompt => prompt.id === id)) {
+      return prev;
+    }
+    return {
+      ...prev,
+      prompts: prev.prompts.map(prompt => {
+        if (prompt.id !== id) {
+          return prompt;
+        }
+        // Once a user edits a default template, keep it custom and don't auto-localize it.
+        updatedPrompt = { ...prompt, ...edit, templateId: undefined };
+        return updatedPrompt;
+      }),
+    };
+  });
+
+  return updatedPrompt;
+}
+
+/**
  * Creates a storage interface for managing favorite prompts
  */
 function createFavoritesStorage(): FavoritePromptsStorage {
   return {
     addPrompt: async (title: string, content: string): Promise<FavoritePrompt> => {
-      // Check if prompt with same content already exists
-      const { prompts } = await favoritesStorage.get();
-      const existingPrompt = prompts.find(prompt => prompt.content === content);
+      let savedPrompt: FavoritePrompt | undefined;
 
-      // If exists, return the existing prompt
-      if (existingPrompt) {
-        return existingPrompt;
-      }
-
-      // Otherwise add new prompt
+      // The duplicate check runs inside the write, so two adds with the same content cannot both land.
       await favoritesStorage.set(prev => {
-        const id = prev.nextId;
-        const newPrompt: FavoritePrompt = { id, title, content };
+        // If a prompt with the same content exists, keep it and return it
+        const existingPrompt = prev.prompts.find(prompt => prompt.content === content);
+        if (existingPrompt) {
+          savedPrompt = existingPrompt;
+          return prev;
+        }
 
+        const id = prev.nextId;
+        savedPrompt = { id, title, content };
         return {
           nextId: id + 1,
-          prompts: [newPrompt, ...prev.prompts],
+          prompts: [savedPrompt, ...prev.prompts],
         };
       });
 
-      return (await favoritesStorage.get()).prompts[0];
+      return savedPrompt as FavoritePrompt;
     },
 
-    updatePrompt: async (id: number, title: string, content: string): Promise<FavoritePrompt | undefined> => {
-      let updatedPrompt: FavoritePrompt | undefined;
+    updatePrompt: (id: number, title: string, content: string): Promise<FavoritePrompt | undefined> =>
+      editPrompt(id, { title, content }),
 
-      await favoritesStorage.set(prev => {
-        const updatedPrompts = prev.prompts.map(prompt => {
-          if (prompt.id === id) {
-            // Once a user edits a default template, keep it custom and don't auto-localize it.
-            updatedPrompt = { ...prompt, title, content, templateId: undefined };
-            return updatedPrompt;
-          }
-          return prompt;
-        });
-
-        // If prompt wasn't found, leave the storage unchanged
-        if (!updatedPrompt) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          prompts: updatedPrompts,
-        };
-      });
-
-      return updatedPrompt;
-    },
-
-    updatePromptTitle: async (id: number, title: string): Promise<FavoritePrompt | undefined> => {
-      let updatedPrompt: FavoritePrompt | undefined;
-
-      await favoritesStorage.set(prev => {
-        const updatedPrompts = prev.prompts.map(prompt => {
-          if (prompt.id === id) {
-            // Once a user edits a default template, keep it custom and don't auto-localize it.
-            updatedPrompt = { ...prompt, title, templateId: undefined };
-            return updatedPrompt;
-          }
-          return prompt;
-        });
-
-        // If prompt wasn't found, leave the storage unchanged
-        if (!updatedPrompt) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          prompts: updatedPrompts,
-        };
-      });
-
-      return updatedPrompt;
-    },
+    updatePromptTitle: (id: number, title: string): Promise<FavoritePrompt | undefined> => editPrompt(id, { title }),
 
     removePrompt: async (id: number): Promise<void> => {
       await favoritesStorage.set(prev => ({

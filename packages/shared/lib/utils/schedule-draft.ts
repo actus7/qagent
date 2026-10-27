@@ -30,7 +30,7 @@ export type ScheduleDraftErrorCode =
 
 export type ScheduleDraftErrors = Partial<Record<'prompt' | 'startUrl' | 'time' | 'date', ScheduleDraftErrorCode>>;
 
-export const SCHEDULE_NAME_MAX_LENGTH = 60;
+const SCHEDULE_NAME_MAX_LENGTH = 60;
 export const SCHEDULE_PROMPT_MAX_LENGTH = 4000;
 
 const pad = (value: number): string => String(value).padStart(2, '0');

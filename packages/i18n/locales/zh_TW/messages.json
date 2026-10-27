@@ -17,15 +17,6 @@
   "options_general_displayHighlights_visionLocked": {
     "message": "啟用視覺時會固定開啟，因為截圖需要標示框。"
   },
-  "chat_input_fileUnsupported": {
-    "message": "$NAME$：請使用 TXT、Markdown、JSON、CSV、LOG、XML 或 YAML 格式。",
-    "placeholders": {
-      "name": {
-        "content": "$1",
-        "example": "notes.txt"
-      }
-    }
-  },
   "chat_input_fileTooLarge": {
     "message": "$NAME$：檔案大小上限為 1 MB。",
     "placeholders": {
@@ -115,15 +106,6 @@
   "nav_back": {
     "message": "← 返回"
   },
-  "nav_back_a11y": {
-    "message": "回到對話"
-  },
-  "welcome_title": {
-    "message": "歡迎使用 QAgent！"
-  },
-  "welcome_instruction": {
-    "message": "開始使用前，請先在設定頁面設定 API 金鑰並選擇模型。"
-  },
   "setup_modal_title": {
     "message": "需要完成設定"
   },
@@ -135,12 +117,6 @@
   },
   "welcome_openSettings": {
     "message": "開啟設定"
-  },
-  "welcome_quickStart": {
-    "message": "快速入門指南"
-  },
-  "welcome_joinCommunity": {
-    "message": "加入我們的社群"
   },
   "status_checkingConfig": {
     "message": "正在檢查設定..."
@@ -403,12 +379,6 @@
   "options_tabs_models": {
     "message": "模型"
   },
-  "options_tabs_help": {
-    "message": "說明"
-  },
-  "options_tabs_analytics": {
-    "message": "分析"
-  },
   "sidepanel_progress_message": {
     "message": "顯示進度中..."
   },
@@ -462,12 +432,6 @@
   },
   "options_general_replayHistoricalTasks_desc": {
     "message": "啟用儲存與重播代理程式的步驟歷史紀錄 (此為實驗性功能，可能存在問題)"
-  },
-  "options_general_chatDebugMode": {
-    "message": "聊天除錯模式"
-  },
-  "options_general_chatDebugMode_desc": {
-    "message": "在聊天中直接顯示所有執行事件與 payload，方便疑難排解。"
   },
   "options_models_providers_header": {
     "message": "LLM 提供者"
@@ -763,23 +727,8 @@
   "bg_errors_noTabId": {
     "message": "未提供分頁 ID"
   },
-  "bg_errors_noTaskId": {
-    "message": "未提供任務 ID"
-  },
-  "bg_errors_noRunningTask": {
-    "message": "沒有執行中的任務"
-  },
   "bg_cmd_newTask_noTask": {
     "message": "未提供任務"
-  },
-  "bg_cmd_followUpTask_noTask": {
-    "message": "未提供後續任務"
-  },
-  "bg_cmd_followUpTask_cleaned": {
-    "message": "執行器已被清理，無法新增後續任務。"
-  },
-  "bg_cmd_resumeTask_noTask": {
-    "message": "沒有可接續的任務。"
   },
   "bg_cmd_state_printed": {
     "message": "狀態已輸出至控制台。"
@@ -796,17 +745,8 @@
   "bg_record_unsupportedTab": {
     "message": "只能錄製 http(s) 頁面。"
   },
-  "bg_cmd_stt_noAudioData": {
-    "message": "未提供音訊資料"
-  },
   "bg_cmd_stt_failed": {
     "message": "語音辨識失敗"
-  },
-  "bg_cmd_replay_noHistory": {
-    "message": "未提供歷史工作階段 ID。"
-  },
-  "bg_cmd_replay_failed": {
-    "message": "重播失敗"
   },
   "bg_setup_noApiKeys": {
     "message": "請先在設定頁面中完成 API 金鑰的設定。"
@@ -1383,15 +1323,6 @@
   "chat_continueCommand": {
     "message": "繼續"
   },
-  "chat_recordStart": {
-    "message": "錄製流程"
-  },
-  "chat_recordStop": {
-    "message": "停止錄製"
-  },
-  "chat_scheduleTask": {
-    "message": "排程任務"
-  },
   "bg_task_interruptedByRestart": {
     "message": "任務因瀏覽器重新啟動擴充功能而中斷。傳送「繼續」即可恢復。"
   },
@@ -1555,6 +1486,48 @@
         "content": "$2"
       }
     }
+  },
+  "act_uploadFile_pathNotAllowed": {
+    "message": "只能依路徑上傳瀏覽器下載的檔案：$PATH$",
+    "placeholders": {
+      "path": {
+        "content": "$1",
+        "example": "/home/me/Downloads/report.pdf"
+      }
+    }
+  },
+  "act_handleDialog_ok": {
+    "message": "下一個 confirm/prompt 對話框將以 $ANSWER$ 回應",
+    "placeholders": {
+      "answer": {
+        "content": "$1",
+        "example": "OK"
+      }
+    }
+  },
+  "act_errors_elementChanged": {
+    "message": "元素 $INDEX$ 在讀取頁面後已變更或消失。請依新的頁面狀態重新選擇元素",
+    "placeholders": {
+      "index": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "exec_model_switched": {
+    "message": "模型失敗；已切換為 $MODEL$，並設為目前的模型",
+    "placeholders": {
+      "model": {
+        "content": "$1",
+        "example": "openai:gpt-4o"
+      }
+    }
+  },
+  "act_readAccessibilityTree_start": {
+    "message": "正在讀取無障礙樹"
+  },
+  "act_readAccessibilityTree_ok": {
+    "message": "已讀取無障礙樹"
   },
   "act_uploadFile_unsupported": {
     "message": "此瀏覽器引擎不支援檔案上傳"

@@ -1,7 +1,7 @@
 import type { ComponentPropsWithoutRef } from 'react';
 import { cn } from '../utils';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 export type ButtonProps = {
   variant?: ButtonVariant;

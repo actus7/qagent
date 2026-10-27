@@ -17,15 +17,6 @@
   "options_general_displayHighlights_visionLocked": {
     "message": "Sempre ativo enquanto a visão estiver habilitada, pois as capturas precisam dos destaques."
   },
-  "chat_input_fileUnsupported": {
-    "message": "$NAME$: use TXT, Markdown, JSON, CSV, LOG, XML ou YAML.",
-    "placeholders": {
-      "name": {
-        "content": "$1",
-        "example": "notes.txt"
-      }
-    }
-  },
   "chat_input_fileTooLarge": {
     "message": "$NAME$: tamanho máximo de 1 MB.",
     "placeholders": {
@@ -115,15 +106,6 @@
   "nav_back": {
     "message": "← Voltar"
   },
-  "nav_back_a11y": {
-    "message": "Voltar para o chat"
-  },
-  "welcome_title": {
-    "message": "Bem-vindo ao QAgent!"
-  },
-  "welcome_instruction": {
-    "message": "Para começar, configure suas chaves de API e selecione os modelos na página de configurações."
-  },
   "setup_modal_title": {
     "message": "Configuração necessária"
   },
@@ -135,12 +117,6 @@
   },
   "welcome_openSettings": {
     "message": "Abrir Configurações"
-  },
-  "welcome_quickStart": {
-    "message": "Guia de Início Rápido"
-  },
-  "welcome_joinCommunity": {
-    "message": "Junte-se à Nossa Comunidade"
   },
   "status_checkingConfig": {
     "message": "Verificando configuração..."
@@ -406,12 +382,6 @@
   "options_tabs_models": {
     "message": "Modelos"
   },
-  "options_tabs_help": {
-    "message": "Ajuda"
-  },
-  "options_tabs_analytics": {
-    "message": "Análise"
-  },
   "sidepanel_progress_message": {
     "message": "Mostrando progresso..."
   },
@@ -465,12 +435,6 @@
   },
   "options_general_replayHistoricalTasks_desc": {
     "message": "Ativar o armazenamento e a reprodução do histórico de passos do agente (experimental, pode ter problemas)"
-  },
-  "options_general_chatDebugMode": {
-    "message": "Modo Debug no Chat"
-  },
-  "options_general_chatDebugMode_desc": {
-    "message": "Exibe todos os eventos e payloads da execução diretamente no chat para diagnóstico."
   },
   "options_models_providers_header": {
     "message": "Provedores de LLM"
@@ -766,23 +730,8 @@
   "bg_errors_noTabId": {
     "message": "Nenhum ID de aba fornecido"
   },
-  "bg_errors_noTaskId": {
-    "message": "Nenhum ID de tarefa fornecido"
-  },
-  "bg_errors_noRunningTask": {
-    "message": "Nenhuma tarefa em execução"
-  },
   "bg_cmd_newTask_noTask": {
     "message": "Nenhuma tarefa fornecida"
-  },
-  "bg_cmd_followUpTask_noTask": {
-    "message": "Nenhuma tarefa de acompanhamento fornecida"
-  },
-  "bg_cmd_followUpTask_cleaned": {
-    "message": "O executor foi limpo, não é possível adicionar tarefa de acompanhamento"
-  },
-  "bg_cmd_resumeTask_noTask": {
-    "message": "Nenhuma tarefa para resumir"
   },
   "bg_cmd_state_printed": {
     "message": "Estado impresso no console"
@@ -799,17 +748,8 @@
   "bg_record_unsupportedTab": {
     "message": "Só é possível gravar páginas http(s)."
   },
-  "bg_cmd_stt_noAudioData": {
-    "message": "Nenhum dado de áudio fornecido"
-  },
   "bg_cmd_stt_failed": {
     "message": "Reconhecimento de fala falhou"
-  },
-  "bg_cmd_replay_noHistory": {
-    "message": "Nenhum ID de sessão de histórico fornecido"
-  },
-  "bg_cmd_replay_failed": {
-    "message": "Reprodução falhou"
   },
   "bg_setup_noApiKeys": {
     "message": "Por favor, configure as chaves de API nas configurações primeiro"
@@ -1383,15 +1323,6 @@
   "chat_continueCommand": {
     "message": "continuar"
   },
-  "chat_recordStart": {
-    "message": "Gravar fluxo"
-  },
-  "chat_recordStop": {
-    "message": "Parar gravação"
-  },
-  "chat_scheduleTask": {
-    "message": "Agendar tarefa"
-  },
   "bg_task_interruptedByRestart": {
     "message": "A tarefa foi interrompida porque o navegador reiniciou a extensão. Envie 'continuar' para retomar."
   },
@@ -1559,6 +1490,48 @@
         "content": "$2"
       }
     }
+  },
+  "act_uploadFile_pathNotAllowed": {
+    "message": "Só é possível enviar por caminho arquivos baixados pelo navegador: $PATH$",
+    "placeholders": {
+      "path": {
+        "content": "$1",
+        "example": "/home/me/Downloads/report.pdf"
+      }
+    }
+  },
+  "act_handleDialog_ok": {
+    "message": "O próximo diálogo confirm/prompt será respondido com $ANSWER$",
+    "placeholders": {
+      "answer": {
+        "content": "$1",
+        "example": "OK"
+      }
+    }
+  },
+  "act_errors_elementChanged": {
+    "message": "O elemento $INDEX$ mudou ou sumiu desde a leitura da página. Use o novo estado da página para escolher o elemento de novo",
+    "placeholders": {
+      "index": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "exec_model_switched": {
+    "message": "O modelo falhou; trocado para $MODEL$, que agora é o modelo configurado",
+    "placeholders": {
+      "model": {
+        "content": "$1",
+        "example": "openai:gpt-4o"
+      }
+    }
+  },
+  "act_readAccessibilityTree_start": {
+    "message": "Lendo a árvore de acessibilidade"
+  },
+  "act_readAccessibilityTree_ok": {
+    "message": "Árvore de acessibilidade lida"
   },
   "act_uploadFile_unsupported": {
     "message": "Este mecanismo de navegador não suporta upload de arquivos"

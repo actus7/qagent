@@ -10,11 +10,11 @@ export const ManifestParserImpl: ManifestParserInterface = {
 };
 
 /** Chromium-only permissions. Firefox has no chrome.debugger and no tab groups. */
-export const FIREFOX_UNSUPPORTED_PERMISSIONS: ReadonlySet<string> = new Set(['debugger', 'tabGroups']);
+const FIREFOX_UNSUPPORTED_PERMISSIONS: ReadonlySet<string> = new Set(['debugger', 'tabGroups']);
 /** Placeholder add-on id. Replace it with the id registered on addons.mozilla.org before publishing. */
 export const DEFAULT_GECKO_ID = 'qagent@localhost';
 /** Firefox 128 is the first release with MV3 event pages and scripting world MAIN. */
-export const FIREFOX_MIN_VERSION = '128.0';
+const FIREFOX_MIN_VERSION = '128.0';
 
 export function convertToFirefoxCompatibleManifest(manifest: Manifest) {
   const manifestCopy = {

@@ -1,7 +1,13 @@
 import { StorageEnum } from '../base/enums';
 import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
-import { type AgentNameEnum, llmProviderModelNames, llmProviderParameters, ProviderTypeEnum } from './types';
+import {
+  type AgentNameEnum,
+  llmProviderModelNames,
+  llmProviderParameters,
+  normalizeProviderType,
+  ProviderTypeEnum,
+} from './types';
 
 const AZURE_API_VERSION = '2025-04-01-preview';
 
@@ -42,36 +48,6 @@ const storage = createStorage<LLMKeyRecord>(
     liveUpdate: true,
   },
 );
-
-// Helper function to determine provider type from provider name
-// Make sure to update this function if you add a new provider type
-function getProviderTypeByProviderId(providerId: string): ProviderTypeEnum {
-  // Check if this is an Azure provider (either the main one or one with a custom ID)
-  if (providerId === ProviderTypeEnum.AzureOpenAI) {
-    return ProviderTypeEnum.AzureOpenAI;
-  }
-
-  // Handle custom Azure providers with IDs like azure_openai_2
-  if (typeof providerId === 'string' && providerId.startsWith(`${ProviderTypeEnum.AzureOpenAI}_`)) {
-    return ProviderTypeEnum.AzureOpenAI;
-  }
-
-  // Handle standard provider types
-  switch (providerId) {
-    case ProviderTypeEnum.OpenAI:
-    case ProviderTypeEnum.Anthropic:
-    case ProviderTypeEnum.DeepSeek:
-    case ProviderTypeEnum.Gemini:
-    case ProviderTypeEnum.Grok:
-    case ProviderTypeEnum.Ollama:
-    case ProviderTypeEnum.OpenRouter:
-    case ProviderTypeEnum.Groq:
-    case ProviderTypeEnum.Cerebras:
-      return providerId;
-    default:
-      return ProviderTypeEnum.CustomOpenAI;
-  }
-}
 
 // Helper function to get display name from provider id
 // Make sure to update this function if you add a new provider type
@@ -180,7 +156,7 @@ function ensureBackwardCompatibility(providerId: string, config: ProviderConfig)
   }
   // Ensure type exists
   if (!updatedConfig.type) {
-    updatedConfig.type = getProviderTypeByProviderId(providerId);
+    updatedConfig.type = normalizeProviderType(providerId);
   }
 
   // Handle Azure specifics
@@ -225,7 +201,7 @@ export const llmProviderStore: LLMProviderStorage = {
       throw new Error('API key must be provided (can be empty for local models)');
     }
 
-    const providerType = config.type || getProviderTypeByProviderId(providerId);
+    const providerType = config.type || normalizeProviderType(providerId);
 
     if (providerType === ProviderTypeEnum.AzureOpenAI) {
       if (!config.baseUrl?.trim()) {
@@ -268,13 +244,12 @@ export const llmProviderStore: LLMProviderStorage = {
           }),
     };
 
-    const current = (await storage.get()) || { providers: {} };
-    await storage.set({
+    await storage.set(current => ({
       providers: {
         ...current.providers,
         [providerId]: completeConfig,
       },
-    });
+    }));
   },
   async getProvider(providerId: string) {
     const data = (await storage.get()) || { providers: {} };
@@ -282,10 +257,11 @@ export const llmProviderStore: LLMProviderStorage = {
     return config ? ensureBackwardCompatibility(providerId, config) : undefined;
   },
   async removeProvider(providerId: string) {
-    const current = (await storage.get()) || { providers: {} };
-    const newProviders = { ...current.providers };
-    delete newProviders[providerId];
-    await storage.set({ providers: newProviders });
+    await storage.set(current => {
+      const newProviders = { ...current.providers };
+      delete newProviders[providerId];
+      return { providers: newProviders };
+    });
   },
   async hasProvider(providerId: string) {
     const data = (await storage.get()) || { providers: {} };

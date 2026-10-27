@@ -62,7 +62,7 @@ export const mcpBridgeStore: McpBridgeStorage = {
     return sanitizeMcpBridgeConfig((await storage.get()) ?? DEFAULT_MCP_BRIDGE_CONFIG);
   },
   async updateConfig(settings: Partial<McpBridgeConfig>) {
-    const current = await this.getConfig();
-    await storage.set(sanitizeMcpBridgeConfig({ ...current, ...settings }));
+    // Merged inside the write, so two concurrent updates cannot drop each other's changes.
+    await storage.set(prev => sanitizeMcpBridgeConfig({ ...sanitizeMcpBridgeConfig(prev), ...settings }));
   },
 };

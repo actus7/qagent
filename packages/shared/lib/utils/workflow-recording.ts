@@ -3,7 +3,7 @@
 
 export const MAX_RECORDED_STEPS = 200;
 export const MAX_NAME_CHARS = 80;
-export const MAX_TYPED_CHARS = 40;
+const MAX_TYPED_CHARS = 40;
 export const REDACTED_VALUE = '[REDIGIDO]';
 
 export interface ElementDescriptor {

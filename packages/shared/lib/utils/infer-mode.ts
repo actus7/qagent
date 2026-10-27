@@ -100,9 +100,9 @@ export function inferMode(text: string, previous: AssistantMode = 'chat'): Assis
 }
 
 // Below this the Choice distribution is too flat to trust over the verb heuristic.
-export const JEV_MODE_MIN_CONFIDENCE = 0.5;
+const JEV_MODE_MIN_CONFIDENCE = 0.5;
 
-export const JEV_MODE_QUESTION = {
+const JEV_MODE_QUESTION = {
   type: 'choice',
   instructions:
     'Which mode should the browser assistant use to handle `message`? `previous_mode` is the mode used for the ' +

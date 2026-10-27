@@ -172,7 +172,8 @@ const DEFAULT_RPM_BY_PROVIDER: Record<ProviderTypeEnum, number> = {
   [ProviderTypeEnum.CustomOpenAI]: 60,
 };
 
-function normalizeProviderType(providerId: string): ProviderTypeEnum {
+/** Provider type of a provider id. Built-in ids map to their own type; any other id is a custom OpenAI-compatible provider. */
+export function normalizeProviderType(providerId: string): ProviderTypeEnum {
   if (providerId === ProviderTypeEnum.AzureOpenAI || providerId.startsWith(`${ProviderTypeEnum.AzureOpenAI}_`)) {
     return ProviderTypeEnum.AzureOpenAI;
   }

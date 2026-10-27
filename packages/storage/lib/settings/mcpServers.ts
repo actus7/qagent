@@ -1,6 +1,7 @@
 import { StorageEnum } from '../base/enums';
 import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
+import { upsertById } from '../base/collection';
 
 export interface McpServer {
   id: string;
@@ -16,7 +17,8 @@ export interface McpServersConfig {
   servers: McpServer[];
 }
 
-export const MCP_SERVER_LIMIT = 10;
+const MCP_SERVER_LIMIT = 10;
+const MCP_SERVER_LIMIT_ERROR = `MCP server limit reached (${MCP_SERVER_LIMIT}). Remove a server before adding another.`;
 
 type McpServersStorage = BaseStorage<McpServersConfig> & {
   getAll: () => Promise<McpServer[]>;
@@ -39,16 +41,9 @@ export const mcpServersStore: McpServersStorage = {
     return config.servers;
   },
   async save(server: McpServer) {
-    await storage.set(prev => {
-      const exists = prev.servers.some(item => item.id === server.id);
-      if (!exists && prev.servers.length >= MCP_SERVER_LIMIT) {
-        throw new Error(`MCP server limit reached (${MCP_SERVER_LIMIT}). Remove a server before adding another.`);
-      }
-      const servers = exists
-        ? prev.servers.map(item => (item.id === server.id ? server : item))
-        : [...prev.servers, server];
-      return { servers };
-    });
+    await storage.set(prev => ({
+      servers: upsertById(prev.servers, server, MCP_SERVER_LIMIT, MCP_SERVER_LIMIT_ERROR),
+    }));
   },
   async remove(id: string) {
     await storage.set(prev => ({ servers: prev.servers.filter(server => server.id !== id) }));

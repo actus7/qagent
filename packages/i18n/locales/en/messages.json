@@ -17,15 +17,6 @@
   "options_general_displayHighlights_visionLocked": {
     "message": "Always on while vision is enabled, because screenshots need the highlights."
   },
-  "chat_input_fileUnsupported": {
-    "message": "$NAME$: use TXT, Markdown, JSON, CSV, LOG, XML or YAML.",
-    "placeholders": {
-      "name": {
-        "content": "$1",
-        "example": "notes.txt"
-      }
-    }
-  },
   "chat_input_fileTooLarge": {
     "message": "$NAME$: maximum size is 1 MB.",
     "placeholders": {
@@ -115,15 +106,6 @@
   "nav_back": {
     "message": "← Back"
   },
-  "nav_back_a11y": {
-    "message": "Return to chat"
-  },
-  "welcome_title": {
-    "message": "Welcome to QAgent!"
-  },
-  "welcome_instruction": {
-    "message": "To get started, configure your API keys and select models on the settings page."
-  },
   "setup_modal_title": {
     "message": "Configuration required"
   },
@@ -135,12 +117,6 @@
   },
   "welcome_openSettings": {
     "message": "Open Settings"
-  },
-  "welcome_quickStart": {
-    "message": "Quick Start Guide"
-  },
-  "welcome_joinCommunity": {
-    "message": "Join Our Community"
   },
   "status_checkingConfig": {
     "message": "Checking configuration..."
@@ -406,12 +382,6 @@
   "options_tabs_models": {
     "message": "Models"
   },
-  "options_tabs_help": {
-    "message": "Help"
-  },
-  "options_tabs_analytics": {
-    "message": "Analytics"
-  },
   "sidepanel_progress_message": {
     "message": "Showing progress..."
   },
@@ -465,12 +435,6 @@
   },
   "options_general_replayHistoricalTasks_desc": {
     "message": "Enable agent step history storage and playback (experimental, may have issues)"
-  },
-  "options_general_chatDebugMode": {
-    "message": "Chat Debug Mode"
-  },
-  "options_general_chatDebugMode_desc": {
-    "message": "Show every task event and payload directly in chat for troubleshooting."
   },
   "options_models_providers_header": {
     "message": "LLM Providers"
@@ -766,23 +730,8 @@
   "bg_errors_noTabId": {
     "message": "No tab ID provided"
   },
-  "bg_errors_noTaskId": {
-    "message": "No task ID provided"
-  },
-  "bg_errors_noRunningTask": {
-    "message": "No tasks running"
-  },
   "bg_cmd_newTask_noTask": {
     "message": "No tasks provided"
-  },
-  "bg_cmd_followUpTask_noTask": {
-    "message": "No follow-up tasks provided"
-  },
-  "bg_cmd_followUpTask_cleaned": {
-    "message": "Executor has been cleaned up, cannot add follow-up task"
-  },
-  "bg_cmd_resumeTask_noTask": {
-    "message": "No tasks to summarize"
   },
   "bg_cmd_state_printed": {
     "message": "Status printed on the console"
@@ -799,17 +748,8 @@
   "bg_record_unsupportedTab": {
     "message": "Only http(s) pages can be recorded."
   },
-  "bg_cmd_stt_noAudioData": {
-    "message": "No audio data provided"
-  },
   "bg_cmd_stt_failed": {
     "message": "Speech recognition failed"
-  },
-  "bg_cmd_replay_noHistory": {
-    "message": "No history session ID provided"
-  },
-  "bg_cmd_replay_failed": {
-    "message": "Playback failed"
   },
   "bg_setup_noApiKeys": {
     "message": "Please configure API keys in settings first"
@@ -1383,15 +1323,6 @@
   "chat_continueCommand": {
     "message": "continue"
   },
-  "chat_recordStart": {
-    "message": "Record workflow"
-  },
-  "chat_recordStop": {
-    "message": "Stop recording"
-  },
-  "chat_scheduleTask": {
-    "message": "Schedule task"
-  },
   "bg_task_interruptedByRestart": {
     "message": "The task was interrupted because the browser restarted the extension. Send 'continue' to resume it."
   },
@@ -1559,6 +1490,48 @@
         "content": "$2"
       }
     }
+  },
+  "act_uploadFile_pathNotAllowed": {
+    "message": "Only files downloaded by the browser can be uploaded by path: $PATH$",
+    "placeholders": {
+      "path": {
+        "content": "$1",
+        "example": "/home/me/Downloads/report.pdf"
+      }
+    }
+  },
+  "act_handleDialog_ok": {
+    "message": "The next confirm/prompt dialog will be answered with $ANSWER$",
+    "placeholders": {
+      "answer": {
+        "content": "$1",
+        "example": "OK"
+      }
+    }
+  },
+  "act_errors_elementChanged": {
+    "message": "Element $INDEX$ changed or disappeared since the page was read. Use the new page state to pick the element again",
+    "placeholders": {
+      "index": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "exec_model_switched": {
+    "message": "The model failed; switched to $MODEL$, which is now the configured model",
+    "placeholders": {
+      "model": {
+        "content": "$1",
+        "example": "openai:gpt-4o"
+      }
+    }
+  },
+  "act_readAccessibilityTree_start": {
+    "message": "Reading the accessibility tree"
+  },
+  "act_readAccessibilityTree_ok": {
+    "message": "Accessibility tree read"
   },
   "act_uploadFile_unsupported": {
     "message": "File upload is not supported by this browser engine"

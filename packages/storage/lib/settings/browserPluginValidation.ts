@@ -1,6 +1,6 @@
 import type { PluginParam, PluginParamType, PluginTool } from './browserPlugins';
 
-export const PLUGIN_LIMITS = {
+const PLUGIN_LIMITS = {
   id: 64,
   name: 80,
   description: 500,

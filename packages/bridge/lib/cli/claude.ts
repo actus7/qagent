@@ -2,11 +2,11 @@
 // `qagent` MCP server that the generated --mcp-config starts.
 import { clipDetails, parseJsonLine, type CliEvent, type StreamParser } from './types';
 
-export const CLAUDE_MCP_SERVER_NAME = 'qagent';
+const CLAUDE_MCP_SERVER_NAME = 'qagent';
 const MCP_TOOL_PREFIX = `mcp__${CLAUDE_MCP_SERVER_NAME}__`;
 const SERVER_STARTING = ['connected', 'pending'];
 
-export function claudeArgs(options: { mcpConfigPath: string; systemPrompt: string; model?: string }): string[] {
+export function claudeArgs(options: { mcpConfigPath: string; systemPrompt: string }): string[] {
   return [
     '-p',
     '--output-format',
@@ -20,7 +20,6 @@ export function claudeArgs(options: { mcpConfigPath: string; systemPrompt: strin
     'bypassPermissions',
     '--append-system-prompt',
     options.systemPrompt,
-    ...(options.model ? ['--model', options.model] : []),
   ];
 }
 

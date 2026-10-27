@@ -2,7 +2,7 @@
 // server passed with -c overrides, so the user's own Codex config stays as it is.
 import { clipDetails, parseJsonLine, type CliEvent, type StreamParser } from './types';
 
-export const CODEX_MCP_SERVER_NAME = 'qagent';
+const CODEX_MCP_SERVER_NAME = 'qagent';
 
 // TOML basic strings share JSON's escaping for everything we pass (paths, prompts, argv).
 const toml = (value: string): string => JSON.stringify(value);
@@ -13,7 +13,6 @@ export function codexArgs(options: {
   binPath: string;
   systemPrompt: string;
   task: string;
-  model?: string;
 }): string[] {
   const server = `mcp_servers.${CODEX_MCP_SERVER_NAME}`;
   return [
@@ -28,7 +27,6 @@ export function codexArgs(options: {
     `${server}.args=${tomlArray([options.binPath, 'mcp'])}`,
     '-c',
     `developer_instructions=${toml(options.systemPrompt)}`,
-    ...(options.model ? ['--model', options.model] : []),
     '--',
     options.task,
   ];

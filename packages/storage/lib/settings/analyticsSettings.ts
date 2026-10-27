@@ -34,13 +34,7 @@ const storage = createStorage<AnalyticsSettingsConfig>('analytics-settings', DEF
 export const analyticsSettingsStore: AnalyticsSettingsStorage = {
   ...storage,
   async updateSettings(settings: Partial<AnalyticsSettingsConfig>) {
-    const currentSettings = (await storage.get()) || DEFAULT_ANALYTICS_SETTINGS;
-    const updatedSettings = {
-      ...currentSettings,
-      ...settings,
-    };
-
-    await storage.set(updatedSettings);
+    await storage.set(prev => ({ ...(prev || DEFAULT_ANALYTICS_SETTINGS), ...settings }));
   },
   async getSettings() {
     const settings = await storage.get();

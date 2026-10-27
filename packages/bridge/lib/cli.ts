@@ -5,7 +5,7 @@ import { QAgentDaemon } from './daemon';
 import { runMcpServer } from './mcp-server';
 import { CONTROL_DEFAULT_PORT, MCP_BRIDGE_DEFAULT_PORT } from './protocol';
 
-export const PACKAGE_VERSION = '0.1.0';
+const PACKAGE_VERSION = '0.1.0';
 
 const USAGE = `qagent ${PACKAGE_VERSION} - local bridge between QAgent (Chrome extension) and MCP clients and CLI agents
 

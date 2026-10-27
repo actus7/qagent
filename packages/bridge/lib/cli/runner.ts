@@ -159,6 +159,8 @@ export class CliTaskRunner {
       child.stderr.on('data', (chunk: string) => {
         stderr = (stderr + chunk).slice(-STDERR_TAIL_CHARS);
       });
+      // A CLI that exits before reading its stdin reports EPIPE here; with no listener it would crash the daemon.
+      child.stdin.on('error', () => undefined);
       if (plan.stdin !== null) child.stdin.end(plan.stdin.slice(0, MAX_TASK_CHARS));
       else child.stdin.end();
       const timer = setTimeout(() => {
@@ -166,7 +168,11 @@ export class CliTaskRunner {
         child.kill('SIGKILL');
         outcome = { ok: false, text: '', error: 'The CLI run timed out' };
       }, this.timeoutMs);
+      // 'error' and 'close' can both fire for one child; the run must settle once.
+      let finished = false;
       const finish = (fallbackError?: string) => {
+        if (finished) return;
+        finished = true;
         clearTimeout(timer);
         this.active.delete(input.taskId);
         if (plan.mcpConfigPath) rmSync(plan.mcpConfigPath, { force: true });

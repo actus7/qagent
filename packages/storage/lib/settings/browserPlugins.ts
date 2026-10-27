@@ -1,6 +1,7 @@
 import { StorageEnum } from '../base/enums';
 import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
+import { upsertById } from '../base/collection';
 
 export type PluginParamType = 'string' | 'number' | 'boolean';
 
@@ -39,7 +40,8 @@ export interface BrowserPluginsConfig {
   plugins: BrowserPlugin[];
 }
 
-export const PLUGIN_LIMIT = 50;
+const PLUGIN_LIMIT = 50;
+const PLUGIN_LIMIT_ERROR = `Plugin limit reached (${PLUGIN_LIMIT}). Remove a plugin before adding another.`;
 
 type BrowserPluginsStorage = BaseStorage<BrowserPluginsConfig> & {
   getAll: () => Promise<BrowserPlugin[]>;
@@ -67,16 +69,7 @@ export const browserPluginsStore: BrowserPluginsStorage = {
     return (await this.getAll()).find(plugin => plugin.id === id);
   },
   async save(plugin: BrowserPlugin) {
-    await storage.set(prev => {
-      const exists = prev.plugins.some(item => item.id === plugin.id);
-      if (!exists && prev.plugins.length >= PLUGIN_LIMIT) {
-        throw new Error(`Plugin limit reached (${PLUGIN_LIMIT}). Remove a plugin before adding another.`);
-      }
-      const plugins = exists
-        ? prev.plugins.map(item => (item.id === plugin.id ? plugin : item))
-        : [...prev.plugins, plugin];
-      return { plugins };
-    });
+    await storage.set(prev => ({ plugins: upsertById(prev.plugins, plugin, PLUGIN_LIMIT, PLUGIN_LIMIT_ERROR) }));
   },
   async remove(id: string) {
     await storage.set(prev => ({ plugins: prev.plugins.filter(plugin => plugin.id !== id) }));

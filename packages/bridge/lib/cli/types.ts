@@ -25,7 +25,7 @@ export interface StreamParser {
 }
 
 /** Keeps a step line short: the side panel shows it, and it may hold page content. */
-export const STEP_DETAILS_MAX_CHARS = 200;
+const STEP_DETAILS_MAX_CHARS = 200;
 
 export function parseJsonLine(line: string): Record<string, unknown> | null {
   const trimmed = line.trim();

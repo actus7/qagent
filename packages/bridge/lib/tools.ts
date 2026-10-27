@@ -14,7 +14,7 @@ export interface ActionCatalogEntry {
 
 const MAX_TASK_CHARS = 8000;
 const MODES = ['chat', 'plan', 'act'] as const;
-export const ACTION_TOOL_PREFIX = 'page_';
+const ACTION_TOOL_PREFIX = 'page_';
 
 export const QAGENT_TOOLS: McpToolDefinition[] = [
   {

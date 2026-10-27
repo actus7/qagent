@@ -93,13 +93,15 @@ export function runShell(params: Params): Promise<ShellOutcome> {
     const chunks: { stdout: string[]; stderr: string[] } = { stdout: [], stderr: [] };
     const sizes = { stdout: 0, stderr: 0 };
     let timedOut = false;
-    const collect = (stream: 'stdout' | 'stderr') => (chunk: Buffer) => {
+    const collect = (stream: 'stdout' | 'stderr') => (text: string) => {
       // Keep reading past the cap so the child never blocks on a full pipe; the text is just not stored.
       if (sizes[stream] >= OUTPUT_LIMIT_CHARS) return;
-      const text = chunk.toString('utf8');
       chunks[stream].push(text);
       sizes[stream] += text.length;
     };
+    // Decoding per chunk would split a multi-byte character that crosses a chunk boundary; the stream decodes instead.
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
     child.stdout.on('data', collect('stdout'));
     child.stderr.on('data', collect('stderr'));
     const timer = setTimeout(() => {

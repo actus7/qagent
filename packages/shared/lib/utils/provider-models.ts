@@ -16,7 +16,7 @@ const ProviderType = {
   Llama: 'llama',
 } as const;
 
-export const PROVIDER_MODELS_TIMEOUT_MS = 15_000;
+const PROVIDER_MODELS_TIMEOUT_MS = 15_000;
 
 const ANTHROPIC_MODELS_URL = 'https://api.anthropic.com/v1/models?limit=1000';
 const ANTHROPIC_VERSION = '2023-06-01';

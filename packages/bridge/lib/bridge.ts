@@ -187,13 +187,18 @@ export class QAgentMcpBridge implements BridgeRequester {
           ? origin === `chrome-extension://${this.extensionId}`
           : origin.startsWith('chrome-extension://')),
     });
-    this.wss.on('connection', ws => this.handleConnection(ws));
+    const server = this.wss;
+    server.on('connection', ws => this.handleConnection(ws));
     await new Promise<void>((resolve, reject) => {
-      this.wss?.once('listening', () => resolve());
-      this.wss?.once('error', reject);
+      server.once('listening', () => resolve());
+      server.once('error', error => {
+        // Nothing listens after a failed bind, so a later start() must try again instead of returning early.
+        if (this.wss === server) this.wss = null;
+        reject(error);
+      });
     });
     // Port 0 asks the OS for a free port; report the one actually bound.
-    const address = this.wss?.address();
+    const address = server.address();
     if (typeof address === 'object' && address !== null) this.port = address.port;
   }
 
@@ -212,7 +217,7 @@ export class QAgentMcpBridge implements BridgeRequester {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       return Promise.reject(
         new Error(
-          'EXTENSION_NOT_CONNECTED: Abra o Chrome com a extensÃ£o QAgent e ative "Permitir controle por clientes MCP locais".',
+          'EXTENSION_NOT_CONNECTED: Abra o Chrome com a extensão QAgent e ative "Permitir controle por clientes MCP locais".',
         ),
       );
     }

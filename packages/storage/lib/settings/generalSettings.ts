@@ -127,9 +127,11 @@ const storage = createStorage<GeneralSettingsConfig>('general-settings', DEFAULT
 export const generalSettingsStore: GeneralSettingsStorage = {
   ...storage,
   async updateSettings(settings: Partial<GeneralSettingsConfig>) {
-    const currentSettings = sanitizeGeneralSettings(await storage.get(), DEFAULT_GENERAL_SETTINGS);
-    const updatedSettings = sanitizeGeneralSettings({ ...currentSettings, ...settings }, currentSettings);
-    await storage.set(updatedSettings);
+    // Merged inside the write, so two concurrent updates cannot drop each other's changes.
+    await storage.set(prev => {
+      const currentSettings = sanitizeGeneralSettings(prev, DEFAULT_GENERAL_SETTINGS);
+      return sanitizeGeneralSettings({ ...currentSettings, ...settings }, currentSettings);
+    });
   },
   async getSettings() {
     const settings = await storage.get();
