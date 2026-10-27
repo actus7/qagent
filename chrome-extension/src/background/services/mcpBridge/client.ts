@@ -165,6 +165,9 @@ export class McpBridgeClient {
       return;
     }
     const outcome = await handshake.handle(safeJson(data));
+    // The handshake is async: a frame can settle after stop() or a reconnect replaced this socket. Such a frame must
+    // not mark a dead socket as ready or send on it.
+    if (this.socket !== socket) return;
     switch (outcome.kind) {
       case 'reply':
         socket.send(JSON.stringify(outcome.frame));

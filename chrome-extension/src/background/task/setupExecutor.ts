@@ -2,7 +2,8 @@ import { agentModelStore, AgentNameEnum, generalSettingsStore, llmProviderStore 
 import { t } from '@extension/i18n';
 import type { AssistantAttachment, AssistantTaskOptions } from '@extension/shared';
 import { Executor } from '../agent/executor';
-import { type ChatModel, createChatModel } from '../agent/helper';
+import type { ChatModel } from '../agent/helper';
+import { createFailoverChatModel } from '../services/model-failover-store';
 import { createLogger } from '../log';
 import type { BrowserContextLike } from '../browser/types';
 import { isAgentBrowserContext } from '../state/browserSession';
@@ -21,7 +22,10 @@ export async function setupExecutor(
     browserContext.setSessionId(taskId);
   }
 
-  const providers = await llmProviderStore.getAllProviders();
+  const [providers, generalSettings] = await Promise.all([
+    llmProviderStore.getAllProviders(),
+    generalSettingsStore.getSettings(),
+  ]);
   // if no providers, need to display the options page
   if (Object.keys(providers).length === 0) {
     throw new Error(t('bg_setup_noApiKeys'));
@@ -38,24 +42,22 @@ export async function setupExecutor(
     }
   }
 
-  const navigatorModel =
-    agentModels[options.modelAgent === 'planner' ? AgentNameEnum.Planner : AgentNameEnum.Navigator];
+  const navigatorSlot = options.modelAgent === 'planner' ? AgentNameEnum.Planner : AgentNameEnum.Navigator;
+  const navigatorModel = agentModels[navigatorSlot];
   if (!navigatorModel) {
     throw new Error(t('bg_setup_noNavigatorModel'));
   }
   // Log the provider config being used for the navigator
-  const navigatorProviderConfig = providers[navigatorModel.provider];
-  const navigatorLLM = createChatModel(navigatorProviderConfig, navigatorModel);
+  // Each slot can fall back to the other configured models when its own fails
+  const navigatorLLM = await createFailoverChatModel(navigatorSlot, navigatorModel, providers);
 
   let plannerLLM: ChatModel | null = null;
   const plannerModel = agentModels[AgentNameEnum.Planner];
   if (plannerModel) {
     // Log the provider config being used for the planner
-    const plannerProviderConfig = providers[plannerModel.provider];
-    plannerLLM = createChatModel(plannerProviderConfig, plannerModel);
+    plannerLLM = await createFailoverChatModel(AgentNameEnum.Planner, plannerModel, providers);
   }
 
-  const generalSettings = await generalSettingsStore.getSettings();
   const useVision = usingAgentBrowser ? true : generalSettings.useVision;
   const useVisionForPlanner = usingAgentBrowser ? true : generalSettings.useVisionForPlanner;
   const displayHighlights = usingAgentBrowser ? true : generalSettings.displayHighlights;

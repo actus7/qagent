@@ -71,3 +71,12 @@ export async function listRecentDownloads(limit: number): Promise<DownloadRecord
     startedAt: Date.parse(item.startTime),
   }));
 }
+
+/**
+ * True when `path` is a completed browser download. Upload-by-path is limited to these so a prompt
+ * injection cannot make the agent attach arbitrary local files (keys, profiles) to a page.
+ */
+export async function isCompletedDownload(path: string): Promise<boolean> {
+  const items = await chrome.downloads.search({ filename: path, state: 'complete' }).catch(() => []);
+  return items.some(item => item.exists !== false && item.filename === path);
+}

@@ -1,10 +1,11 @@
 import { generateText } from 'ai';
+import { runWithFailover } from '../agent/model-failover';
 import { Actors, chatHistoryStore, type ChatMessage } from '@extension/storage';
 import { t } from '@extension/i18n';
 import type { ChatModel } from '../agent/helper';
 
 // Characters of chat sent to the model per call; the older part of a long chat is replaced by a summary once it grows past this.
-export const CONTEXT_CHAR_BUDGET = 24000;
+const CONTEXT_CHAR_BUDGET = 24000;
 const MAX_TRANSCRIPT_CHARS = 40000;
 const MAX_MESSAGE_CHARS = 12000;
 export const COMPACTION_KIND = 'compaction';
@@ -68,13 +69,19 @@ export async function compactChatConversation(taskId: string, model: ChatModel):
   const { summary, recent } = selectContext(session?.messages ?? []);
   if (recent.length === 0) return false;
 
-  const response = await generateText({
-    model: model.model,
-    ...model.settings,
-    instructions: COMPACTION_INSTRUCTIONS,
-    prompt: buildTranscript(summary, recent),
-    maxRetries: 0,
-  });
+  const prompt = buildTranscript(summary, recent);
+  const response = await runWithFailover(
+    model,
+    current =>
+      generateText({
+        model: current.model,
+        ...current.settings,
+        instructions: COMPACTION_INSTRUCTIONS,
+        prompt,
+        maxRetries: 0,
+      }),
+    { shouldTryNext: () => true },
+  );
   const text = response.text.trim();
   if (!text) throw new Error(t('bg_compact_empty'));
 

@@ -3,7 +3,7 @@ import type { WorkflowStep, WorkflowTarget } from '@extension/storage';
 
 // Recorded typed values for password, card and similar fields are already redacted by the content script.
 // They become a named variable, so the value is supplied at replay time and is never stored.
-export const SECRET_VARIABLE_PREFIX = 'secret_';
+const SECRET_VARIABLE_PREFIX = 'secret_';
 
 type RecordedElement = { selector: string; name: string; role: string };
 

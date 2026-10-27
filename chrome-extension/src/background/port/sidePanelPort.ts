@@ -49,7 +49,14 @@ export function registerSidePanelPortListener(): void {
     }
 
     runtimeStore.getState().setPort(port);
-    const postPortMessage = (payload: SidePanelResponseMessage) => port.postMessage(payload);
+    // A panel that closed mid-request makes postMessage throw; the reply has nowhere to go, so it is dropped.
+    const postPortMessage = (payload: SidePanelResponseMessage) => {
+      try {
+        port.postMessage(payload);
+      } catch {
+        /* The panel disconnected while the request was running. */
+      }
+    };
 
     port.onMessage.addListener(async incomingMessage => {
       if (!isSidePanelCommandMessage(incomingMessage)) {

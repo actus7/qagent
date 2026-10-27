@@ -1,7 +1,7 @@
 // Captcha flow: tick the checkbox with a trusted click, then answer image rounds with the vision model.
 // The loop is written against a driver, so it runs in tests without a browser or a model.
 
-export const MAX_CAPTCHA_ROUNDS = 10;
+const MAX_CAPTCHA_ROUNDS = 10;
 const SETTLE_POLL_MS = 500;
 const SETTLE_TIMEOUT_MS = 5000;
 const POST_SUBMIT_MS = 1500;
@@ -48,7 +48,7 @@ export interface SolveOptions {
   postSubmitMs: number;
 }
 
-export const DEFAULT_SOLVE_OPTIONS: SolveOptions = {
+const DEFAULT_SOLVE_OPTIONS: SolveOptions = {
   maxRounds: MAX_CAPTCHA_ROUNDS,
   pollMs: SETTLE_POLL_MS,
   timeoutMs: SETTLE_TIMEOUT_MS,

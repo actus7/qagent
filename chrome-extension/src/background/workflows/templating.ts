@@ -3,7 +3,7 @@ import type { WorkflowStep, WorkflowTarget } from '@extension/storage';
 const PLACEHOLDER = /\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/g;
 
 /** Names of the {{variables}} used in one text. */
-export function placeholdersIn(text: string): string[] {
+function placeholdersIn(text: string): string[] {
   return [...text.matchAll(PLACEHOLDER)].map(match => match[1]);
 }
 

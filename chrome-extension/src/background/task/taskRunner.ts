@@ -85,6 +85,7 @@ export async function runAssistantTask(
   const options = message.options ?? {};
   const mode = options.mode ?? 'act';
   const tabIds = [...new Set(options.tabIds ?? [message.tabId])];
+  const primaryTabId = tabIds.includes(message.tabId) ? message.tabId : tabIds[0];
   let executor: Executor | null = null;
   let terminalEvent: ExecutionPortEventMessage | null = null;
   const emit = (state: ExecutionState, details = '') => {
@@ -126,11 +127,10 @@ export async function runAssistantTask(
     if (cliRunner) {
       // The CLI agent is chosen in options: the daemon runs it and its steps reach the panel as they happen.
       emit(ExecutionState.TASK_START);
-      const tabId = tabIds.includes(message.tabId) ? message.tabId : tabIds[0];
       const outcome = await runCliAgentTask({
         taskId: message.taskId,
         task: message.task,
-        tabId,
+        tabId: primaryTabId,
         runner: cliRunner,
         signal: controller.signal,
         post: postToPanel,
@@ -172,7 +172,7 @@ export async function runAssistantTask(
       return;
     }
     runtimeStore.getState().setExecutor(executor);
-    await browserContext.switchTab(tabIds.includes(message.tabId) ? message.tabId : tabIds[0]);
+    await browserContext.switchTab(primaryTabId);
     if (controller.signal.aborted) {
       emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
       return;
@@ -200,8 +200,7 @@ export async function runAssistantTask(
     if (mode === 'act') await clearRunningTask();
     await taskTabGroups.finish(message.taskId);
     if (executor) {
-      const tabId = tabIds.includes(message.tabId) ? message.tabId : tabIds[0];
-      await rememberTask(message.taskId, message.task, executor, terminalEvent, tabId);
+      await rememberTask(message.taskId, message.task, executor, terminalEvent, primaryTabId);
       await executor.cleanup();
     } else if (mode === 'act') await browserContext.cleanup();
     if (isAgentBrowserContext(browserContext)) await stopAgentBrowserStream(message.taskId);

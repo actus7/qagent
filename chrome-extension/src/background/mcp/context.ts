@@ -6,9 +6,9 @@ import { createLogger } from '../log';
 
 const logger = createLogger('Mcp');
 
-export const MCP_PROMPT_MAX_SERVERS = 5;
-export const MCP_PROMPT_MAX_TOOLS = 20;
-export const MCP_PROMPT_MAX_CHARS = 1500;
+const MCP_PROMPT_MAX_SERVERS = 5;
+const MCP_PROMPT_MAX_TOOLS = 20;
+const MCP_PROMPT_MAX_CHARS = 1500;
 
 /** Tool names of one server, fetched once per task. A server that cannot be reached is remembered as null. */
 async function toolNamesFor(context: AgentContext, server: McpServer): Promise<string[] | null> {

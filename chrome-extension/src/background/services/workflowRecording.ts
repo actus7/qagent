@@ -6,8 +6,8 @@ import { createWorkflowRecorder } from './workflowRecordingState';
 const SESSION_KEY = 'workflowRecording';
 
 // Content-script messages. Steps are validated by the recorder; the sender tab comes from the runtime, not the payload.
-export const RECORDING_STEP_MESSAGE = 'qagent:recording:step';
-export const RECORDING_STOP_REQUEST_MESSAGE = 'qagent:recording:stop-request';
+const RECORDING_STEP_MESSAGE = 'qagent:recording:step';
+const RECORDING_STOP_REQUEST_MESSAGE = 'qagent:recording:stop-request';
 
 // The service worker owns the single recorder. chrome.storage.session keeps the steps across worker restarts.
 export const workflowRecorder = createWorkflowRecorder({

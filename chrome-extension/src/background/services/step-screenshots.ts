@@ -2,10 +2,10 @@
 // ends), bounded per task and to the most recent tasks, and never written to the long-term chat history.
 import { isSafeScreenshotDataUrl, type StepScreenshot } from '@extension/shared';
 
-export const STEP_SCREENSHOT_STORAGE_KEY = 'qagent-step-screenshots';
+const STEP_SCREENSHOT_STORAGE_KEY = 'qagent-step-screenshots';
 export const MAX_SCREENSHOTS_PER_TASK = 20;
 export const MAX_SCREENSHOT_TASKS = 3;
-export const SCREENSHOT_MAX_WIDTH = 640;
+const SCREENSHOT_MAX_WIDTH = 640;
 const SCREENSHOT_JPEG_QUALITY = 0.7;
 const BASE64_CHUNK_SIZE = 0x8000;
 
@@ -22,7 +22,7 @@ export interface StepScreenshotStore {
 const EMPTY_STORE: StepScreenshotStore = { tasks: [] };
 
 /** True when the task can take one more screenshot. */
-export function hasScreenshotRoom(store: StepScreenshotStore, taskId: string): boolean {
+function hasScreenshotRoom(store: StepScreenshotStore, taskId: string): boolean {
   const existing = store.tasks.find(task => task.taskId === taskId);
   return !existing || existing.shots.length < MAX_SCREENSHOTS_PER_TASK;
 }
@@ -67,7 +67,7 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 /** Scales a base64 JPEG down to SCREENSHOT_MAX_WIDTH and returns it as a JPEG data URL. */
-export async function downscaleToJpegDataUrl(base64Jpeg: string): Promise<string> {
+async function downscaleToJpegDataUrl(base64Jpeg: string): Promise<string> {
   const bytes = Uint8Array.from(atob(base64Jpeg), char => char.charCodeAt(0));
   const source = await createImageBitmap(new Blob([bytes], { type: 'image/jpeg' }));
   try {

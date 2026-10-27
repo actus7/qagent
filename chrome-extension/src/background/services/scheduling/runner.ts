@@ -46,6 +46,7 @@ export async function runScheduledTaskWith(id: string, deps: ScheduleRunDeps): P
   }
 
   let sessionId: string | null = null;
+  let run: ScheduleRun;
   try {
     sessionId = await deps.createSession(task.name, task.prompt);
     const tabIds: number[] = [];
@@ -61,12 +62,14 @@ export async function runScheduledTaskWith(id: string, deps: ScheduleRunDeps): P
       options: { mode: task.mode, tabIds },
     });
     const { outcome, detail } = outcomeForState(state);
-    await finishRun(task, { at: deps.now(), outcome, sessionId, detail }, deps);
+    run = { at: deps.now(), outcome, sessionId, detail };
   } catch (error) {
     logger.error(`Scheduled task ${id} failed to run:`, error);
     const detail = error instanceof Error ? error.message : 'erro desconhecido';
-    await finishRun(task, { at: deps.now(), outcome: 'failed', sessionId, detail }, deps);
+    run = { at: deps.now(), outcome: 'failed', sessionId, detail };
   }
+  // Outside the try: a storage error while recording a finished run must not be recorded again as a failure.
+  await finishRun(task, run, deps);
 }
 
 async function finishRun(task: ScheduledTask, run: ScheduleRun, deps: ScheduleRunDeps): Promise<void> {
@@ -99,7 +102,7 @@ async function waitForTabLoad(tabId: number): Promise<void> {
   });
 }
 
-export function defaultScheduleRunDeps(): ScheduleRunDeps {
+function defaultScheduleRunDeps(): ScheduleRunDeps {
   return {
     getTask: id => scheduledTasksStore.getTask(id),
     saveTask: task => scheduledTasksStore.saveTask(task),

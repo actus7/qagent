@@ -5,11 +5,16 @@ import { analytics } from './analytics';
 
 const logger = createLogger('background');
 
+type LanguageAndLoggingSettings = { language: Parameters<typeof resolveLocale>[0]; chatDebugMode: boolean };
+
+const applyLanguageAndLogging = (settings: LanguageAndLoggingSettings) => {
+  t.devLocale = resolveLocale(settings.language);
+  setVerboseLoggingEnabled(settings.chatDebugMode);
+};
+
 const syncLanguageFromSettings = async () => {
   try {
-    const settings = await generalSettingsStore.getSettings();
-    t.devLocale = resolveLocale(settings.language);
-    setVerboseLoggingEnabled(settings.chatDebugMode);
+    applyLanguageAndLogging(await generalSettingsStore.getSettings());
   } catch (error) {
     logger.warning('Failed to load language settings for background i18n', error);
     setVerboseLoggingEnabled(false);
@@ -25,8 +30,7 @@ export function registerSettingsSync(): void {
     if (!settings) {
       return;
     }
-    t.devLocale = resolveLocale(settings.language);
-    setVerboseLoggingEnabled(settings.chatDebugMode);
+    applyLanguageAndLogging(settings);
   });
 
   // Initialize analytics

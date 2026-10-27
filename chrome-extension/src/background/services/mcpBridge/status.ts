@@ -3,7 +3,7 @@ import { createLogger } from '../../log';
 const logger = createLogger('background');
 
 /** Session storage key the options page reads to show whether the daemon is connected. */
-export const MCP_BRIDGE_STATUS_KEY = 'mcpBridgeStatus';
+const MCP_BRIDGE_STATUS_KEY = 'mcpBridgeStatus';
 
 export interface McpBridgeStatus {
   connected: boolean;

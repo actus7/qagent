@@ -20,7 +20,7 @@ export function buildUserContent(task: string, attachments?: readonly AssistantA
 }
 
 /** Binary (non-image) attachments the navigator can pass to upload_file by name. */
-export function getFileAttachments(attachments: readonly AssistantAttachment[] = []): AssistantAttachment[] {
+function getFileAttachments(attachments: readonly AssistantAttachment[] = []): AssistantAttachment[] {
   return attachments.filter(item => item.kind === 'file');
 }
 

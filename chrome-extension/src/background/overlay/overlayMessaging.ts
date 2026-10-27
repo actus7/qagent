@@ -67,7 +67,7 @@ async function injectOverlayReceiver(tabId: number): Promise<boolean> {
 }
 
 // Longest the action waits for the cursor to reach its target. The glide itself takes 300-450 ms.
-export const AGENT_POINTER_WAIT_MS = 500;
+const AGENT_POINTER_WAIT_MS = 500;
 
 /**
  * Glides the agent cursor to a viewport point (CSS px) before an action. Resolves once the content script

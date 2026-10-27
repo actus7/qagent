@@ -212,4 +212,18 @@ describe('runScheduledTaskWith', () => {
 
     expect(runs).toEqual([expect.objectContaining({ outcome: 'failed', detail: 'boom' })]);
   });
+
+  it('does not record a finished run a second time as failed when saving it throws', async () => {
+    const attempts: unknown[] = [];
+    const { deps } = fakeDeps(task, {
+      appendRun: async (_id, run) => {
+        attempts.push(run);
+        throw new Error('storage unavailable');
+      },
+    });
+
+    await expect(runScheduledTaskWith('t1', deps)).rejects.toThrow('storage unavailable');
+
+    expect(attempts).toEqual([expect.objectContaining({ outcome: 'completed', sessionId: 'session-1' })]);
+  });
 });

@@ -16,7 +16,7 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-export const runTaskParamsSchema = z
+const runTaskParamsSchema = z
   .object({
     task: z.string().trim().min(1).max(MAX_TASK_CHARS),
     mode: z.enum(['chat', 'plan', 'act']).default('act'),
@@ -24,7 +24,7 @@ export const runTaskParamsSchema = z
   })
   .strict();
 
-export const runActionParamsSchema = z
+const runActionParamsSchema = z
   .object({
     action: z
       .string()

@@ -4,8 +4,9 @@ import { runtimeStore } from '../state/runtimeStore';
 
 const logger = createLogger('background');
 
-// Listen for debugger detached event
-// if canceled_by_user, remove the tab from the browser context
+// Listen for debugger detached event.
+// canceled_by_user stops the task; any other reason (renderer crash, target closed) drops the dead page
+// so the next step attaches the tab again instead of failing on it until the task ends.
 export function registerDebuggerListener(): void {
   // Firefox has no chrome.debugger; the content-script engine never attaches one.
   if (!chrome.debugger) return;
@@ -22,6 +23,8 @@ export function registerDebuggerListener(): void {
         resetOverlay();
         await browserContext.cleanup();
       }
+      return;
     }
+    if (source.tabId) browserContext.removeAttachedPage(source.tabId);
   });
 }

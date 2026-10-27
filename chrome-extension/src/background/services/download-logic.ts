@@ -1,6 +1,6 @@
 // Download watcher state. Pure: chrome.downloads events are folded in here, and the waiter reads the result.
 
-export const DOWNLOAD_START_TOLERANCE_MS = 1000;
+const DOWNLOAD_START_TOLERANCE_MS = 1000;
 
 export interface DownloadRecord {
   id: number;
@@ -57,7 +57,7 @@ export function watchOnChanged(watch: DownloadWatch, delta: DownloadChangedDelta
   return { ...watch, downloads: { ...watch.downloads, [delta.id]: updated } };
 }
 
-export function isSettled(state: string): boolean {
+function isSettled(state: string): boolean {
   return state === 'complete' || state === 'interrupted';
 }
 

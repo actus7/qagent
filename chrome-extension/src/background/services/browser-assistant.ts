@@ -1,4 +1,5 @@
 import { streamText } from 'ai';
+import { runWithFailover } from '../agent/model-failover';
 import { selectContext, trimToBudget } from './conversation-compaction';
 import type { ChatModel } from '../agent/helper';
 import { assistantMessage, type ModelMessage, userMessage } from '../agent/messages/model-messages';
@@ -63,7 +64,7 @@ export async function loadConversationContext(
   return { summary, messages };
 }
 
-export async function getConversationContext(taskId: string): Promise<ModelMessage[]> {
+async function getConversationContext(taskId: string): Promise<ModelMessage[]> {
   const { summary, messages } = await loadConversationContext(taskId);
   return summary
     ? [userMessage(`Summary of the earlier conversation (context only):\n${summary}`), ...messages]
@@ -103,28 +104,35 @@ export async function streamBrowserAnswer(args: {
   // Idle timeout: the clock restarts on every chunk, so a long answer that keeps streaming is not cut off
   let timer = setTimeout(abort, STREAM_IDLE_TIMEOUT_MS);
   try {
-    const result = streamText({
-      model: model.model,
-      ...model.settings,
-      instructions,
-      messages,
-      abortSignal: timeout.signal,
-      maxRetries: 0,
-    });
-    // the full event stream, not textStream: provider errors arrive as error parts and must end the answer
-    for await (const part of result.stream) {
-      if (signal.aborted) return;
-      if (part.type === 'error') throw part.error instanceof Error ? part.error : new Error(String(part.error));
-      if (part.type !== 'text-delta') continue;
-      clearTimeout(timer);
-      timer = setTimeout(abort, STREAM_IDLE_TIMEOUT_MS);
-      content += part.text;
-      if (Date.now() - lastPost > 60) {
-        post({ type: 'assistant_delta', taskId, streamId, content, finished: false });
-        lastPost = Date.now();
-      }
-    }
-    if (!content.trim()) throw new Error(t('bg_assistant_emptyResponse'));
+    // Another configured model takes over only while nothing was shown yet; a half-streamed answer is not restarted
+    await runWithFailover(
+      model,
+      async current => {
+        const result = streamText({
+          model: current.model,
+          ...current.settings,
+          instructions,
+          messages,
+          abortSignal: timeout.signal,
+          maxRetries: 0,
+        });
+        // the full event stream, not textStream: provider errors arrive as error parts and must end the answer
+        for await (const part of result.stream) {
+          if (signal.aborted) return;
+          if (part.type === 'error') throw part.error instanceof Error ? part.error : new Error(String(part.error));
+          if (part.type !== 'text-delta') continue;
+          clearTimeout(timer);
+          timer = setTimeout(abort, STREAM_IDLE_TIMEOUT_MS);
+          content += part.text;
+          if (Date.now() - lastPost > 60) {
+            post({ type: 'assistant_delta', taskId, streamId, content, finished: false });
+            lastPost = Date.now();
+          }
+        }
+        if (!content.trim() && !signal.aborted) throw new Error(t('bg_assistant_emptyResponse'));
+      },
+      { shouldTryNext: () => !signal.aborted && !timeout.signal.aborted && content === '' },
+    );
     if (signal.aborted) return;
     // Finish the stream for the panel first; persisting the answer must not turn it into a failure
     post({ type: 'assistant_delta', taskId, streamId, content, finished: true });

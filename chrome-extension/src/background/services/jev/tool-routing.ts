@@ -5,7 +5,7 @@ import { readNoul } from './runtime';
  * Optional action groups. Actions that belong to no group (click, fill, type, press, navigation, scroll, done,
  * get_text, wait, ask_user, todo, ...) are always offered, so the core flow never depends on routing.
  */
-export const ACTION_GROUPS = {
+const ACTION_GROUPS = {
   forms: {
     actions: [
       'input_text',

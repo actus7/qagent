@@ -44,7 +44,7 @@ export function buildContextPrefill(
  * Hands the prefill to the side panel through chrome.storage.session. The panel reads it when it mounts or,
  * if already open, through storage.onChanged, so nothing is lost when the panel was closed.
  */
-export async function deliverContextPrefill(payload: ContextPrefillPayload): Promise<void> {
+async function deliverContextPrefill(payload: ContextPrefillPayload): Promise<void> {
   await chrome.storage.session.set({
     [CONTEXT_PREFILL_STORAGE_KEY]: { payload, createdAt: Date.now() },
   });

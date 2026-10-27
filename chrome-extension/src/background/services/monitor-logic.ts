@@ -1,6 +1,6 @@
 // Monitor records and their transitions. Pure: the storage and alarm wiring lives in monitors.ts.
 
-export const MONITOR_ALARM_PREFIX = 'qagent-monitor:';
+const MONITOR_ALARM_PREFIX = 'qagent-monitor:';
 const MONITOR_ID_PATTERN = /^mon-[a-z0-9]{6}$/;
 const MAX_CHANGED_CHARS = 1000;
 

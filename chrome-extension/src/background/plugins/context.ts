@@ -5,7 +5,7 @@ import { pluginAppliesToUrl } from './urlMatch';
 
 const logger = createLogger('Plugins');
 
-export const PLUGIN_PROMPT_MAX_CHARS = 3000;
+const PLUGIN_PROMPT_MAX_CHARS = 3000;
 // Sized for a site map summary (900 characters), so the map is not cut in the prompt.
 const INSTRUCTIONS_MAX_CHARS = 1000;
 
@@ -34,7 +34,7 @@ export function describePlugin(plugin: BrowserPlugin): string[] {
 }
 
 /** Compact section for the state message: the enabled plugins that apply to the current URL. */
-export function buildPluginPromptSection(plugins: BrowserPlugin[], url: string): string {
+function buildPluginPromptSection(plugins: BrowserPlugin[], url: string): string {
   const applicable = plugins.filter(plugin => pluginAppliesToUrl(plugin, url));
   if (applicable.length === 0) return '';
   const lines = [

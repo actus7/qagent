@@ -3,7 +3,7 @@ import { MAX_RECORDED_STEPS } from '@extension/shared';
 import type { Workflow, WorkflowStep, WorkflowVariable } from '@extension/storage';
 import { variableNamesOf } from './templating';
 
-export const VARIABLE_NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
+const VARIABLE_NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
 const MAX_TEXT_CHARS = 2000;
 const MAX_NAME_CHARS = 80;
 const MAX_DESCRIPTION_CHARS = 300;

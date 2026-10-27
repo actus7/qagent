@@ -15,9 +15,9 @@ import {
 const logger = createLogger('monitors');
 const SESSION_KEY = 'qagent-monitors';
 // Content-script messages. The sender tab comes from the runtime, never from the payload.
-export const MONITOR_START_MESSAGE = 'qagent:monitor:start';
-export const MONITOR_STOP_MESSAGE = 'qagent:monitor:stop';
-export const MONITOR_CHANGED_MESSAGE = 'qagent:monitor:changed';
+const MONITOR_START_MESSAGE = 'qagent:monitor:start';
+const MONITOR_STOP_MESSAGE = 'qagent:monitor:stop';
+const MONITOR_CHANGED_MESSAGE = 'qagent:monitor:changed';
 const POLL_MS = 500;
 
 // Writes are queued so two events (a change and an alarm) never overwrite each other's record.

@@ -1,7 +1,7 @@
 import { scheduledTasksStore } from '@extension/storage';
 import type { ScheduledTask } from '@extension/storage';
 
-export const SCHEDULE_ALARM_PREFIX = 'qagent-schedule:';
+const SCHEDULE_ALARM_PREFIX = 'qagent-schedule:';
 // Alarms closer than this are pushed out so a schedule due right now does not fire during its own save.
 const MIN_ALARM_DELAY_MS = 1_000;
 

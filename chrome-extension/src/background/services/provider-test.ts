@@ -6,7 +6,7 @@ import { describeModelError } from '../agent/agents/errors';
 import { createLogger } from '../log';
 
 const logger = createLogger('background');
-export const PROVIDER_TEST_TIMEOUT_MS = 20_000;
+const PROVIDER_TEST_TIMEOUT_MS = 20_000;
 
 export type ProviderTestResult = { ok: true } | { ok: false; error: string };
 

@@ -4,6 +4,7 @@ import { workflowsStore, type Workflow, type WorkflowStep } from '@extension/sto
 import { createLogger } from '../log';
 import { wrapUntrustedContent } from '../agent/messages/utils';
 import { loadAssistantModel } from '../services/assistant-model';
+import { runWithFailover } from '../agent/model-failover';
 import { normalizeRecording } from './normalize';
 import { extractJsonObject, parseWorkflowDraft, toWorkflow, type WorkflowDraft } from './draft';
 
@@ -27,15 +28,21 @@ async function draftWithModel(
 ): Promise<WorkflowDraft | null> {
   try {
     const model = await loadAssistantModel(modelAgent);
-    const reply = await generateText({
-      model: model.model,
-      ...model.settings,
-      instructions: BUILD_PROMPT,
-      // Recorded steps carry page text (labels, URLs), so they are data for the model, not instructions.
-      prompt: `Workflow name: ${name}\nRecorded steps (JSON):\n${wrapUntrustedContent(JSON.stringify(steps), false)}`,
-      abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-      maxRetries: 0,
-    });
+    // Recorded steps carry page text (labels, URLs), so they are data for the model, not instructions.
+    const prompt = `Workflow name: ${name}\nRecorded steps (JSON):\n${wrapUntrustedContent(JSON.stringify(steps), false)}`;
+    const reply = await runWithFailover(
+      model,
+      current =>
+        generateText({
+          model: current.model,
+          ...current.settings,
+          instructions: BUILD_PROMPT,
+          prompt,
+          abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+          maxRetries: 0,
+        }),
+      { shouldTryNext: () => true },
+    );
     return parseWorkflowDraft(extractJsonObject(reply.text));
   } catch (error) {
     logger.error('Workflow drafting failed; saving the recorded steps as they are', error);
