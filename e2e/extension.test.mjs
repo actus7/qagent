@@ -276,7 +276,9 @@ describe('extension e2e', { timeout: 300_000 }, () => {
       // The full Chromium build (new headless) loads extensions; the default headless shell does not.
       channel: 'chromium',
       headless: !process.env.E2E_HEADED,
-      args: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`],
+      // The tests match pt-BR UI text: --lang sets it on Windows/macOS, LANGUAGE on Linux (CI runners default to English).
+      args: ['--lang=pt-BR', `--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`],
+      env: { ...process.env, LANGUAGE: 'pt_BR' },
     });
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
     extensionId = new URL(worker.url()).host;
