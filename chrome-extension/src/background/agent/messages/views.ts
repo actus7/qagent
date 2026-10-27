@@ -66,22 +66,17 @@ export class MessageHistory {
   }
 
   /**
-   * Get total tokens in history
-   */
-  getTotalTokens(): number {
-    return this.totalTokens;
-  }
-
-  /**
-   * Remove oldest non-system message
+   * Remove the oldest history message. System and 'init' messages (task, context, example) are kept:
+   * dropping them first would leave the model working without knowing its goal.
+   * Tool results that follow a removed tool call go with it, so no orphan tool message is sent.
    */
   removeOldestMessage(): void {
-    for (let i = 0; i < this.messages.length; i++) {
-      if (this.messages[i].message.role !== 'system') {
-        const msg = this.messages.splice(i, 1)[0];
-        this.totalTokens -= msg.metadata.tokens;
-        break;
-      }
+    const index = this.messages.findIndex(m => m.message.role !== 'system' && m.metadata.message_type !== 'init');
+    if (index < 0) return;
+    const [removed] = this.messages.splice(index, 1);
+    this.totalTokens -= removed.metadata.tokens;
+    while (this.messages[index]?.message.role === 'tool') {
+      this.totalTokens -= this.messages.splice(index, 1)[0].metadata.tokens;
     }
   }
 }

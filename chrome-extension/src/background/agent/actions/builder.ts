@@ -51,6 +51,8 @@ import {
   createFindProgressAction,
   createPageInfoAction,
   createSwitchFrameAction,
+  createHandleDialogAction,
+  createReadAccessibilityTreeAction,
   createWaitForElementAction,
 } from './page-tools';
 import { createRequestUserTakeoverAction } from './takeover';
@@ -123,6 +125,7 @@ const CONTENT_SCRIPT_UNSUPPORTED_ACTIONS = new Set([
   'find_progress',
   'wait_for_element',
   'switch_frame',
+  'read_accessibility_tree',
   'list_site_tools',
   'call_site_tool',
   'find_captcha',
@@ -186,6 +189,8 @@ export class ActionBuilder {
       createFindProgressAction(context),
       createWaitForElementAction(context),
       createSwitchFrameAction(context),
+      createHandleDialogAction(context),
+      createReadAccessibilityTreeAction(context),
       createResizeViewportAction(context),
       createRequestUserTakeoverAction(context),
       createListPluginsAction(context),

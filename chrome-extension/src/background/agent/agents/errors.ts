@@ -378,6 +378,23 @@ export class ResponseParseError extends Error {
   }
 }
 
+/**
+ * The error class the executor reacts to, for a provider or transport failure. Undefined for a plain step failure
+ * (including an LLM timeout), which the caller counts as a retryable failure. An error already classified is returned as it is.
+ */
+export function classifyModelError(error: unknown): Error | undefined {
+  const message = error instanceof Error ? error.message : String(error);
+  // A timeout wraps the SDK's AbortError as its cause, so it would read as a user cancel below
+  if (error instanceof LLMTimeoutError) return undefined;
+  if (isAuthenticationError(error)) return new ChatModelAuthError(message, error);
+  if (isBadRequestError(error)) return new ChatModelBadRequestError(message, error);
+  if (isAbortedError(error)) return new RequestCancelledError(message);
+  if (error instanceof ExtensionConflictError) return error;
+  if (isExtensionConflictError(error)) return new ExtensionConflictError(EXTENSION_CONFLICT_ERROR_MESSAGE, error);
+  if (isForbiddenError(error)) return new ChatModelForbiddenError(LLM_FORBIDDEN_ERROR_MESSAGE, error);
+  return undefined;
+}
+
 const TROUBLESHOOTING_SUFFIX = /\s*Troubleshooting URL:\s*\S+/gi;
 
 /**
@@ -409,3 +426,14 @@ export type ModelErrorKey =
   | 'bg_errors_modelRateLimit'
   | 'bg_errors_modelNotFound'
   | 'bg_errors_modelUnreachable';
+
+/**
+ * Whether another model could succeed where this call failed: anything except the user cancelling or pausing
+ * the task (aborted parent signal), a cancelled request, or a browser-side conflict that no model can fix.
+ */
+export function shouldTryAnotherModel(error: unknown, taskSignal: AbortSignal): boolean {
+  if (taskSignal.aborted) return false;
+  if (error instanceof RequestCancelledError || error instanceof ExtensionConflictError) return false;
+  if (isExtensionConflictError(error)) return false;
+  return true;
+}

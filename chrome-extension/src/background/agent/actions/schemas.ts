@@ -176,6 +176,16 @@ export const pageInfoActionSchema = {
   }),
 } satisfies ActionSchema;
 
+export const readAccessibilityTreeActionSchema = {
+  name: 'read_accessibility_tree',
+  description:
+    "Chrome's accessibility tree of the page (or focused frame): roles, names, values and states, including content inside closed shadow roots that the element list misses. Read-only; act on elements with refs or targets",
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    max_nodes: z.number().int().min(20).max(2000).default(300).describe('nodes listed before the rest is summarized'),
+  }),
+} satisfies ActionSchema;
+
 export const findProgressActionSchema = {
   name: 'find_progress',
   description:
@@ -205,6 +215,17 @@ export const switchFrameActionSchema = {
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     index: z.number().int().nonnegative().optional().describe('frame index from the list'),
+  }),
+} satisfies ActionSchema;
+
+export const handleDialogActionSchema = {
+  name: 'handle_dialog',
+  description:
+    'Choose how the NEXT JavaScript confirm/prompt dialog is answered; by default they are dismissed. Call it before the action that opens the dialog',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    accept: z.boolean().describe('true presses OK, false presses Cancel'),
+    prompt_text: z.string().max(1000).optional().describe('text typed into a prompt() dialog before accepting'),
   }),
 } satisfies ActionSchema;
 

@@ -88,15 +88,14 @@ Open Tabs
 Interactive Elements
 
 ## Format of Interactive Elements
-[index][ref=eN]<type>text</type>
+[N]<type>text</type>
 
-- index: Numeric identifier for interaction
-- ref: Deterministic selector ref (use as '@eN' in actions)
+- N: Numeric identifier for interaction; the same element is the ref '@eN' in selectors
 - type: HTML element type (button, input, etc.)
-- text: Element description
+- text: Element description (long texts are shortened)
   Example:
-  [33][ref=e33]<div>User form</div>
-  \t*[35][ref=e35]<button aria-label='Submit form'>Submit</button>
+  [33]<div>User form</div>
+  \t*[35]<button aria-label='Submit form'>Submit</button>
 
 - Prefer refs ('@eN') for interaction selectors
 - (stacked) indentation (with \t) is important and means that the element is a (html) child of the element above (with a lower index)

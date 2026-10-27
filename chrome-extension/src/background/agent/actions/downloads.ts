@@ -6,7 +6,8 @@ import { wrapUntrustedContent } from '../messages/utils';
 import { describeTargetSpec } from '../../browser/target-resolver';
 import { armDownloadCapture, listRecentDownloads } from '../../services/downloads';
 import { Action } from './action';
-import { actionFailedResult, elementNotExistResult, engineUnsupportedResult, missingLocatorResult } from './shared';
+import { resolveActionIndex } from './element-resolver';
+import { actionErrorResult, actionFailedResult, engineUnsupportedResult, missingLocatorResult } from './shared';
 import { captureDownloadActionSchema, listDownloadsActionSchema } from './schemas';
 
 /** Arms the download watch first, then clicks, so a download that starts at once is not missed. */
@@ -18,23 +19,26 @@ export function createCaptureDownloadAction(context: AgentContext) {
       context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, input.intent || t('act_download_start', [label]));
       const page = await context.browserContext.getCurrentPage();
       if (!page.clickByTarget || !page.clickBySelector) return engineUnsupportedResult(context);
-      if (input.index !== undefined && !page.getDomElementBySelector(`@e${input.index}`)) {
-        return elementNotExistResult(context, input.index);
+      let ref = '';
+      if (input.index !== undefined) {
+        const resolved = await resolveActionIndex(context, page, input.index);
+        if ('error' in resolved) {
+          return actionErrorResult(context, resolved.error);
+        }
+        ref = `@e${resolved.index}`;
       }
       const capture = armDownloadCapture();
       try {
         if (input.target) await page.clickByTarget(input.target);
-        else await page.clickBySelector(false, `@e${input.index}`);
+        else await page.clickBySelector(false, ref);
         const download = await capture.wait(input.timeout_ms);
         if (!download) {
           const msg = t('act_download_none', [String(Math.round(input.timeout_ms / 1000))]);
-          context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-          return new ActionResult({ error: msg, includeInMemory: true });
+          return actionErrorResult(context, msg);
         }
         if (download.state === 'interrupted') {
           const msg = t('act_download_interrupted', [wrapUntrustedContent(download.filename || label)]);
-          context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-          return new ActionResult({ error: msg, includeInMemory: true });
+          return actionErrorResult(context, msg);
         }
         const msg = t('act_download_ok', [wrapUntrustedContent(download.filename)]);
         context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);

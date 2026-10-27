@@ -2,6 +2,7 @@ import { generateText } from 'ai';
 import type { AssistantTaskOptions } from '@extension/shared';
 import { createLogger } from '../../log';
 import { loadAssistantModel } from '../../services/assistant-model';
+import { runWithFailover } from '../model-failover';
 
 const logger = createLogger('SiteMap');
 export const SITE_MAP_INSTRUCTIONS_MAX_CHARS = 900;
@@ -23,14 +24,19 @@ export async function summarizeSiteReport(
 ): Promise<string> {
   try {
     const model = await loadAssistantModel(modelAgent);
-    const reply = await generateText({
-      model: model.model,
-      ...model.settings,
-      instructions: SUMMARY_PROMPT,
-      prompt: report,
-      abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-      maxRetries: 0,
-    });
+    const reply = await runWithFailover(
+      model,
+      current =>
+        generateText({
+          model: current.model,
+          ...current.settings,
+          instructions: SUMMARY_PROMPT,
+          prompt: report,
+          abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+          maxRetries: 0,
+        }),
+      { shouldTryNext: () => true },
+    );
     const text = reply.text.trim();
     if (text) return text.slice(0, SITE_MAP_INSTRUCTIONS_MAX_CHARS);
   } catch (error) {

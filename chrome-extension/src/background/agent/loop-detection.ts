@@ -122,11 +122,7 @@ function normalizeActionArgs(actionName: string, rawArgs: unknown): string {
     return normalizeText(args.query);
   }
 
-  if (actionName === 'go_to_url') {
-    return normalizeText(args.url);
-  }
-
-  if (actionName === 'open') {
+  if (actionName === 'go_to_url' || actionName === 'open') {
     return normalizeText(args.url);
   }
 

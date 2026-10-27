@@ -161,7 +161,6 @@ export class Executor {
     this.context.messageManager.initTaskMessages(
       this.navigatorPrompt.getSystemMessage(),
       task,
-      undefined,
       buildImageContentParts(extraArgs?.attachments),
     );
   }
@@ -242,7 +241,7 @@ export class Executor {
     const allowedMaxSteps = this.context.options.maxSteps;
 
     try {
-      this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_START, this.context.taskId);
+      await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_START, this.context.taskId);
       await this.applyJevPreflight(currentTask);
 
       // Track task start
@@ -267,7 +266,6 @@ export class Executor {
 
         // Run planner periodically for guidance
         if (
-          this.planner &&
           !this.plannerDisabledForTask &&
           (context.nSteps % context.options.planningInterval === 0 || navigatorDone)
         ) {
@@ -330,7 +328,7 @@ export class Executor {
         // Track task cancellation
         void analytics.trackTaskCancelled(this.context.taskId);
       } else {
-        this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_PAUSE, t('exec_task_pause'));
+        await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_PAUSE, t('exec_task_pause'));
         // Note: We don't track pause as it's not a final state
       }
     } catch (error) {
@@ -608,7 +606,7 @@ export class Executor {
     );
     if (!complete) return false;
     this.context.finalAnswer = buildDoneCheckFinalAnswer(t('exec_jev_doneCheck_note'), recentResults);
-    this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, this.context.finalAnswer);
+    await this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, this.context.finalAnswer);
     return true;
   }
 
@@ -701,7 +699,7 @@ export class Executor {
         throw new Error(t('exec_replay_historyEmpty'));
       }
       logger.debug(`🔄 Replaying history: ${JSON.stringify(history, null, 2)}`);
-      this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_START, this.context.taskId);
+      await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_START, this.context.taskId);
 
       for (let i = 0; i < history.history.length; i++) {
         const historyItem = history.history[i];

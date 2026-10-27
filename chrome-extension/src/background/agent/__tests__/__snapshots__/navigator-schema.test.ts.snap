@@ -92,6 +92,10 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {wait_for_element: {'intent': {'type': 'purpose of this action', 'optional': true}, 'selector': {'type': 'undefined', 'optional': true}, 'target': {'type': 'undefined', 'optional': true}, 'state': {'type': 'state to wait for', 'optional': true}, 'timeout_ms': {'type': 'give up after this many ms', 'optional': true}}}",
   "Scope snapshot and element actions to one frame, including cross-origin iframes. Without index, lists the frames. Index 0 is the top document. Navigation of the top document returns to it:
 {switch_frame: {'intent': {'type': 'purpose of this action', 'optional': true}, 'index': {'type': 'frame index from the list', 'optional': true}}}",
+  "Choose how the NEXT JavaScript confirm/prompt dialog is answered; by default they are dismissed. Call it before the action that opens the dialog:
+{handle_dialog: {'intent': {'type': 'purpose of this action', 'optional': true}, 'accept': {'type': 'true presses OK, false presses Cancel', 'required': true}, 'prompt_text': {'type': 'text typed into a prompt() dialog before accepting', 'optional': true}}}",
+  "Chrome's accessibility tree of the page (or focused frame): roles, names, values and states, including content inside closed shadow roots that the element list misses. Read-only; act on elements with refs or targets:
+{read_accessibility_tree: {'intent': {'type': 'purpose of this action', 'optional': true}, 'max_nodes': {'type': 'nodes listed before the rest is summarized', 'optional': true}}}",
   "Resize the viewport of the current tab for responsive QA checks, or restore the window size with reset. The size is restored automatically when the task ends:
 {resize_viewport: {'intent': {'type': 'purpose of this action', 'optional': true}, 'width': {'type': 'viewport width in CSS pixels', 'optional': true}, 'height': {'type': 'viewport height in CSS pixels', 'optional': true}, 'mobile': {'type': 'use mobile viewport metrics, default false', 'optional': true}, 'reset': {'type': 'restore the window size instead of resizing', 'optional': true}}}",
   "Pause the task and hand the browser to the user for a step only they can do: a two-factor code on their device, or credentials or payment data the task did not provide. The task resumes when the user returns control.:
@@ -1079,6 +1083,34 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "title": "Go To Url",
             "type": "object",
           },
+          "handle_dialog": {
+            "description": "Choose how the NEXT JavaScript confirm/prompt dialog is answered; by default they are dismissed. Call it before the action that opens the dialog",
+            "nullable": true,
+            "properties": {
+              "accept": {
+                "description": "true presses OK, false presses Cancel",
+                "title": "Accept",
+                "type": "boolean",
+              },
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "prompt_text": {
+                "description": "text typed into a prompt() dialog before accepting",
+                "maxLength": 1000,
+                "title": "Prompt Text",
+                "type": "string",
+              },
+            },
+            "required": [
+              "accept",
+            ],
+            "title": "Handle Dialog",
+            "type": "object",
+          },
           "hover": {
             "description": "Move the mouse over an element (by index) or over pixel coordinates to reveal hover menus and tooltips. Provide index, or both x and y",
             "nullable": true,
@@ -1382,6 +1414,28 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
               },
             },
             "title": "Previous Page",
+            "type": "object",
+          },
+          "read_accessibility_tree": {
+            "description": "Chrome's accessibility tree of the page (or focused frame): roles, names, values and states, including content inside closed shadow roots that the element list misses. Read-only; act on elements with refs or targets",
+            "nullable": true,
+            "properties": {
+              "intent": {
+                "default": "",
+                "description": "purpose of this action",
+                "title": "Intent",
+                "type": "string",
+              },
+              "max_nodes": {
+                "default": 300,
+                "description": "nodes listed before the rest is summarized",
+                "maximum": 2000,
+                "minimum": 20,
+                "title": "Max Nodes",
+                "type": "integer",
+              },
+            },
+            "title": "Read Accessibility Tree",
             "type": "object",
           },
           "read_console_messages": {

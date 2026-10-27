@@ -10,6 +10,8 @@ import { Action } from './action';
 import { actionFailedResult, engineUnsupportedResult, missingLocatorResult } from './shared';
 import {
   findProgressActionSchema,
+  handleDialogActionSchema,
+  readAccessibilityTreeActionSchema,
   pageInfoActionSchema,
   switchFrameActionSchema,
   waitForElementActionSchema,
@@ -103,4 +105,33 @@ export function createSwitchFrameAction(context: AgentContext) {
       return actionFailedResult(context, error);
     }
   }, switchFrameActionSchema);
+}
+
+export function createHandleDialogAction(context: AgentContext) {
+  return new Action(async (input: z.infer<typeof handleDialogActionSchema.schema>) => {
+    const page = await context.browserContext.getCurrentPage();
+    if (!page.setNextDialogResponse) return engineUnsupportedResult(context);
+    await page.setNextDialogResponse({ accept: input.accept, promptText: input.prompt_text });
+    const msg = t('act_handleDialog_ok', [input.accept ? 'OK' : 'Cancel']);
+    context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, input.intent || msg);
+    return new ActionResult({ extractedContent: msg, includeInMemory: true });
+  }, handleDialogActionSchema);
+}
+
+export function createReadAccessibilityTreeAction(context: AgentContext) {
+  return new Action(async (input: z.infer<typeof readAccessibilityTreeActionSchema.schema>) => {
+    const intent = input.intent || t('act_readAccessibilityTree_start');
+    context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
+    const page = await context.browserContext.getCurrentPage();
+    if (!page.getAccessibilityTree) return engineUnsupportedResult(context);
+    try {
+      const tree = await page.getAccessibilityTree(input.max_nodes);
+      const msg = t('act_readAccessibilityTree_ok');
+      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
+      // names and values come from the page
+      return new ActionResult({ extractedContent: wrapUntrustedContent(tree), includeInMemory: true });
+    } catch (error) {
+      return actionFailedResult(context, error);
+    }
+  }, readAccessibilityTreeActionSchema);
 }

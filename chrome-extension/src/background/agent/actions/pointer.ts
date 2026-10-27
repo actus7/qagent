@@ -5,7 +5,8 @@ import type { BrowserPageLike } from '../../browser/types';
 import type { Point } from '../../browser/page-pointer';
 import { Actors, ExecutionState } from '../event/types';
 import { Action } from './action';
-import { engineUnsupportedResult } from './shared';
+import { resolveActionIndex } from './element-resolver';
+import { actionErrorResult, engineUnsupportedResult } from './shared';
 import { clickAtActionSchema, dragActionSchema, hoverActionSchema } from './schemas';
 
 const DEFAULT_DRAG_STEPS = 10;
@@ -36,9 +37,10 @@ async function resolveTarget(
 ): Promise<ResolvedTarget | null> {
   if (target.index != null) {
     if (!page.getElementCenter) throw new Error(t('act_engineUnsupported'));
-    // Refresh the state so the index refers to what is on the page now.
-    await page.getState(context.options.useVision);
-    const point = await page.getElementCenter(target.index);
+    // The index refers to the state the model saw; find that element in the page as it is now.
+    const resolved = await resolveActionIndex(context, page, target.index);
+    if ('error' in resolved) throw new Error(resolved.error);
+    const point = await page.getElementCenter(resolved.index);
     return { point, label: `element ${target.index}` };
   }
   if (target.x == null || target.y == null) return null;
@@ -47,12 +49,11 @@ async function resolveTarget(
   return { point, label: formatPoint({ x: target.x, y: target.y }) };
 }
 
-function failureResult(context: AgentContext, msg: string): ActionResult {
-  context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-  return new ActionResult({ error: msg, includeInMemory: true });
+async function failureResult(context: AgentContext, msg: string): Promise<ActionResult> {
+  return actionErrorResult(context, msg);
 }
 
-function errorResult(context: AgentContext, error: unknown): ActionResult {
+async function errorResult(context: AgentContext, error: unknown): Promise<ActionResult> {
   return failureResult(context, t('act_pointer_fail', [error instanceof Error ? error.message : String(error)]));
 }
 

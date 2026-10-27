@@ -316,6 +316,14 @@ export function filterExternalContent(rawContent: string | undefined, strict: bo
   return result.sanitized;
 }
 
+/**
+ * Page text may contain the wrapper tags themselves; a literal closing tag would end the block early.
+ * Rewrite any such tag into an HTML entity form the model reads as text, not as a boundary.
+ */
+function neutralizeUntrustedTags(content: string): string {
+  return content.replace(/<(\s*\/?\s*nano_untrusted_content\b[^>]*)>/gi, '&lt;$1&gt;');
+}
+
 export function filterExternalContentWithReport(rawContent: string | undefined, strict: boolean = true) {
   if (!rawContent || rawContent.trim() === '') {
     return { sanitized: '', threats: [], modified: false };
@@ -329,14 +337,6 @@ export function filterExternalContentWithReport(rawContent: string | undefined, 
  * @param filterFirst - Whether to sanitize the content before wrapping (default: true)
  * @returns Wrapped content with security warnings
  */
-/**
- * Page text may contain the wrapper tags themselves; a literal closing tag would end the block early.
- * Rewrite any such tag into an HTML entity form the model reads as text, not as a boundary.
- */
-function neutralizeUntrustedTags(content: string): string {
-  return content.replace(/<(\s*\/?\s*nano_untrusted_content\b[^>]*)>/gi, '&lt;$1&gt;');
-}
-
 export function wrapUntrustedContent(rawContent: string, filterFirst = true): string {
   const filtered = filterFirst ? filterExternalContent(rawContent) : rawContent;
   const contentToWrap = neutralizeUntrustedTags(filtered);

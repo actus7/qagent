@@ -124,11 +124,6 @@ export class Action<TInput = never> {
         return true;
       }
 
-      if ('index' in input) {
-        (input as { index: number }).index = newIndex;
-        return true;
-      }
-
       (input as { index: number }).index = newIndex;
       return true;
     }

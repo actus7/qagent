@@ -50,6 +50,8 @@ const DEFAULT_ACTION_NAMES = [
   'find_progress',
   'wait_for_element',
   'switch_frame',
+  'handle_dialog',
+  'read_accessibility_tree',
   'resize_viewport',
   'request_user_takeover',
   'list_plugins',

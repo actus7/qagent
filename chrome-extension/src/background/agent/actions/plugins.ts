@@ -13,7 +13,7 @@ import { wrapUntrustedContent } from '../messages/utils';
 import { buildToolScript, checkToolArgs } from '../../plugins/runner';
 import { describePlugin } from '../../plugins/context';
 import { Action } from './action';
-import { engineUnsupportedResult } from './shared';
+import { actionErrorResult, engineUnsupportedResult } from './shared';
 import { callPluginToolActionSchema, listPluginsActionSchema, savePluginActionSchema } from './schemas';
 
 /** Plugins are addressed by id or by name; disabled plugins cannot run. */
@@ -31,8 +31,7 @@ export function createCallPluginToolAction(context: AgentContext) {
     const tool = plugin?.tools.find(item => item.name === input.tool);
     if (!plugin || !tool) {
       const msg = t('act_callPluginTool_notFound', [input.plugin, input.tool]);
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-      return new ActionResult({ error: msg, includeInMemory: true });
+      return actionErrorResult(context, msg);
     }
 
     const checked = checkToolArgs(tool, input.args);

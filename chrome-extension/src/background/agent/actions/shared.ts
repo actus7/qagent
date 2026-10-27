@@ -6,13 +6,10 @@ import { wrapUntrustedContent } from '../messages/utils';
 
 export const logger = createLogger('Action');
 
-/**
- * Emits the failure event and builds the result returned when an indexed element is missing.
- */
-export function elementNotExistResult(context: AgentContext, index: number): ActionResult {
-  const errorMsg = t('act_errors_elementNotExist', [index.toString()]);
-  context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-  return new ActionResult({ error: errorMsg, includeInMemory: true });
+/** Emits the failure event and builds the result the model sees for an action that failed with `message`. */
+export async function actionErrorResult(context: AgentContext, message: string): Promise<ActionResult> {
+  await context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, message);
+  return new ActionResult({ error: message, includeInMemory: true });
 }
 
 /** Result for inspection and pointer actions on an engine that does not provide them. */

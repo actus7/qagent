@@ -3,7 +3,8 @@ import { t } from '@extension/i18n';
 import type { z } from 'zod';
 import { Actors, ExecutionState } from '../event/types';
 import { Action } from './action';
-import { elementNotExistResult, logger } from './shared';
+import { resolveActionIndex } from './element-resolver';
+import { actionErrorResult, logger } from './shared';
 import {
   nextPageActionSchema,
   previousPageActionSchema,
@@ -48,12 +49,13 @@ export function createScrollToPercentAction(context: AgentContext) {
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const page = await context.browserContext.getCurrentPage();
 
-    if (input.index) {
-      const state = await page.getCachedState();
-      const elementNode = state?.selectorMap.get(input.index);
-      if (!elementNode) {
-        return elementNotExistResult(context, input.index);
+    // index 0 is a valid element, so compare against null
+    if (input.index != null) {
+      const resolved = await resolveActionIndex(context, page, input.index);
+      if ('error' in resolved) {
+        return actionErrorResult(context, resolved.error);
       }
+      const elementNode = resolved.node;
       logger.info(`Scrolling to percent: ${input.yPercent} with elementNode: ${elementNode.xpath}`);
       await page.scrollToPercent(input.yPercent, elementNode);
     } else {
@@ -70,12 +72,13 @@ export function createScrollToTopAction(context: AgentContext) {
     const intent = input.intent || t('act_scrollToTop_start');
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const page = await context.browserContext.getCurrentPage();
-    if (input.index) {
-      const state = await page.getCachedState();
-      const elementNode = state?.selectorMap.get(input.index);
-      if (!elementNode) {
-        return elementNotExistResult(context, input.index);
+    // index 0 is a valid element, so compare against null
+    if (input.index != null) {
+      const resolved = await resolveActionIndex(context, page, input.index);
+      if ('error' in resolved) {
+        return actionErrorResult(context, resolved.error);
       }
+      const elementNode = resolved.node;
       await page.scrollToPercent(0, elementNode);
     } else {
       await page.scrollToPercent(0);
@@ -91,12 +94,13 @@ export function createScrollToBottomAction(context: AgentContext) {
     const intent = input.intent || t('act_scrollToBottom_start');
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const page = await context.browserContext.getCurrentPage();
-    if (input.index) {
-      const state = await page.getCachedState();
-      const elementNode = state?.selectorMap.get(input.index);
-      if (!elementNode) {
-        return elementNotExistResult(context, input.index);
+    // index 0 is a valid element, so compare against null
+    if (input.index != null) {
+      const resolved = await resolveActionIndex(context, page, input.index);
+      if ('error' in resolved) {
+        return actionErrorResult(context, resolved.error);
       }
+      const elementNode = resolved.node;
       await page.scrollToPercent(100, elementNode);
     } else {
       await page.scrollToPercent(100);
@@ -114,12 +118,13 @@ export function createPreviousPageAction(context: AgentContext) {
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const page = await context.browserContext.getCurrentPage();
 
-    if (input.index) {
-      const state = await page.getCachedState();
-      const elementNode = state?.selectorMap.get(input.index);
-      if (!elementNode) {
-        return elementNotExistResult(context, input.index);
+    // index 0 is a valid element, so compare against null
+    if (input.index != null) {
+      const resolved = await resolveActionIndex(context, page, input.index);
+      if ('error' in resolved) {
+        return actionErrorResult(context, resolved.error);
       }
+      const elementNode = resolved.node;
 
       // Check if element is already at top of its scrollable area
       try {
@@ -159,12 +164,13 @@ export function createNextPageAction(context: AgentContext) {
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const page = await context.browserContext.getCurrentPage();
 
-    if (input.index) {
-      const state = await page.getCachedState();
-      const elementNode = state?.selectorMap.get(input.index);
-      if (!elementNode) {
-        return elementNotExistResult(context, input.index);
+    // index 0 is a valid element, so compare against null
+    if (input.index != null) {
+      const resolved = await resolveActionIndex(context, page, input.index);
+      if ('error' in resolved) {
+        return actionErrorResult(context, resolved.error);
       }
+      const elementNode = resolved.node;
 
       // Check if element is already at bottom of its scrollable area
       try {
@@ -213,8 +219,7 @@ export function createScrollToTextAction(context: AgentContext) {
       return new ActionResult({ extractedContent: msg, includeInMemory: true });
     } catch (error) {
       const msg = t('act_scrollToText_failed', [error instanceof Error ? error.message : String(error)]);
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-      return new ActionResult({ error: msg, includeInMemory: true });
+      return actionErrorResult(context, msg);
     }
   }, scrollToTextActionSchema);
 }

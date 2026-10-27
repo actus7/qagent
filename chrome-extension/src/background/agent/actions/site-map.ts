@@ -9,6 +9,7 @@ import { factsFromHtml, formatSiteReport, reportFromFacts, type PageFacts, type 
 import { summarizeSiteReport } from '../site-map/summary';
 import { Action } from './action';
 import { mapSiteActionSchema } from './schemas';
+import { actionErrorResult } from './shared';
 
 const FETCH_TIMEOUT_MS = 10_000;
 // Read on the live page: the DOM after scripts ran, which a fetch cannot see. Returns facts, not HTML, so it fits the result cap.
@@ -102,8 +103,7 @@ export function createMapSiteAction(context: AgentContext) {
     const intent = input.intent || t('act_mapSite_start');
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const fail = (msg: string) => {
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-      return new ActionResult({ error: msg, includeInMemory: true });
+      return actionErrorResult(context, msg);
     };
 
     const page = await context.browserContext.getCurrentPage();

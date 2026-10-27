@@ -3,14 +3,10 @@ import { t } from '@extension/i18n';
 import type { z } from 'zod';
 import { Actors, ExecutionState } from '../event/types';
 import { Action } from './action';
+import { isCompletedDownload } from '../../services/downloads';
+import { resolveActionIndex, resolveActionSelector } from './element-resolver';
 import { describeTargetSpec, type TargetSpec } from '../../browser/target-resolver';
-import {
-  actionFailedResult,
-  elementNotExistResult,
-  engineUnsupportedResult,
-  logger,
-  missingLocatorResult,
-} from './shared';
+import { actionErrorResult, actionFailedResult, engineUnsupportedResult, logger, missingLocatorResult } from './shared';
 import {
   clickActionSchema,
   clickElementActionSchema,
@@ -33,8 +29,11 @@ async function clickBySelector(context: AgentContext, selector: string, intent: 
   }
 
   const page = await context.browserContext.getCurrentPage();
-  const state = await page.getState();
-  const elementNode = page.getDomElementBySelector(normalizedSelector, state.selectorMap);
+  const resolved = await resolveActionSelector(context, page, normalizedSelector);
+  if ('error' in resolved) {
+    return actionErrorResult(context, resolved.error);
+  }
+  const elementNode = resolved.node;
 
   if (elementNode && page.isFileUploader(elementNode)) {
     const msg = t('act_click_fileUploader', [normalizedSelector]);
@@ -48,7 +47,7 @@ async function clickBySelector(context: AgentContext, selector: string, intent: 
   try {
     const initialTabIds = await context.browserContext.getAllTabIds();
     // The overlay ripples where the agent cursor lands, so no separate ripple from stale pre-scroll coordinates
-    await page.clickBySelector(context.options.useVision, normalizedSelector, elementNode);
+    await page.clickBySelector(context.options.useVision, resolved.selector, elementNode);
 
     const elementText = elementNode?.getAllTextTillNextClickableElement(2) || normalizedSelector;
     let msg = t('act_click_ok', [normalizedSelector, elementText]);
@@ -108,7 +107,11 @@ async function writeText(
   if (!normalizedSelector) {
     throw new Error('Selector cannot be empty');
   }
-  await page.inputTextBySelector(context.options.useVision, normalizedSelector, text, {
+  const resolved = await resolveActionSelector(context, page, normalizedSelector);
+  if ('error' in resolved) {
+    return actionErrorResult(context, resolved.error);
+  }
+  await page.inputTextBySelector(context.options.useVision, resolved.selector, text, {
     clearBeforeTyping,
   });
 
@@ -235,16 +238,15 @@ export function createGetDropdownOptionsAction(context: AgentContext) {
       context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
 
       const page = await context.browserContext.getCurrentPage();
-      const state = await page.getState();
-
-      const elementNode = state?.selectorMap.get(input.index);
-      if (!elementNode) {
-        return elementNotExistResult(context, input.index);
+      const resolved = await resolveActionIndex(context, page, input.index);
+      if ('error' in resolved) {
+        return actionErrorResult(context, resolved.error);
       }
+      const index = resolved.index;
 
       try {
         // Use the existing getDropdownOptions method
-        const options = await page.getDropdownOptions(input.index);
+        const options = await page.getDropdownOptions(index);
 
         if (options && options.length > 0) {
           // Format options for display
@@ -297,12 +299,12 @@ export function createSelectDropdownOptionAction(context: AgentContext) {
       context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
 
       const page = await context.browserContext.getCurrentPage();
-      const state = await page.getState();
-
-      const elementNode = state?.selectorMap.get(input.index);
-      if (!elementNode) {
-        return elementNotExistResult(context, input.index);
+      const resolved = await resolveActionIndex(context, page, input.index);
+      if ('error' in resolved) {
+        return actionErrorResult(context, resolved.error);
       }
+      const elementNode = resolved.node;
+      const index = resolved.index;
 
       // Validate that we're working with a select element
       if (!elementNode.tagName || elementNode.tagName.toLowerCase() !== 'select') {
@@ -320,7 +322,7 @@ export function createSelectDropdownOptionAction(context: AgentContext) {
       logger.debug(`Attempting to select '${input.text}' using xpath: ${elementNode.xpath}`);
 
       try {
-        const result = await page.selectDropdownOption(input.index, input.text);
+        const result = await page.selectDropdownOption(index, input.text);
         const msg = t('act_selectDropdownOption_ok', [input.text, input.index.toString()]);
         context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
         return new ActionResult({
@@ -349,21 +351,27 @@ export function createUploadFileAction(context: AgentContext) {
       const page = await context.browserContext.getCurrentPage();
       if (!page.uploadFileBySelector) {
         const msg = t('act_uploadFile_unsupported');
-        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-        return new ActionResult({ error: msg, includeInMemory: true });
+        return actionErrorResult(context, msg);
       }
-      if (!page.getDomElementBySelector(`@e${input.index}`)) return elementNotExistResult(context, input.index);
+      const resolved = await resolveActionIndex(context, page, input.index);
+      if ('error' in resolved) {
+        return actionErrorResult(context, resolved.error);
+      }
+      const ref = `@e${resolved.index}`;
       // A local path (e.g. a download) is handed to the browser as is; no bytes pass through the extension.
       if (input.path) {
         const msg = t('act_uploadFile_path_ok', [input.path, input.index.toString()]);
         try {
           if (!page.uploadFileByPath)
             return new ActionResult({ error: t('act_uploadFile_unsupported'), includeInMemory: true });
-          await page.uploadFileByPath(`@e${input.index}`, input.path);
+          if (!(await isCompletedDownload(input.path))) {
+            const denied = t('act_uploadFile_pathNotAllowed', input.path);
+            return actionErrorResult(context, denied);
+          }
+          await page.uploadFileByPath(ref, input.path);
         } catch (error) {
           const failed = t('act_uploadFile_fail', [input.path, error instanceof Error ? error.message : String(error)]);
-          context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, failed);
-          return new ActionResult({ error: failed, includeInMemory: true });
+          return actionErrorResult(context, failed);
         }
         context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
         return new ActionResult({ extractedContent: msg, includeInMemory: true });
@@ -373,24 +381,21 @@ export function createUploadFileAction(context: AgentContext) {
       const fileName = input.attachment || input.file_name;
       if (input.attachment && !attached) {
         const msg = t('act_uploadFile_noAttachment', input.attachment);
-        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-        return new ActionResult({ error: msg, includeInMemory: true });
+        return actionErrorResult(context, msg);
       }
       if (!attached && input.content == null) {
         const msg = t('act_uploadFile_noContent', fileName);
-        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-        return new ActionResult({ error: msg, includeInMemory: true });
+        return actionErrorResult(context, msg);
       }
       try {
-        await page.uploadFileBySelector(`@e${input.index}`, {
+        await page.uploadFileBySelector(ref, {
           name: fileName,
           ...(attached ? { base64: attached.base64 } : { content: input.content ?? '' }),
           mimeType: attached?.mimeType ?? input.mime_type ?? undefined,
         });
       } catch (error) {
         const msg = t('act_uploadFile_fail', [fileName, error instanceof Error ? error.message : String(error)]);
-        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-        return new ActionResult({ error: msg, includeInMemory: true });
+        return actionErrorResult(context, msg);
       }
       const msg = t('act_uploadFile_ok', [fileName, input.index.toString()]);
       context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);

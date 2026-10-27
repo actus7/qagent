@@ -6,6 +6,7 @@ import { Actors, ExecutionState } from '../event/types';
 import { planWorkflowReplay } from '../../workflows/planner';
 import { Action } from './action';
 import { runWorkflowActionSchema } from './schemas';
+import { actionErrorResult } from './shared';
 
 /** Looks up a sibling action by name, so a workflow replays through the same actions the agent uses. */
 export type ActionLookup = (name: string) => Action | undefined;
@@ -15,8 +16,7 @@ export function createRunWorkflowAction(context: AgentContext, lookup: ActionLoo
     const intent = input.intent || t('act_runWorkflow_start', [input.name]);
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const fail = (msg: string) => {
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-      return new ActionResult({ error: msg, includeInMemory: true });
+      return actionErrorResult(context, msg);
     };
 
     const workflow = await workflowsStore.findByRef(input.name);

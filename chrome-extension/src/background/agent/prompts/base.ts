@@ -31,17 +31,27 @@ abstract class BasePrompt {
    * @returns the user message
    */
   async buildBrowserStateUserMessage(context: AgentContext): Promise<UserModelMessage> {
-    const browserState = await context.browserContext.getState(context.options.useVision);
+    // true: elements that appeared since the previous read are marked *[N], as the navigator prompt describes
+    const browserState = await context.browserContext.getState(context.options.useVision, true);
     const rawElementsText = browserState.elementTree.clickableElementsToString(context.options.includeAttributes);
 
     let formattedElementsText: string;
     if (rawElementsText !== '') {
-      const scrollInfo = `[Scroll info of current page] window.scrollY: ${browserState.scrollY}, document.body.scrollHeight: ${browserState.scrollHeight}, window.visualViewport.height: ${browserState.visualViewportHeight}, visual viewport height as percentage of scrollable distance: ${Math.round((browserState.visualViewportHeight / (browserState.scrollHeight - browserState.visualViewportHeight)) * 100)}%\n`;
+      // A page shorter than the viewport has no scrollable distance: the viewport then covers all of it
+      const scrollableDistance = browserState.scrollHeight - browserState.visualViewportHeight;
+      const viewportPercent =
+        scrollableDistance > 0 ? Math.round((browserState.visualViewportHeight / scrollableDistance) * 100) : 100;
+      const scrollInfo = `[Scroll info of current page] window.scrollY: ${browserState.scrollY}, document.body.scrollHeight: ${browserState.scrollHeight}, window.visualViewport.height: ${browserState.visualViewportHeight}, visual viewport height as percentage of scrollable distance: ${viewportPercent}%\n`;
       logger.info(scrollInfo);
       const elementsText = wrapUntrustedContent(rawElementsText);
       formattedElementsText = `${scrollInfo}[Start of page]\n${elementsText}\n[End of page]\n`;
     } else {
       formattedElementsText = 'empty page';
+    }
+    if (browserState.stale) {
+      formattedElementsText =
+        '[The page could not be read this step; the elements below are from the last successful read and may be outdated. Prefer waiting or reloading before acting on them.]\n' +
+        formattedElementsText;
     }
 
     let stepInfoDescription = '';

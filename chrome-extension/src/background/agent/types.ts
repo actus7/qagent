@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { BrowserContextLike } from '../browser/types';
+import type { BrowserState } from '../browser/views';
 import { DEFAULT_INCLUDE_ATTRIBUTES } from '../browser/dom/views';
 import type { DOMHistoryElement } from '../browser/dom/history/view';
 import type MessageManager from './messages/service';
@@ -57,6 +58,8 @@ export class AgentContext {
   finalAnswer: string | null;
   /** Binary files the user attached to this task, keyed by file name; read by upload_file. */
   taskFiles: Map<string, { mimeType: string; base64: string }>;
+  /** The page state the model saw while its actions run: index selectors refer to this selectorMap. */
+  actionState: BrowserState | null = null;
   /** Set on resume so the next navigator step refreshes the browser state instead of reusing the cached one. */
   pageStale: boolean;
   /** Checklist kept with todo_write; echoed in every navigator step. */

@@ -4,18 +4,7 @@ import { z } from 'zod';
 import type { AgentOutput } from '../types';
 import { userMessage } from '../messages/model-messages';
 import { Actors, ExecutionState } from '../event/types';
-import {
-  ChatModelAuthError,
-  ChatModelBadRequestError,
-  ChatModelForbiddenError,
-  isAbortedError,
-  isAuthenticationError,
-  isBadRequestError,
-  isForbiddenError,
-  LLMTimeoutError,
-  LLM_FORBIDDEN_ERROR_MESSAGE,
-  RequestCancelledError,
-} from './errors';
+import { classifyModelError, LLMTimeoutError, RequestCancelledError } from './errors';
 import { filterExternalContent } from '../messages/utils';
 const logger = createLogger('PlannerAgent');
 
@@ -67,7 +56,7 @@ export class PlannerAgent extends BaseAgent<typeof plannerOutputSchema, PlannerO
 
   async execute(): Promise<AgentOutput<PlannerOutput>> {
     try {
-      this.context.emitEvent(Actors.PLANNER, ExecutionState.STEP_START, 'Planning...');
+      await this.context.emitEvent(Actors.PLANNER, ExecutionState.STEP_START, 'Planning...');
       // get all messages from the message manager, state message should be the last one
       const messages = this.context.messageManager.getMessages();
       // Use full message history except the first one
@@ -107,7 +96,7 @@ export class PlannerAgent extends BaseAgent<typeof plannerOutputSchema, PlannerO
 
       // If task is done, emit the final answer; otherwise emit next steps
       const eventMessage = cleanedPlan.done ? cleanedPlan.final_answer : cleanedPlan.next_steps;
-      this.context.emitEvent(Actors.PLANNER, ExecutionState.STEP_OK, eventMessage);
+      await this.context.emitEvent(Actors.PLANNER, ExecutionState.STEP_OK, eventMessage);
       logger.info('Planner output', JSON.stringify(cleanedPlan, null, 2));
 
       return {
@@ -117,18 +106,15 @@ export class PlannerAgent extends BaseAgent<typeof plannerOutputSchema, PlannerO
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       // Check if this is an authentication error
-      if (isAuthenticationError(error)) {
-        throw new ChatModelAuthError(errorMessage, error);
-      } else if (isBadRequestError(error)) {
-        throw new ChatModelBadRequestError(errorMessage, error);
-      } else if (isAbortedError(error) || error instanceof LLMTimeoutError) {
+      // A planner timeout cancels the planner for the task; the navigator counts it as a step failure instead
+      if (error instanceof LLMTimeoutError) {
         throw new RequestCancelledError(errorMessage);
-      } else if (isForbiddenError(error)) {
-        throw new ChatModelForbiddenError(LLM_FORBIDDEN_ERROR_MESSAGE, error);
       }
+      const modelError = classifyModelError(error);
+      if (modelError) throw modelError;
 
       logger.error(`Planning failed: ${errorMessage}`);
-      this.context.emitEvent(Actors.PLANNER, ExecutionState.STEP_FAIL, `Planning failed: ${errorMessage}`);
+      await this.context.emitEvent(Actors.PLANNER, ExecutionState.STEP_FAIL, `Planning failed: ${errorMessage}`);
       return {
         id: this.id,
         error: errorMessage,

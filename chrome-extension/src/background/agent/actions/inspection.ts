@@ -10,7 +10,7 @@ import {
 import { Actors, ExecutionState } from '../event/types';
 import { wrapUntrustedContent } from '../messages/utils';
 import { Action } from './action';
-import { engineUnsupportedResult } from './shared';
+import { actionErrorResult, engineUnsupportedResult } from './shared';
 import {
   executeJavascriptActionSchema,
   readConsoleMessagesActionSchema,
@@ -116,8 +116,7 @@ export function createResizeViewportAction(context: AgentContext) {
 
     if (input.width == null || input.height == null) {
       const msg = t('act_resizeViewport_needSize');
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-      return new ActionResult({ error: msg, includeInMemory: true });
+      return actionErrorResult(context, msg);
     }
     const size = `${input.width}x${input.height}`;
     const intent = input.intent || t('act_resizeViewport_start', [size]);

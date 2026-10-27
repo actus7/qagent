@@ -11,6 +11,7 @@ import {
   userMessage,
 } from './model-messages';
 import { createLogger } from '@src/background/log';
+import { readJpegSizeFromBase64 } from '../../browser/page-pointer';
 import {
   filterExternalContent,
   wrapUserRequest,
@@ -19,15 +20,14 @@ import {
 } from '@src/background/agent/messages/utils';
 
 const logger = createLogger('MessageManager');
+const PIXELS_PER_IMAGE_TOKEN = 750;
 
 export class MessageManagerSettings {
   maxInputTokens = 128000;
   estimatedCharactersPerToken = 3;
   imageTokens = 800;
   includeAttributes: string[] = [];
-  messageContext?: string;
   sensitiveData?: Record<string, string>;
-  availableFilePaths?: string[];
 
   constructor(
     options: {
@@ -35,9 +35,7 @@ export class MessageManagerSettings {
       estimatedCharactersPerToken?: number;
       imageTokens?: number;
       includeAttributes?: string[];
-      messageContext?: string;
       sensitiveData?: Record<string, string>;
-      availableFilePaths?: string[];
     } = {},
   ) {
     if (options.maxInputTokens !== undefined) this.maxInputTokens = options.maxInputTokens;
@@ -45,9 +43,7 @@ export class MessageManagerSettings {
       this.estimatedCharactersPerToken = options.estimatedCharactersPerToken;
     if (options.imageTokens !== undefined) this.imageTokens = options.imageTokens;
     if (options.includeAttributes !== undefined) this.includeAttributes = options.includeAttributes;
-    if (options.messageContext !== undefined) this.messageContext = options.messageContext;
     if (options.sensitiveData !== undefined) this.sensitiveData = options.sensitiveData;
-    if (options.availableFilePaths !== undefined) this.availableFilePaths = options.availableFilePaths;
   }
 }
 
@@ -65,16 +61,10 @@ export default class MessageManager {
   public initTaskMessages(
     systemMessage: SystemModelMessage,
     task: string,
-    messageContext?: string,
     images: FilePart[] = [],
   ): void {
     // Add system message
     this.addMessageWithTokens(systemMessage, 'init');
-
-    // Add context message if provided
-    if (messageContext && messageContext.length > 0) {
-      this.addMessageWithTokens(userMessage(`Context for the task: ${messageContext}`), 'init');
-    }
 
     // Add task instructions
     const taskMessage = MessageManager.taskInstructions(task, images);
@@ -118,13 +108,6 @@ export default class MessageManager {
     // Add history start marker
     this.addMessageWithTokens(userMessage('[Your task history memory starts here]'));
 
-    // Add available file paths if provided
-    if (this.settings.availableFilePaths && this.settings.availableFilePaths.length > 0) {
-      this.addMessageWithTokens(
-        userMessage(`Here are file paths you can use: ${this.settings.availableFilePaths}`),
-        'init',
-      );
-    }
   }
 
   public nextToolId(): number {
@@ -239,20 +222,6 @@ export default class MessageManager {
       })
       .map(m => m.message);
 
-    let totalInputTokens = 0;
-    logger.debug(`Messages in history: ${this.history.messages.length}:`);
-
-    for (const m of this.history.messages) {
-      totalInputTokens += m.metadata.tokens;
-      if (m.message) {
-        logger.debug(`${m.message.role} - Token count: ${m.metadata.tokens}`);
-      } else {
-        logger.error(`[MessageManager] Found message with undefined message property:`, m);
-        logger.debug(`Message with undefined message property - Token count: ${m.metadata.tokens}`);
-      }
-    }
-
-    logger.debug(`Total input tokens: ${totalInputTokens}`);
     return messages;
   }
 
@@ -304,8 +273,23 @@ export default class MessageManager {
    * @returns The number of tokens in the message
    */
   private _countTokens(message: ModelMessage): number {
-    const images = Array.isArray(message.content) ? message.content.filter(part => isImagePart(part)).length : 0;
-    return images * this.settings.imageTokens + this._countTextTokens(messageText(message));
+    return this._countImageTokens(message) + this._countTextTokens(messageText(message));
+  }
+
+  /**
+   * Image cost from the real pixel size (width * height / 750, the usual vision formula) when the JPEG size can be
+   * read; otherwise the configured flat estimate.
+   */
+  private _countImageTokens(message: ModelMessage): number {
+    if (!Array.isArray(message.content)) return 0;
+    let tokens = 0;
+    for (const part of message.content) {
+      if (!isImagePart(part)) continue;
+      const data = (part as { data?: unknown; image?: unknown }).data ?? (part as { image?: unknown }).image;
+      const size = typeof data === 'string' ? readJpegSizeFromBase64(data.replace(/^data:[^,]*,/, '')) : null;
+      tokens += size ? Math.ceil((size.width * size.height) / PIXELS_PER_IMAGE_TOKEN) : this.settings.imageTokens;
+    }
+    return tokens;
   }
 
   /**
@@ -336,7 +320,7 @@ export default class MessageManager {
     if (Array.isArray(lastMsg.message.content)) {
       const images = lastMsg.message.content.filter(part => isImagePart(part)).length;
       if (images > 0) {
-        const removed = images * this.settings.imageTokens;
+        const removed = this._countImageTokens(lastMsg.message);
         lastMsg.metadata.tokens -= removed;
         this.history.totalTokens -= removed;
         logger.debug(
@@ -377,7 +361,8 @@ export default class MessageManager {
 
     const content = trimmed.message.content;
     const charactersToRemove = Math.floor(content.length * proportionToRemove);
-    const newContent = content.slice(0, -charactersToRemove);
+    // slice(0, -0) is empty, so the cut is measured from the end of the content
+    const newContent = content.slice(0, content.length - charactersToRemove);
 
     // remove tokens and old long message
     this.history.removeMessage();

@@ -6,9 +6,10 @@ import { Actors, ExecutionState } from '../event/types';
 import { imagePart } from '../messages/model-messages';
 import type { BrowserPageLike } from '../../browser/types';
 import { loadAssistantModel } from '../../services/assistant-model';
+import { runWithFailover } from '../model-failover';
 import { annotateChallenge, solveCaptcha, type CaptchaDriver, type ChallengeView } from '../../services/captcha-solver';
 import { Action } from './action';
-import { actionFailedResult, engineUnsupportedResult } from './shared';
+import { actionErrorResult, actionFailedResult, engineUnsupportedResult } from './shared';
 import { findCaptchaActionSchema, solveCaptchaActionSchema } from './schemas';
 
 const VISION_TIMEOUT_MS = 60000;
@@ -27,13 +28,18 @@ async function answerWithVisionModel(challenge: ChallengeView): Promise<string> 
   const model = await loadAssistantModel('navigator');
   const text = { type: 'text' as const, text: visionPrompt(challenge.instruction) };
   const image = imagePart(`data:image/png;base64,${challenge.image}`);
-  const reply = await generateText({
-    model: model.model,
-    ...model.settings,
-    messages: [{ role: 'user', content: image ? [text, image] : [text] }],
-    abortSignal: AbortSignal.timeout(VISION_TIMEOUT_MS),
-    maxRetries: 0,
-  });
+  const reply = await runWithFailover(
+    model,
+    current =>
+      generateText({
+        model: current.model,
+        ...current.settings,
+        messages: [{ role: 'user', content: image ? [text, image] : [text] }],
+        abortSignal: AbortSignal.timeout(VISION_TIMEOUT_MS),
+        maxRetries: 0,
+      }),
+    { shouldTryNext: () => true },
+  );
   return reply.text;
 }
 
@@ -96,8 +102,7 @@ export function createSolveCaptchaAction(context: AgentContext) {
         context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
         return new ActionResult({ extractedContent: msg, includeInMemory: true });
       }
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-      return new ActionResult({ error: msg, includeInMemory: true });
+      return actionErrorResult(context, msg);
     } catch (error) {
       return actionFailedResult(context, error);
     }

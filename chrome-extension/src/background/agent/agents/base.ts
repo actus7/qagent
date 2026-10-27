@@ -8,9 +8,12 @@ import { createLogger } from '@src/background/log';
 import { convertZodToJsonSchema } from '@src/background/utils';
 import type { Action } from '../actions/builder';
 import { convertInputMessages, extractJsonFromModelOutput, removeThinkTags } from '../messages/utils';
-import { errorStatusCode, isAbortedError, LLMTimeoutError, ResponseParseError } from './errors';
+import { errorStatusCode, isAbortedError, LLMTimeoutError, ResponseParseError, shouldTryAnotherModel } from './errors';
+import { t } from '@extension/i18n';
+import { Actors, ExecutionState } from '../event/types';
 import { getDefaultModelRequestsPerMinute, ProviderTypeEnum } from '@extension/storage';
 import { acquireRateLimitSlot } from '../rate-limiter';
+import { runWithFailover } from '../model-failover';
 
 const logger = createLogger('agent');
 const LLM_REQUEST_TIMEOUT_MS = 45_000;
@@ -161,6 +164,8 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
   protected structuredTools?: Record<string, ReturnType<typeof tool>>;
   protected requestsPerMinute?: number;
   protected rateLimitKey: string;
+  /** The model the agent was built with; its options (rate limit) came from the slot configuration. */
+  private configured: { model: ChatModel; requestsPerMinute?: number; rateLimitKey: string };
   declare ModelOutput: z.infer<T>;
 
   constructor(modelOutputSchema: T, options: BaseAgentOptions, extraOptions?: Partial<ExtraAgentOptions>) {
@@ -180,6 +185,11 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     this.requestsPerMinute =
       explicitRequestsPerMinute ?? getDefaultModelRequestsPerMinute(normalizedProvider, this.modelName);
     this.rateLimitKey = options.rateLimitKey || `${normalizedProvider}:${this.modelName}`;
+    this.configured = {
+      model: this.chatLLM,
+      requestsPerMinute: this.requestsPerMinute,
+      rateLimitKey: this.rateLimitKey,
+    };
     // extra options
     this.id = extraOptions?.id || 'agent';
     this.callOptions = extraOptions?.callOptions;
@@ -191,7 +201,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     operationLabel: string,
   ): Promise<T> {
     const parentSignal = this.context.controller.signal;
-    const timeoutMs = this.resolveRequestTimeoutMs(operationLabel);
+    const timeoutMs = this.resolveRequestTimeoutMs();
     const timeoutErrorMessage = `${operationLabel} timed out after ${timeoutMs}ms`;
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt++) {
       if (this.requestsPerMinute && this.requestsPerMinute > 0) {
@@ -263,8 +273,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     throw new Error(`Failed to invoke ${this.modelName}: exhausted rate limit retries`);
   }
 
-  private resolveRequestTimeoutMs(operationLabel: string): number {
-    void operationLabel;
+  private resolveRequestTimeoutMs(): number {
     const isGeminiModel = this.modelName.toLowerCase().includes('gemini');
 
     if (isGeminiModel) {
@@ -309,7 +318,48 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     };
   }
 
+  /**
+   * Calls the model; when it fails and other models are configured, each one is tried in turn (ModelFailover).
+   * The model that answers stays in use and becomes the slot's configured model; when all fail, the
+   * configured default is restored and the first error is thrown. User cancellation is never retried.
+   */
   async invoke(inputMessages: ModelMessage[]): Promise<this['ModelOutput']> {
+    return runWithFailover(this.chatLLM, () => this.invokeCurrentModel(inputMessages), {
+      shouldTryNext: error => shouldTryAnotherModel(error, this.context.controller.signal),
+      onSwitch: model => {
+        logger.warning(`[${this.modelName}] failed; trying ${model.provider}:${model.modelName}`);
+        this.switchModel(model);
+      },
+      onSwitched: model =>
+        this.context.emitEvent(
+          // shown in the chat as an activity line (system events only carry task states)
+          Actors.NAVIGATOR,
+          ExecutionState.ACT_OK,
+          t('exec_model_switched', [`${model.provider}:${model.modelName}`]),
+        ),
+    });
+  }
+
+  /** Points the agent at another model, recomputing what depends on the model name. */
+  protected switchModel(model: ChatModel): void {
+    this.chatLLM = model;
+    this.modelName = model.modelName || 'Unknown';
+    this.provider = model.provider;
+    this.withStructuredOutput = this.setWithStructuredOutput();
+    if (model === this.configured.model) {
+      this.requestsPerMinute = this.configured.requestsPerMinute;
+      this.rateLimitKey = this.configured.rateLimitKey;
+    } else {
+      this.requestsPerMinute = getDefaultModelRequestsPerMinute(model.provider, this.modelName);
+      this.rateLimitKey = `${model.provider}:${this.modelName}`;
+    }
+    this.onModelChanged();
+  }
+
+  /** Hook for agents whose settings depend on the model (e.g. Gemini without structured output). */
+  protected onModelChanged(): void {}
+
+  private async invokeCurrentModel(inputMessages: ModelMessage[]): Promise<this['ModelOutput']> {
     // Structured output: one tool the model is forced to call, so OpenAI-compatible routers that reject
     // response_format json_schema still work. The tool input is validated by the agent, not by the SDK.
     if (this.withStructuredOutput) {

@@ -6,7 +6,7 @@ import { wrapUntrustedContent } from '../messages/utils';
 import type { MonitorRecord } from '../../services/monitor-logic';
 import { awaitMonitor, getMonitor, listMonitors, startMonitor, stopMonitor } from '../../services/monitors';
 import { Action } from './action';
-import { actionFailedResult } from './shared';
+import { actionErrorResult, actionFailedResult } from './shared';
 import {
   awaitMonitorActionSchema,
   monitorStatusActionSchema,
@@ -19,10 +19,9 @@ function describeMonitor(record: MonitorRecord): string {
   return `- ${record.id} [${record.status}] ${record.selector}${changed}`;
 }
 
-function unknownMonitor(context: AgentContext, id: string): ActionResult {
+async function unknownMonitor(context: AgentContext, id: string): Promise<ActionResult> {
   const msg = t('act_monitor_unknown', [id]);
-  context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-  return new ActionResult({ error: msg, includeInMemory: true });
+  return actionErrorResult(context, msg);
 }
 
 export function createStartMonitorAction(context: AgentContext) {

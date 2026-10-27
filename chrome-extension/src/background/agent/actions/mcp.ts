@@ -6,7 +6,7 @@ import type { z } from 'zod';
 import { Actors, ExecutionState } from '../event/types';
 import { wrapUntrustedContent } from '../messages/utils';
 import { Action } from './action';
-import { clipText } from './shared';
+import { actionErrorResult, clipText } from './shared';
 import { callMcpToolActionSchema, listMcpToolsActionSchema } from './schemas';
 
 const MCP_RESULT_MAX_CHARS = 8000;
@@ -57,8 +57,7 @@ export function createCallMcpToolAction(context: AgentContext) {
     const server = findEnabledServer(await mcpServersStore.getAll(), input.server);
     if (!server) {
       const msg = t('act_callMcpTool_notFound', [input.server]);
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-      return new ActionResult({ error: msg, includeInMemory: true });
+      return actionErrorResult(context, msg);
     }
 
     try {

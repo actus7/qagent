@@ -16,6 +16,7 @@ import { createCerebras } from '@ai-sdk/cerebras';
 import { createDeepSeek } from '@ai-sdk/deepseek';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { createLogger } from '@src/background/log';
+import type { ModelFailover } from './model-failover';
 
 const logger = createLogger('agent/helper');
 
@@ -34,6 +35,8 @@ export interface ChatModel {
   /** Provider id from the model config (e.g. `custom_openai_2`). */
   provider: string;
   settings: ChatModelSettings;
+  /** Set when other configured models can take over if this one fails (see ModelFailover). */
+  failover?: ModelFailover;
 }
 
 interface LlamaApiResponse {
@@ -79,10 +82,10 @@ const llamaFetch: typeof fetch = async (input, init) => {
   }
 };
 
-// O series models or GPT-5 models that support reasoning
+// O series models (o1, o3, o4-mini, ...) or GPT-5 models that support reasoning
 function isOpenAIReasoningModel(modelName: string): boolean {
   const name = modelName.startsWith('openai/') ? modelName.substring(7) : modelName;
-  return name.startsWith('o') || (name.startsWith('gpt-5') && !name.startsWith('gpt-5-chat'));
+  return /^o\d/.test(name) || (name.startsWith('gpt-5') && !name.startsWith('gpt-5-chat'));
 }
 
 function resolveReasoningEffortForModel(

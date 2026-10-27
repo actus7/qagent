@@ -9,21 +9,7 @@ import { buildDynamicActionSchema } from '../actions/builder';
 import { agentBrainSchema } from '../types';
 import { type ModelMessage, userMessage } from '../messages/model-messages';
 import { Actors, ExecutionState } from '../event/types';
-import {
-  ChatModelAuthError,
-  ChatModelBadRequestError,
-  ChatModelForbiddenError,
-  EXTENSION_CONFLICT_ERROR_MESSAGE,
-  ExtensionConflictError,
-  isAbortedError,
-  isAuthenticationError,
-  isBadRequestError,
-  isExtensionConflictError,
-  isForbiddenError,
-  LLMTimeoutError,
-  LLM_FORBIDDEN_ERROR_MESSAGE,
-  RequestCancelledError,
-} from './errors';
+import { classifyModelError, LLMTimeoutError, RequestCancelledError } from './errors';
 import { calcBranchPathHashSet } from '@src/background/browser/dom/views';
 import { type BrowserState, BrowserStateHistory } from '@src/background/browser/views';
 import { repairJsonString } from '@src/background/utils';
@@ -63,10 +49,6 @@ export class NavigatorActionRegistry {
 
   registerAction(action: Action): void {
     this.actions[action.name()] = action;
-  }
-
-  unregisterAction(name: string): void {
-    delete this.actions[name];
   }
 
   getAction(name: string): Action | undefined {
@@ -115,7 +97,10 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
     super(actionRegistry.setupModelOutputSchema(), options, { ...extraOptions, id: 'navigator' });
 
     this.actionRegistry = actionRegistry;
+    this.onModelChanged();
+  }
 
+  protected onModelChanged(): void {
     // Gemini often stalls with navigator's large structured schema. Prefer manual JSON extraction for stability.
     if (this.isGeminiModel() && this.withStructuredOutput) {
       this.withStructuredOutput = false;
@@ -206,7 +191,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
     let actionResults: ActionResult[] = [];
 
     try {
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_START, 'Navigating...');
+      await this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_START, 'Navigating...');
       logger.debug('Navigator execute started', {
         taskId: this.context.taskId,
         step: this.context.nSteps,
@@ -297,7 +282,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
         return agentOutput;
       }
       // emit event
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_OK, 'Navigation done');
+      await this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_OK, 'Navigation done');
       let done = false;
       if (actionResults.length > 0 && actionResults[actionResults.length - 1].isDone) {
         done = true;
@@ -312,32 +297,20 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
       this.removeLastStateMessageFromMemory();
       const errorMessage = error instanceof Error ? error.message : String(error);
       // Check if this is an authentication error
-      if (isAuthenticationError(error)) {
-        throw new ChatModelAuthError(errorMessage, error);
-      } else if (isBadRequestError(error)) {
-        throw new ChatModelBadRequestError(errorMessage, error);
-      } else if (isAbortedError(error)) {
-        // Real user aborts only; an LLM timeout is a counted, retryable step failure
-        throw new RequestCancelledError(errorMessage);
-      } else if (isExtensionConflictError(error)) {
-        throw new ExtensionConflictError(EXTENSION_CONFLICT_ERROR_MESSAGE, error);
-      } else if (error instanceof ExtensionConflictError) {
-        // Already localized (for example a debugger conflict raised while attaching the tab)
-        throw error;
-      } else if (isForbiddenError(error)) {
-        throw new ChatModelForbiddenError(LLM_FORBIDDEN_ERROR_MESSAGE, error);
-      }
+      // Real user aborts only; an LLM timeout is a counted, retryable step failure (not classified)
+      const modelError = classifyModelError(error);
+      if (modelError) throw modelError;
 
       const errorString = `Navigation failed: ${errorMessage}`;
       logger.error(errorString, error);
-      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_FAIL, errorString);
+      await this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_FAIL, errorString);
       agentOutput.error = errorMessage;
       return agentOutput;
     } finally {
       // if the task is cancelled, remove the last state message from memory and emit event
       if (cancelled) {
         this.removeLastStateMessageFromMemory();
-        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_CANCEL, 'Navigation cancelled');
+        await this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.STEP_CANCEL, 'Navigation cancelled');
       }
       if (browserStateHistory) {
         // Create a copy of actionResults to store in history
@@ -466,7 +439,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
   private async collectDialogNotices(): Promise<ActionResult[]> {
     try {
       const page = await this.context.browserContext.getCurrentPage();
-      return (page.takeDialogNotices?.() ?? []).map(
+      return ((await page.takeDialogNotices?.()) ?? []).map(
         notice => new ActionResult({ extractedContent: notice, includeInMemory: true }),
       );
     } catch (error) {
@@ -476,6 +449,14 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
   }
 
   private async doMultiAction(actions: Record<string, unknown>[]): Promise<ActionResult[]> {
+    try {
+      return await this.runActions(actions);
+    } finally {
+      this.context.actionState = null;
+    }
+  }
+
+  private async runActions(actions: Record<string, unknown>[]): Promise<ActionResult[]> {
     const results: ActionResult[] = [];
     let errCount = 0;
     logger.info('Actions', actions);
@@ -483,6 +464,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
     const browserContext = this.context.browserContext;
     // The state the model just saw: its selectorMap is what the action indexes refer to
     const browserState = await browserContext.getCachedState(this.context.options.useVision);
+    this.context.actionState = browserState;
     await browserContext.removeHighlight();
     // Only a second indexed action needs to know whether the page changed, and the baseline must be the page as it
     // is now (after the LLM latency), or late-loading content would cut the batch as "something new appeared".
@@ -563,7 +545,7 @@ export class NavigatorAgent extends BaseAgent<NavigatorOutputSchema, NavigatorRe
           JSON.stringify(errorMessage, null, 2),
         );
         // unexpected error, emit event
-        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMessage);
+        await this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMessage);
         errCount++;
         if (errCount > 3) {
           throw new Error('Too many errors in actions', { cause: error });
