@@ -7,23 +7,54 @@ import { assistantCopy } from '../lib/assistant-copy';
 
 const Markdown = lazy(() => import('./ResponseMarkdown'));
 
-export default memo(function MessageList({ messages, onContinue }: { messages: Message[]; onContinue?: () => void }) {
+// Only the newest messages are mounted; older ones load on request so a long chat does not mount hundreds of Markdown trees.
+const RENDER_WINDOW = 200;
+
+// Row keys must survive the window sliding: a streamed answer keeps its streamId, every other message gets an
+// identity assigned once per object (an index would shift for every row whenever the window moves).
+const messageKeys = new WeakMap<Message, string>();
+let nextMessageKey = 0;
+function keyOf(message: Message): string {
+  if (message.streamId) return message.streamId;
+  let key = messageKeys.get(message);
+  if (!key) {
+    key = `message-${nextMessageKey++}`;
+    messageKeys.set(message, key);
+  }
+  return key;
+}
+
+function groupMessages(messages: Message[]): Message[][] {
   const groups: Message[][] = [];
   for (const message of messages) {
     const previous = groups.at(-1);
     if (message.kind === 'activity' && previous?.[0].kind === 'activity') previous.push(message);
     else groups.push([message]);
   }
-  // The log is append-only, so a position is a stable identity here.
-  /* eslint-disable @eslint-react/no-array-index-key */
+  return groups;
+}
+
+export default memo(function MessageList({ messages, onContinue }: { messages: Message[]; onContinue?: () => void }) {
+  const [windowSize, setWindowSize] = useState(RENDER_WINDOW);
+  const hiddenCount = Math.max(0, messages.length - windowSize);
+  const visible = hiddenCount > 0 ? messages.slice(hiddenCount) : messages;
+  const groups = groupMessages(visible);
   return (
     <div className="assistant-messages">
-      {groups.map((group, index) =>
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          className="assistant-execute-plan mx-auto"
+          onClick={() => setWindowSize(size => size + RENDER_WINDOW)}>
+          {t('chat_showEarlier', [String(hiddenCount)])}
+        </button>
+      ) : null}
+      {groups.map(group =>
         group[0].kind === 'activity' ? (
-          <ActivityGroup key={`activity-${index}`} messages={group} />
+          <ActivityGroup key={keyOf(group[0])} messages={group} />
         ) : (
           <MessageBlock
-            key={group[0].streamId ?? `${group[0].timestamp}-${index}`}
+            key={keyOf(group[0])}
             message={group[0]}
             onContinue={group[0] === messages.at(-1) ? onContinue : undefined}
           />
@@ -31,31 +62,36 @@ export default memo(function MessageList({ messages, onContinue }: { messages: M
       )}
     </div>
   );
-  /* eslint-enable @eslint-react/no-array-index-key */
 });
 
-function ActivityGroup({ messages }: { messages: Message[] }) {
-  const { currentLocale } = useLanguage();
-  const copy = assistantCopy(currentLocale);
-  return (
-    <details className="assistant-activity-log">
-      <summary>
-        <FiChevronRight />
-        <span>{copy.activity}</span>
-        <span>{messages.length}</span>
-      </summary>
-      <ol>
-        {messages.map((message, index) => (
-          // eslint-disable-next-line @eslint-react/no-array-index-key -- append-only activity log
-          <li key={index}>
-            <FiCheck />
-            <span>{message.content}</span>
-          </li>
-        ))}
-      </ol>
-    </details>
-  );
-}
+/** Rows are rebuilt on every delta; the group is compared by its members so unchanged logs skip re-rendering. */
+const ActivityGroup = memo(
+  function ActivityGroup({ messages }: { messages: Message[] }) {
+    const { currentLocale } = useLanguage();
+    const copy = assistantCopy(currentLocale);
+    return (
+      <details className="assistant-activity-log">
+        <summary>
+          <FiChevronRight />
+          <span>{copy.activity}</span>
+          <span>{messages.length}</span>
+        </summary>
+        <ol>
+          {messages.map((message, index) => (
+            // eslint-disable-next-line @eslint-react/no-array-index-key -- append-only activity log
+            <li key={index}>
+              <FiCheck />
+              <span>{message.content}</span>
+            </li>
+          ))}
+        </ol>
+      </details>
+    );
+  },
+  (previous, next) =>
+    previous.messages.length === next.messages.length &&
+    previous.messages.every((message, index) => message === next.messages[index]),
+);
 
 const MessageBlock = memo(function MessageBlock({
   message,

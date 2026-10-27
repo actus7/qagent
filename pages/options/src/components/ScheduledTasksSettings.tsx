@@ -105,6 +105,7 @@ export const ScheduledTasksSettings = () => {
         <div className="mb-2 flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-foreground">{t('options_schedule_header')}</h2>
           <Button
+            size="compact"
             onClick={() => setEditing('new')}
             className="bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">
             {t('options_schedule_btnNew')}
@@ -175,14 +176,19 @@ export const ScheduledTasksSettings = () => {
 
               <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <Button
+                  size="compact"
                   onClick={() => void handleRunNow(task)}
                   className="bg-secondary px-3 py-1.5 text-xs text-foreground">
                   {t('options_schedule_btnRunNow')}
                 </Button>
-                <Button onClick={() => setEditing(task)} className="bg-secondary px-3 py-1.5 text-xs text-foreground">
+                <Button
+                  size="compact"
+                  onClick={() => setEditing(task)}
+                  className="bg-secondary px-3 py-1.5 text-xs text-foreground">
                   {t('options_schedule_btnEdit')}
                 </Button>
                 <Button
+                  size="compact"
                   onClick={() => handleDelete(task)}
                   className="bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:opacity-90">
                   {t('options_schedule_btnDelete')}

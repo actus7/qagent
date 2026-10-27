@@ -75,6 +75,7 @@ const Options = () => {
             {tabs.map(item => (
               <li key={item.id}>
                 <Button
+                  size="compact"
                   variant="ghost"
                   onClick={() => handleTabClick(item.id)}
                   className={`flex w-full items-center space-x-2 rounded-lg px-4 py-2 text-left text-base ${

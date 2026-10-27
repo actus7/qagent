@@ -71,7 +71,7 @@ export function ModelCatalogPicker({
       {catalog.status === 'error' && (
         <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
           <span>{getModelCatalogErrorMessage(catalog.error)}</span>
-          <Button variant="ghost" onClick={onRetry}>
+          <Button size="compact" variant="ghost" onClick={onRetry}>
             {t('options_models_catalog_retry')}
           </Button>
         </div>
@@ -118,10 +118,13 @@ export function ModelCatalogPicker({
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel}>
+        <Button size="compact" variant="ghost" onClick={onCancel}>
           {t('options_models_catalog_cancel')}
         </Button>
-        <Button disabled={selected.size === 0} onClick={() => onConfirm(normalizeModelIds([...selected]))}>
+        <Button
+          size="compact"
+          disabled={selected.size === 0}
+          onClick={() => onConfirm(normalizeModelIds([...selected]))}>
           {t('options_models_catalog_confirm')}
         </Button>
       </div>

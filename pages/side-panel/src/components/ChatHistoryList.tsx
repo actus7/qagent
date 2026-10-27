@@ -1,7 +1,7 @@
 import { FaTrash } from 'react-icons/fa';
 import { BsBookmark } from 'react-icons/bs';
 import { t } from '@extension/i18n';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 import { Card } from '@src/components/ui/card';
 import { ScrollArea } from '@src/components/ui/scroll-area';
 

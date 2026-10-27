@@ -31,6 +31,7 @@ export function ProviderConnectionTest({ providerId, disabled }: { providerId: s
   return (
     <div className="flex items-center space-x-2">
       <Button
+        size="compact"
         variant="secondary"
         disabled={disabled || state.status === 'testing'}
         title={disabled ? t('options_test_saveFirst') : undefined}

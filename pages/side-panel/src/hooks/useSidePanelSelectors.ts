@@ -1,10 +1,12 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useSidePanelStore } from '@src/store/sidePanelStore';
 
+/** Messages change on every streamed delta, so only the conversation view subscribes to them. */
+export const useSidePanelMessages = () => useSidePanelStore(state => state.messages);
+
 export const useSidePanelState = () => {
   return useSidePanelStore(
     useShallow(state => ({
-      messages: state.messages,
       inputEnabled: state.inputEnabled,
       showStopButton: state.showStopButton,
       showSettings: state.showSettings,

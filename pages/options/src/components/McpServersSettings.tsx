@@ -65,6 +65,7 @@ export const McpServersSettings = () => {
         <div className="mb-2 flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-foreground">{t('options_mcpServers_header')}</h2>
           <Button
+            size="compact"
             onClick={() => setEditing('new')}
             className="bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">
             {t('options_mcp_btnNew')}
@@ -101,10 +102,14 @@ export const McpServersSettings = () => {
                 </label>
               </div>
               <div className="mt-3 flex flex-wrap justify-end gap-2">
-                <Button onClick={() => setEditing(server)} className="bg-secondary px-3 py-1.5 text-xs text-foreground">
+                <Button
+                  size="compact"
+                  onClick={() => setEditing(server)}
+                  className="bg-secondary px-3 py-1.5 text-xs text-foreground">
                   {t('options_mcp_btnEdit')}
                 </Button>
                 <Button
+                  size="compact"
                   onClick={() => void handleDelete(server)}
                   className="bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:opacity-90">
                   {t('options_mcp_btnDelete')}

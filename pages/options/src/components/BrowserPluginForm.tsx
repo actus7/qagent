@@ -169,6 +169,7 @@ export const BrowserPluginForm = ({ plugin, onDone }: BrowserPluginFormProps) =>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">{t('options_plugins_form_toolsHeader')}</h3>
               <Button
+                size="compact"
                 onClick={() => setDraft({ ...draft, tools: [...draft.tools, newToolDraft()] })}
                 className="bg-secondary px-3 py-1.5 text-xs text-foreground">
                 {t('options_plugins_btnAddTool')}
@@ -215,6 +216,7 @@ export const BrowserPluginForm = ({ plugin, onDone }: BrowserPluginFormProps) =>
                 </label>
                 <div className="flex justify-end">
                   <Button
+                    size="compact"
                     onClick={() => removeTool(index)}
                     className="bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:opacity-90">
                     {t('options_plugins_btnRemoveTool')}
@@ -232,10 +234,11 @@ export const BrowserPluginForm = ({ plugin, onDone }: BrowserPluginFormProps) =>
         ) : null}
 
         <div className="mt-6 flex justify-end gap-2">
-          <Button onClick={onDone} className="bg-secondary px-4 py-2 text-sm text-foreground">
+          <Button size="compact" onClick={onDone} className="bg-secondary px-4 py-2 text-sm text-foreground">
             {t('options_plugins_btnCancel')}
           </Button>
           <Button
+            size="compact"
             disabled={saving}
             onClick={() => void handleSave()}
             className="bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">

@@ -61,6 +61,7 @@ export function ProviderModelsField({
       <div className="flex-1 space-y-2">
         <div className="flex justify-end">
           <Button
+            size="compact"
             variant="secondary"
             aria-expanded={isPickerOpen}
             aria-controls={`${providerId}-catalog`}

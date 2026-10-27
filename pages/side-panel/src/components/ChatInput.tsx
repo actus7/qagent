@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useId, useMemo, type ReactNode } from 'react';
+import { memo, useState, useRef, useEffect, useCallback, useId, useMemo, type ReactNode } from 'react';
 import { FiArrowUp, FiCamera, FiClock, FiPaperclip, FiSquare } from 'react-icons/fi';
 import { FaMicrophone } from 'react-icons/fa';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
@@ -13,7 +13,7 @@ import {
   type SlashCommandItem,
   useLanguage,
 } from '@extension/shared';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 import { Textarea } from '@src/components/ui/textarea';
 import { Badge } from '@src/components/ui/badge';
 import ComposerPopup from './ComposerPopup';
@@ -110,7 +110,7 @@ function buildSlashCommands(savedPrompts: SavedPrompt[]): SlashCommandItem[] {
   return [...builtIns, ...prompts];
 }
 
-export default function ChatInput({
+function ChatInput({
   onSendMessage,
   voice,
   disabled,
@@ -141,7 +141,7 @@ export default function ChatInput({
   const listboxId = useId();
   const { currentLocale } = useLanguage();
   // currentLocale is a dep so the t() descriptions follow a language switch
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
   const commands = useMemo(() => buildSlashCommands(savedPrompts), [savedPrompts, currentLocale]);
 
   const suggestions = useComposerSuggestions({
@@ -370,14 +370,15 @@ export default function ChatInput({
     const source = cropSource;
     setCropSource(null);
     if (!source) return;
+    // Checked first: cropping and re-encoding the screenshot is the expensive part, and it is wasted at the limit.
+    if (attachments.filter(item => item.kind === 'image').length >= ASSISTANT_MAX_IMAGES) {
+      setFileError(t('chat_input_tooManyImages'));
+      return;
+    }
     try {
       const dataUrl = rect ? await cropImageDataUrl(source, rect) : source;
       const blob = await (await fetch(dataUrl)).blob();
       const attachment = await prepareImageAttachment(blob, `screenshot-${Date.now()}.png`);
-      if (attachments.filter(item => item.kind === 'image').length >= ASSISTANT_MAX_IMAGES) {
-        setFileError(t('chat_input_tooManyImages'));
-        return;
-      }
       setAttachments(prev => [...prev, attachment]);
     } catch (error) {
       setFileError(describeReadError('screenshot', error));
@@ -620,3 +621,5 @@ export default function ChatInput({
     </form>
   );
 }
+
+export default memo(ChatInput);

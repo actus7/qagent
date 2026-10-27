@@ -1329,6 +1329,15 @@
   "chat_input_cmd_compact": {
     "message": "Resume as mensagens antigas para liberar contexto"
   },
+  "chat_showEarlier": {
+    "message": "Mostrar $1 mensagens anteriores",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
   "chat_compacted_divider": {
     "message": "Conversa compactada"
   },

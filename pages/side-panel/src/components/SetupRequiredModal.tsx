@@ -1,7 +1,7 @@
 import type React from 'react';
 import { FiX } from 'react-icons/fi';
 import { t } from '@extension/i18n';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 import { Card } from '@src/components/ui/card';
 
 interface SetupRequiredModalProps {

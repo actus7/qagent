@@ -143,15 +143,17 @@ export const McpServerForm = ({ server, onDone }: McpServerFormProps) => {
 
       <div className="flex flex-wrap justify-end gap-2">
         <Button
+          size="compact"
           disabled={testing}
           onClick={() => void handleTest()}
           className="bg-secondary px-3 py-1.5 text-xs text-foreground">
           {testing ? t('options_mcp_btnTesting') : t('options_mcp_btnTest')}
         </Button>
-        <Button onClick={onDone} className="bg-secondary px-3 py-1.5 text-xs text-foreground">
+        <Button size="compact" onClick={onDone} className="bg-secondary px-3 py-1.5 text-xs text-foreground">
           {t('options_mcp_btnCancel')}
         </Button>
         <Button
+          size="compact"
           onClick={() => void handleSave()}
           className="bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90">
           {t('options_mcp_btnSave')}

@@ -1,8 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { FiArrowUpRight, FiZap } from 'react-icons/fi';
 import { t } from '@extension/i18n';
-import type { Message } from '@extension/storage';
 import { ScrollArea } from '@src/components/ui/scroll-area';
+import { useSidePanelMessages } from '../hooks/useSidePanelSelectors';
 import type { assistantCopy } from '../lib/assistant-copy';
 import MessageList from './MessageList';
 
@@ -12,10 +12,9 @@ const FOLLOW_THRESHOLD_PX = 80;
 interface ConversationAreaProps {
   copy: ReturnType<typeof assistantCopy>;
   isCheckingConfig: boolean;
-  messages: Message[];
   welcome: ReactNode;
-  /** Content of the latest plan answer when the "execute plan" action should be offered. */
-  planAnswer: string | null;
+  /** Stream id of the plan-mode answer to offer "execute plan" for; null when no such action applies. */
+  planStreamId: string | null;
   onExecutePlan: (planAnswer: string) => void;
   /** Resumes a task that the service worker restart interrupted. */
   onContinue: () => void;
@@ -24,12 +23,17 @@ interface ConversationAreaProps {
 export default function ConversationArea({
   copy,
   isCheckingConfig,
-  messages,
   welcome,
-  planAnswer,
+  planStreamId,
   onExecutePlan,
   onContinue,
 }: ConversationAreaProps) {
+  // Subscribed here, not in SidePanel, so a streamed delta re-renders only the conversation.
+  const messages = useSidePanelMessages();
+  const planAnswerMessage = planStreamId
+    ? messages.filter(message => message.streamId === planStreamId).at(-1)
+    : undefined;
+  const planAnswer = planAnswerMessage ? planAnswerMessage.content : null;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Follows new messages only while the reader is at the bottom; scrolling up to read must not be yanked back down.
   const followRef = useRef(true);

@@ -31,11 +31,12 @@ export function ProviderCard({ providerId, config, showDivider, settings }: Prov
         <div className="flex space-x-2">
           <ProviderConnectionTest providerId={providerId} disabled={isModified || !isInStorage} />
           {isModified && (
-            <Button variant="secondary" onClick={() => void settings.handleCancelProvider(providerId)}>
+            <Button size="compact" variant="secondary" onClick={() => void settings.handleCancelProvider(providerId)}>
               {t('options_models_providers_btnCancel')}
             </Button>
           )}
           <Button
+            size="compact"
             variant={actionState.variant}
             disabled={actionState.disabled}
             onClick={() =>

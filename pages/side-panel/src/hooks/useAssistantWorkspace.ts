@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { agentModelStore, AgentNameEnum } from '@extension/storage';
 import type { AssistantMode } from '@extension/shared';
 
@@ -130,21 +130,40 @@ export function useAssistantWorkspace(frozen = false) {
     setSelectedIds(current => (current.includes(id) || current.length >= 12 ? current : [...current, id]));
   }, []);
 
-  return {
-    mode,
-    setMode,
-    selectOnlyTab,
-    modelAgent,
-    setModelAgent,
-    models,
-    tabs,
-    selectedTabs: tabs.filter(tab => selectedIds.includes(tab.id)),
-    toggleTab,
-    addTab,
-    followActive,
-    followActiveTab: () => setFollowActive(true),
-    error,
-  };
+  const followActiveTab = useCallback(() => setFollowActive(true), []);
+  const selectedTabs = useMemo(() => tabs.filter(tab => selectedIds.includes(tab.id)), [tabs, selectedIds]);
+
+  // Memoized: the composer and its children are memo'd and receive this object as a prop.
+  return useMemo(
+    () => ({
+      mode,
+      setMode,
+      selectOnlyTab,
+      modelAgent,
+      setModelAgent,
+      models,
+      tabs,
+      selectedTabs,
+      toggleTab,
+      addTab,
+      followActive,
+      followActiveTab,
+      error,
+    }),
+    [
+      mode,
+      selectOnlyTab,
+      modelAgent,
+      models,
+      tabs,
+      selectedTabs,
+      toggleTab,
+      addTab,
+      followActive,
+      followActiveTab,
+      error,
+    ],
+  );
 }
 
 export type AssistantWorkspace = ReturnType<typeof useAssistantWorkspace>;

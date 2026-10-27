@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { Actors, chatHistoryStore } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { formatContextPrefill, useTheme, type AssistantMode } from '@extension/shared';
@@ -25,6 +25,7 @@ import { useConfigurationSync } from './hooks/useConfigurationSync';
 import { useFavoritePromptHandlers } from './hooks/useFavoritePromptHandlers';
 import { useHistoryHandlers } from './hooks/useHistoryHandlers';
 import { useSidePanelConnection } from './hooks/useSidePanelConnection';
+import { useStableCallback } from './hooks/useStableCallback';
 import { useSidePanelActions, useSidePanelState } from './hooks/useSidePanelSelectors';
 import { useTaskEventHandler } from './hooks/useTaskEventHandler';
 import { useTaskRunState } from './hooks/useTaskRunState';
@@ -46,10 +47,9 @@ const openOptionsPage = () => chrome.runtime.openOptionsPage();
 const SidePanel = () => {
   const isAgentBrowserEngine = import.meta.env.VITE_BROWSER_ENGINE === 'agent-browser';
   const { currentLocale } = useLanguage();
-  const copy = assistantCopy(currentLocale);
+  const copy = useMemo(() => assistantCopy(currentLocale), [currentLocale]);
   const progressMessage = t('sidepanel_progress_message');
   const {
-    messages,
     inputEnabled,
     showStopButton,
     showSettings,
@@ -100,6 +100,7 @@ const SidePanel = () => {
   const modeRef = useRef(workspace.mode);
 
   const { theme, cycleTheme } = useTheme();
+  const stableCycleTheme = useStableCallback(cycleTheme);
 
   const setInputText = useCallback((text: string) => {
     if (setInputTextRef.current) {
@@ -139,6 +140,8 @@ const SidePanel = () => {
       setIsHistoricalSession,
       setFavoritePrompts,
     });
+  const stableLoadHistory = useStableCallback(handleLoadHistory);
+  const stableBackToChat = useStableCallback(() => handleBackToChat(false));
 
   const { handleBookmarkSelect, handleBookmarkUpdateTitle, handleBookmarkDelete, handleBookmarkReorder } =
     useFavoritePromptHandlers({
@@ -146,6 +149,19 @@ const SidePanel = () => {
       setFavoritePrompts,
       setInputText,
     });
+  const stableBookmarkSelect = useStableCallback(handleBookmarkSelect);
+  const stableBookmarkUpdateTitle = useStableCallback(handleBookmarkUpdateTitle);
+  const stableBookmarkDelete = useStableCallback(handleBookmarkDelete);
+  const stableBookmarkReorder = useStableCallback(handleBookmarkReorder);
+  const bookmarkHandlers = useMemo(
+    () => ({
+      onBookmarkSelect: stableBookmarkSelect,
+      onBookmarkUpdateTitle: stableBookmarkUpdateTitle,
+      onBookmarkDelete: stableBookmarkDelete,
+      onBookmarkReorder: stableBookmarkReorder,
+    }),
+    [stableBookmarkSelect, stableBookmarkUpdateTitle, stableBookmarkDelete, stableBookmarkReorder],
+  );
 
   const { handleChatDebugModeChange } = useConfigurationSync(hasConfiguredModels);
 
@@ -282,23 +298,24 @@ const SidePanel = () => {
     hasConfiguredModels,
     isFollowUpMode,
   });
-  // stable reference: an inline closure here re-rendered MessageList and the last message on every root render
-  const sendMessageRef = useRef(handleSendMessage);
-  sendMessageRef.current = handleSendMessage;
-  const handleContinue = useCallback(() => void sendMessageRef.current(t('chat_continueCommand')), []);
+  // Stable identities for memoized children; each one calls the latest handler.
+  const sendComposerMessage = useStableCallback(handleSendMessage);
+  const stopComposerTask = useStableCallback(handleStopTask);
+  const handleContinue = useCallback(() => void sendComposerMessage(t('chat_continueCommand')), [sendComposerMessage]);
 
   const { handleMicClick } = useVoiceInput({ appendMessage, connection, isRecording });
+  const stableMicClick = useStableCallback(handleMicClick);
 
   /** Captures the active tab through the background; the reply resolves in useSidePanelConnection. */
-  const handleCaptureScreenshot = useCallback(async () => {
+  const handleCaptureScreenshot = useStableCallback(async () => {
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const tabId = activeTab?.id;
     if (tabId === undefined) throw new Error(t('errors_noActiveTab'));
     ensureConnection();
     return requestTabCapture(() => sendMessage({ type: 'capture_visible_tab', tabId }));
-  }, [ensureConnection, sendMessage]);
+  });
 
-  const handleNewChat = () => {
+  const handleNewChat = useStableCallback(() => {
     if (showStopButton) return;
     if (hasConfiguredModels === false) {
       setShowSetupRequiredModal(true);
@@ -315,7 +332,20 @@ const SidePanel = () => {
     setBrowserStatus(null);
     setLastEvent(null);
     setPlanStreamId(null);
-  };
+  });
+
+  const handleSchedule = useCallback((prompt: string) => setSchedulePrompt(prompt), []);
+  const openSettings = useCallback(() => setShowSettings(true), [setShowSettings]);
+  const handleExportReport = useStableCallback((format: 'html' | 'markdown') => {
+    if (!currentSessionId) return;
+    exportSessionReport(currentSessionId, format === 'html' ? 'html' : 'markdown').catch(error =>
+      appendMessage({
+        actor: Actors.SYSTEM,
+        content: t('report_exportFailed', error instanceof Error ? error.message : String(error)),
+        timestamp: Date.now(),
+      }),
+    );
+  });
 
   const handleTogglePause = () => {
     sendMessage({ type: isPaused ? 'resume_task' : 'pause_task' });
@@ -342,14 +372,14 @@ const SidePanel = () => {
     void appendMessage({ actor: Actors.USER, content: answer, timestamp: Date.now() }, sessionIdRef.current);
   };
 
-  const handleSuggestion = (_mode: AssistantMode, prompt: string) => {
+  const handleSuggestion = useStableCallback((_mode: AssistantMode, prompt: string) => {
     setInputText(prompt);
-  };
+  });
 
-  const handleExecutePlan = (planAnswer: string) => {
+  const handleExecutePlan = useStableCallback((planAnswer: string) => {
     workspace.setMode('act');
     setInputText(copy.executePlan + ':\n\n' + planAnswer);
-  };
+  });
 
   // Cleanup on unmount
   useEffect(() => {
@@ -358,11 +388,8 @@ const SidePanel = () => {
     };
   }, [stopConnection]);
 
-  const planAnswerMessage = planStreamId
-    ? messages.filter(message => message.streamId === planStreamId).at(-1)
-    : undefined;
-  const planAnswer =
-    workspace.mode === 'plan' && planAnswerMessage && !showStopButton ? planAnswerMessage.content : null;
+  // The plan answer itself is read by ConversationArea, so this component does not subscribe to the messages.
+  const planAnswerStreamId = workspace.mode === 'plan' && !showStopButton ? planStreamId : null;
 
   return (
     <div data-locale={currentLocale} className="assistant-shell">
@@ -370,22 +397,13 @@ const SidePanel = () => {
         showHistory={showHistory}
         showStopButton={showStopButton}
         theme={theme}
-        onCycleTheme={cycleTheme}
-        onBackToChat={() => handleBackToChat(false)}
+        onCycleTheme={stableCycleTheme}
+        onBackToChat={stableBackToChat}
         onNewChat={handleNewChat}
-        onLoadHistory={handleLoadHistory}
+        onLoadHistory={stableLoadHistory}
         hasSession={Boolean(currentSessionId)}
-        onExportReport={format => {
-          if (!currentSessionId) return;
-          exportSessionReport(currentSessionId, format === 'html' ? 'html' : 'markdown').catch(error =>
-            appendMessage({
-              actor: Actors.SYSTEM,
-              content: t('report_exportFailed', error instanceof Error ? error.message : String(error)),
-              timestamp: Date.now(),
-            }),
-          );
-        }}
-        onOpenSettings={() => setShowSettings(true)}
+        onExportReport={handleExportReport}
+        onOpenSettings={openSettings}
       />
       {showHistory ? (
         <div className="min-h-0 flex-1 overflow-hidden">
@@ -411,8 +429,7 @@ const SidePanel = () => {
           <ConversationArea
             copy={copy}
             isCheckingConfig={hasConfiguredModels === null}
-            messages={messages}
-            planAnswer={planAnswer}
+            planStreamId={planAnswerStreamId}
             onExecutePlan={handleExecutePlan}
             onContinue={handleContinue}
             welcome={
@@ -420,12 +437,7 @@ const SidePanel = () => {
                 copy={copy}
                 hasConfiguredModels={hasConfiguredModels === true}
                 favoritePrompts={favoritePrompts}
-                bookmarkHandlers={{
-                  onBookmarkSelect: handleBookmarkSelect,
-                  onBookmarkUpdateTitle: handleBookmarkUpdateTitle,
-                  onBookmarkDelete: handleBookmarkDelete,
-                  onBookmarkReorder: handleBookmarkReorder,
-                }}
+                bookmarkHandlers={bookmarkHandlers}
                 onSuggestionSelect={handleSuggestion}
                 onOpenOptions={openOptionsPage}
               />
@@ -456,13 +468,13 @@ const SidePanel = () => {
             showStopButton={showStopButton}
             isRecording={isRecording}
             isProcessingSpeech={isProcessingSpeech}
-            onSendMessage={handleSendMessage}
+            onSendMessage={sendComposerMessage}
             savedPrompts={favoritePrompts}
             onNewChat={handleNewChat}
             onCaptureScreenshot={handleCaptureScreenshot}
-            onSchedule={prompt => setSchedulePrompt(prompt)}
-            onStopTask={handleStopTask}
-            onMicToggle={handleMicClick}
+            onSchedule={handleSchedule}
+            onStopTask={stopComposerTask}
+            onMicToggle={stableMicClick}
             onRegisterInputSetter={registerInputSetter}
             replaySessionId={replaySessionId}
           />

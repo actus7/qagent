@@ -1,6 +1,7 @@
+import { memo } from 'react';
 import type { ComponentProps } from 'react';
 import { FiArrowUpRight, FiChevronDown, FiCompass, FiFileText, FiLayers, FiZap } from 'react-icons/fi';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 import type { FavoritePrompt } from '@extension/storage/lib/prompt/favorites';
 import type { AssistantMode } from '@extension/shared';
 import type { assistantCopy } from '../lib/assistant-copy';
@@ -17,7 +18,7 @@ interface WelcomeScreenProps {
   onOpenOptions: () => void;
 }
 
-export default function WelcomeScreen({
+function WelcomeScreen({
   copy,
   hasConfiguredModels,
   favoritePrompts,
@@ -72,3 +73,5 @@ export default function WelcomeScreen({
     </div>
   );
 }
+
+export default memo(WelcomeScreen);

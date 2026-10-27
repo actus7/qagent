@@ -1329,6 +1329,15 @@
   "chat_input_cmd_compact": {
     "message": "Summarize the older messages to free up context"
   },
+  "chat_showEarlier": {
+    "message": "Show $1 earlier messages",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
   "chat_compacted_divider": {
     "message": "Conversa compactada"
   },

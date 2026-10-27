@@ -10,7 +10,7 @@ import {
 } from '@extension/shared';
 import { t } from '@extension/i18n';
 import { FiX } from 'react-icons/fi';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 import { Card } from '@src/components/ui/card';
 
 interface ScheduleDialogProps {
@@ -76,7 +76,11 @@ export default function ScheduleDialog({
       onSaved(nextRunAt);
     } catch (saveError) {
       console.error('Failed to save scheduled task:', saveError);
-      setError(t('options_schedule_error_saveFailed'));
+      // The store refuses a task past the limit; report that instead of a generic failure.
+      const isFull = (await scheduledTasksStore.getTasks().catch(() => [])).length >= SCHEDULE_LIMIT;
+      setError(
+        isFull ? t('options_schedule_error_limit', [String(SCHEDULE_LIMIT)]) : t('options_schedule_error_saveFailed'),
+      );
     } finally {
       setSaving(false);
     }

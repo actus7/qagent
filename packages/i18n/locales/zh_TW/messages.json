@@ -1329,6 +1329,15 @@
   "chat_input_cmd_compact": {
     "message": "總結較早的訊息以釋放上下文"
   },
+  "chat_showEarlier": {
+    "message": "顯示更早的 $1 則訊息",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
   "chat_compacted_divider": {
     "message": "對話已壓縮"
   },

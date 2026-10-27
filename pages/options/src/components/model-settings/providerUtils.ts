@@ -50,18 +50,18 @@ export function getProviderActionState(
   config: ProviderConfig,
   isInStorage: boolean,
   isModified: boolean,
-): { isDelete: boolean; variant: 'danger' | 'primary'; label: string; disabled: boolean } {
+): { isDelete: boolean; variant: 'destructive' | 'default'; label: string; disabled: boolean } {
   if (isInStorage && !isModified) {
     return {
       isDelete: true,
-      variant: 'danger',
+      variant: 'destructive',
       label: t('options_models_providers_btnDelete'),
       disabled: false,
     };
   }
   return {
     isDelete: false,
-    variant: 'primary',
+    variant: 'default',
     label: t('options_models_providers_btnSave'),
     disabled: !hasRequiredSaveInputs(config) || !isModified,
   };

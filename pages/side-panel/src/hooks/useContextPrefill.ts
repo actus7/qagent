@@ -1,9 +1,5 @@
 import { useEffect, useRef } from 'react';
-import {
-  CONTEXT_PREFILL_STORAGE_KEY,
-  type ContextPrefillPayload,
-  readStoredContextPrefill,
-} from '@extension/shared';
+import { CONTEXT_PREFILL_STORAGE_KEY, type ContextPrefillPayload, readStoredContextPrefill } from '@extension/shared';
 
 interface UseContextPrefillArgs {
   onPrefill: (payload: ContextPrefillPayload) => void;
@@ -22,10 +18,15 @@ export function useContextPrefill({ onPrefill }: UseContextPrefillArgs): void {
 
   useEffect(() => {
     let disposed = false;
+    // createdAt identifies a stored prefill; the mount read and the change event can deliver the same one.
+    let handledCreatedAt: number | null = null;
 
     const consume = async (value: unknown) => {
       const payload = readStoredContextPrefill(value, Date.now());
       if (!payload || disposed) return;
+      const { createdAt } = value as { createdAt: number };
+      if (createdAt === handledCreatedAt) return;
+      handledCreatedAt = createdAt;
       await chrome.storage.session.remove(CONTEXT_PREFILL_STORAGE_KEY);
       if (!disposed) onPrefillRef.current(payload);
     };

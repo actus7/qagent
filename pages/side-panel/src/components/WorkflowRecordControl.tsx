@@ -10,7 +10,7 @@ import {
   type SidePanelCommandMessage,
 } from '@extension/shared';
 import favoritesStorage from '@extension/storage/lib/prompt/favorites';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 import { Input } from '@src/components/ui/input';
 import { Textarea } from '@src/components/ui/textarea';
 import { useWorkflowRecordingSnapshot } from '@src/store/workflowRecordingStore';
@@ -38,8 +38,10 @@ export default function WorkflowRecordControl({ sendMessage, ensureConnection }:
   const snapshot = useWorkflowRecordingSnapshot();
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [shortcutName, setShortcutName] = useState('');
-  const [procedure, setProcedure] = useState('');
+  // null until the user edits it, so steps flushed after stop still show up in the review text
+  const [procedureDraft, setProcedureDraft] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Set by Stop; the review opens once the background publishes the stopped snapshot (it may add the final step).
   const isRecording = snapshot.status === 'recording';
   const isStopped = snapshot.status === 'stopped';
 
@@ -74,9 +76,12 @@ export default function WorkflowRecordControl({ sendMessage, ensureConnection }:
     send({ type: 'workflow_record_start', tabId: tab.id });
   };
 
+  const procedure = procedureDraft ?? buildProcedureText(snapshot.steps, buildLabels());
+
+  // The review renders only once the background reports the stopped snapshot
   const openReview = () => {
     setShortcutName(t('chat_record_nameDefault'));
-    setProcedure(buildProcedureText(snapshot.steps, buildLabels()));
+    setProcedureDraft(null);
     setIsReviewOpen(true);
   };
 
@@ -195,7 +200,7 @@ export default function WorkflowRecordControl({ sendMessage, ensureConnection }:
           </label>
           <label className="flex flex-col gap-1 text-xs">
             {t('chat_record_procedureLabel')}
-            <Textarea value={procedure} rows={6} className="text-sm" onChange={e => setProcedure(e.target.value)} />
+            <Textarea value={procedure} rows={6} className="text-sm" onChange={e => setProcedureDraft(e.target.value)} />
           </label>
           <StepList steps={snapshot.steps} truncated={snapshot.truncated} />
           <div className="flex justify-end gap-2">

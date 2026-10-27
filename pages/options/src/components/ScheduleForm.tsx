@@ -90,7 +90,13 @@ export const ScheduleForm = ({ task, taskCount, onDone }: ScheduleFormProps) => 
       onDone();
     } catch (error) {
       console.error('Failed to save scheduled task:', error);
-      setFormError(t('options_schedule_error_saveFailed'));
+      // The store refuses a new task past the limit; report that instead of a generic failure.
+      const isFull = (await scheduledTasksStore.getTasks().catch(() => [])).length >= SCHEDULE_LIMIT;
+      setFormError(
+        !task && isFull
+          ? t('options_schedule_error_limit', [String(SCHEDULE_LIMIT)])
+          : t('options_schedule_error_saveFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -260,10 +266,11 @@ export const ScheduleForm = ({ task, taskCount, onDone }: ScheduleFormProps) => 
         ) : null}
 
         <div className="flex justify-end gap-2">
-          <Button onClick={onDone} className="bg-secondary px-4 py-2 text-sm text-foreground">
+          <Button size="compact" onClick={onDone} className="bg-secondary px-4 py-2 text-sm text-foreground">
             {t('options_schedule_btnCancel')}
           </Button>
           <Button
+            size="compact"
             onClick={() => void handleSave()}
             disabled={saving}
             className="bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">

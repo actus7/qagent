@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { FiDownload, FiFileText, FiSettings, FiSun, FiMoon, FiMonitor } from 'react-icons/fi';
 import { PiPlusBold } from 'react-icons/pi';
 import { GrHistory } from 'react-icons/gr';
 import type { Theme } from '@extension/shared';
 import { t } from '@extension/i18n';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 
 interface AssistantHeaderProps {
   showHistory: boolean;
@@ -23,7 +24,7 @@ const ThemeIcon = ({ theme }: { theme: Theme }) => {
   return <Icon size={17} />;
 };
 
-export default function AssistantHeader({
+function AssistantHeader({
   showHistory,
   showStopButton,
   theme,
@@ -107,3 +108,5 @@ export default function AssistantHeader({
     </header>
   );
 }
+
+export default memo(AssistantHeader);

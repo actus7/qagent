@@ -38,6 +38,7 @@ export function CatalogLoadLinks({ providers, onLoad }: CatalogLoadLinksProps) {
     <div className="space-y-1">
       {providers.map(provider => (
         <Button
+          size="compact"
           key={provider.id}
           variant="ghost"
           disabled={busyProviderId !== null}

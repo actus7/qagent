@@ -20,6 +20,7 @@ export function AddProviderMenu({ settings }: { settings: ProviderSettings }) {
   return (
     <div data-provider-selector-container className="relative pt-4">
       <Button
+        size="compact"
         variant="secondary"
         onClick={() => settings.toggleProviderSelector()}
         className="flex w-full items-center justify-center border-border bg-muted font-medium text-primary hover:bg-muted">

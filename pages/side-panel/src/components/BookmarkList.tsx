@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { FaTrash, FaPen, FaCheck, FaTimes } from 'react-icons/fa';
 import { t } from '@extension/i18n';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 import { Card } from '@src/components/ui/card';
 import { Input } from '@src/components/ui/input';
 
@@ -79,9 +79,7 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
 
   return (
     <div className="p-2">
-      <h3 className="mb-3 text-sm font-medium text-foreground">
-        {t('chat_bookmarks_header')}
-      </h3>
+      <h3 className="mb-3 text-sm font-medium text-foreground">{t('chat_bookmarks_header')}</h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {bookmarks.map(bookmark => (
           <Card
@@ -131,9 +129,7 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
                     }
                   }}
                   className="w-full text-left">
-                  <div className="truncate pr-10 text-sm font-medium text-foreground">
-                    {bookmark.title}
-                  </div>
+                  <div className="truncate pr-10 text-sm font-medium text-foreground">{bookmark.title}</div>
                 </button>
               </div>
             )}

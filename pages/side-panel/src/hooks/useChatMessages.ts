@@ -57,18 +57,21 @@ export const useChatMessages = ({ sessionIdRef, progressMessage }: UseChatMessag
       } else if (message.type === 'assistant_delta' && message.taskId === sessionIdRef.current) {
         // The background persists the finished answer. Streaming updates are display-only.
         setMessages(previous => {
-          const existing = previous.findIndex(item => item.streamId === message.streamId);
+          const hasProgress = previous.some(item => item.content === progressMessage);
+          const next = hasProgress ? previous.filter(item => item.content !== progressMessage) : previous;
+          const answerIndex = next.findIndex(item => item.streamId === message.streamId);
           const answer: Message = {
             actor: Actors.ASSISTANT,
             content: message.content,
             streamId: message.streamId,
             kind: 'answer',
-            timestamp: existing >= 0 ? previous[existing].timestamp : Date.now(),
+            timestamp: answerIndex >= 0 ? next[answerIndex].timestamp : Date.now(),
           };
-          const next = previous.filter(item => item.content !== progressMessage);
-          const answerIndex = next.findIndex(item => item.streamId === message.streamId);
-          if (answerIndex >= 0) return next.map((item, index) => (index === answerIndex ? answer : item));
-          return [...next, answer];
+          // One copy per delta; the other items keep their identity so memoized rows skip re-rendering.
+          if (answerIndex < 0) return [...next, answer];
+          const updated = next.slice();
+          updated[answerIndex] = answer;
+          return updated;
         });
       }
     },

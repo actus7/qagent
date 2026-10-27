@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import type { AssistantAttachment } from '@extension/shared';
 import type { assistantCopy } from '../lib/assistant-copy';
 import type { AssistantWorkspace } from '../hooks/useAssistantWorkspace';
@@ -26,7 +27,7 @@ interface ComposeAreaProps {
   onSchedule: (prompt: string) => void;
 }
 
-export default function ComposeArea({
+function ComposeArea({
   copy,
   workspace,
   inputEnabled,
@@ -44,22 +45,30 @@ export default function ComposeArea({
   onCaptureScreenshot,
   onSchedule,
 }: ComposeAreaProps) {
-  const chatInputAction = showStopButton
-    ? { type: 'stop' as const, onStopTask }
-    : replaySessionId
-      ? {
-          type: 'replay' as const,
-          historicalSessionId: replaySessionId,
-          onReplay: (sessionId: string) => void onSendMessage(`/replay ${sessionId}`),
-        }
-      : { type: 'send' as const };
+  const chatInputAction = useMemo(
+    () =>
+      showStopButton
+        ? { type: 'stop' as const, onStopTask }
+        : replaySessionId
+          ? {
+              type: 'replay' as const,
+              historicalSessionId: replaySessionId,
+              onReplay: (sessionId: string) => void onSendMessage(`/replay ${sessionId}`),
+            }
+          : { type: 'send' as const },
+    [showStopButton, replaySessionId, onStopTask, onSendMessage],
+  );
 
-  const chatInputVoice = isProcessingSpeech
-    ? ({ type: 'processing' } as const)
-    : ({
-        type: isRecording ? 'recording' : 'idle',
-        onToggle: onMicToggle,
-      } as const);
+  const chatInputVoice = useMemo(
+    () =>
+      isProcessingSpeech
+        ? ({ type: 'processing' } as const)
+        : ({
+            type: isRecording ? 'recording' : 'idle',
+            onToggle: onMicToggle,
+          } as const),
+    [isProcessingSpeech, isRecording, onMicToggle],
+  );
 
   return (
     <div className="assistant-compose-area">
@@ -99,3 +108,5 @@ export default function ComposeArea({
     </div>
   );
 }
+
+export default memo(ComposeArea);

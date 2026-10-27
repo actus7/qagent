@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { t } from '@extension/i18n';
 import { cropRectFromSelection, type PixelRect } from '@extension/shared';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 
 interface ScreenshotCropperProps {
   src: string;

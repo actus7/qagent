@@ -96,6 +96,7 @@ export const BrowserPluginsSettings = () => {
         <div className="mb-2 flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-foreground">{t('options_plugins_header')}</h2>
           <Button
+            size="compact"
             onClick={() => setEditing('new')}
             className="bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">
             {t('options_plugins_btnNew')}
@@ -153,14 +154,19 @@ export const BrowserPluginsSettings = () => {
               </div>
               <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <Button
+                  size="compact"
                   onClick={() => downloadPluginJson(plugin)}
                   className="bg-secondary px-3 py-1.5 text-xs text-foreground">
                   {t('options_plugins_btnExport')}
                 </Button>
-                <Button onClick={() => setEditing(plugin)} className="bg-secondary px-3 py-1.5 text-xs text-foreground">
+                <Button
+                  size="compact"
+                  onClick={() => setEditing(plugin)}
+                  className="bg-secondary px-3 py-1.5 text-xs text-foreground">
                   {t('options_plugins_btnEdit')}
                 </Button>
                 <Button
+                  size="compact"
                   onClick={() => handleDelete(plugin)}
                   className="bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:opacity-90">
                   {t('options_plugins_btnDelete')}
@@ -191,6 +197,7 @@ export const BrowserPluginsSettings = () => {
               />
             </label>
             <Button
+              size="compact"
               disabled={importText.trim() === ''}
               onClick={() => void handleImport(importText)}
               className="bg-secondary px-3 py-1.5 text-xs text-foreground">

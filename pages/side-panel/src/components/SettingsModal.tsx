@@ -1,7 +1,7 @@
 import type React from 'react';
 import { FiX, FiExternalLink, FiGlobe } from 'react-icons/fi';
 import { t } from '@extension/i18n';
-import { Button } from '@src/components/ui/button';
+import { Button } from '@extension/ui';
 import { Card } from '@src/components/ui/card';
 import type { Language } from '@extension/shared';
 import { useLanguage } from '@extension/shared';
