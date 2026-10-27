@@ -41,7 +41,6 @@ export default function WorkflowRecordControl({ sendMessage, ensureConnection }:
   // null until the user edits it, so steps flushed after stop still show up in the review text
   const [procedureDraft, setProcedureDraft] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  // Set by Stop; the review opens once the background publishes the stopped snapshot (it may add the final step).
   const isRecording = snapshot.status === 'recording';
   const isStopped = snapshot.status === 'stopped';
 
