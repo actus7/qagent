@@ -151,6 +151,7 @@ async function _buildDomTree(
       viewportExpansion,
       debugMode,
       mainFramePage,
+      visibleIframesFailedLoading,
       frameInfoResults,
       _getMaxID(mainFramePage),
       _getMaxHighlighIndex(mainFramePage),
@@ -168,11 +169,11 @@ async function constructFrameTree(
   viewportExpansion = 0,
   debugMode = false,
   parentFramePage: BuildDomTreeResult,
+  parentIframesFailedLoading: Record<string, RawDomElementNode>,
   allFramesInfo: FrameInfo[],
   startingNodeId: number,
   startingHighlightIndex: number,
 ): Promise<{ maxNodeId: number; maxHighlightIndex: number; resultPage: BuildDomTreeResult }> {
-  const parentIframesFailedLoading = _visibleIFramesFailedLoading(parentFramePage);
   const failedLoadingFrames = allFramesInfo.filter(frameInfo => {
     return _locateMatchingIframeNode(parentIframesFailedLoading, frameInfo) != null;
   });
@@ -255,6 +256,7 @@ async function constructFrameTree(
         viewportExpansion,
         debugMode,
         subFramePage,
+        childrenIframesFailedLoading,
         allFramesInfo,
         maxNodeId,
         maxHighlightIndex,

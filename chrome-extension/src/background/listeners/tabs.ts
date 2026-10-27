@@ -4,9 +4,21 @@ import { browserContext, isAgentBrowserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 
 const logger = createLogger('background');
+const OVERLAY_REINJECT_DELAY_MS = 500;
+const pendingOverlayReinjects = new Map<number, ReturnType<typeof setTimeout>>();
+
+/** Cancels the pending overlay re-injection for a tab, if any. */
+function cancelOverlayReinject(tabId: number): void {
+  const timer = pendingOverlayReinjects.get(tabId);
+  if (timer === undefined) return;
+  clearTimeout(timer);
+  pendingOverlayReinjects.delete(tabId);
+}
 
 export function registerTabListeners(): void {
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    // A newer update supersedes any re-injection scheduled by an earlier 'complete'.
+    cancelOverlayReinject(tabId);
     if (isAgentBrowserContext(browserContext)) {
       return;
     }
@@ -17,7 +29,8 @@ export function registerTabListeners(): void {
       const { currentExecutor, overlayStatusText, overlayVisible } = runtimeStore.getState();
       if (overlayVisible && currentExecutor && browserContext.currentTabId === tabId) {
         // Wait a bit for the content script to be ready
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+          pendingOverlayReinjects.delete(tabId);
           sendOverlayMessage(tabId, { type: 'qagent:overlay:show' });
           sendOverlayMessage(tabId, { type: 'qagent:overlay:mode', mode: runtimeStore.getState().overlayMode });
           if (overlayStatusText) {
@@ -26,13 +39,15 @@ export function registerTabListeners(): void {
               text: overlayStatusText,
             });
           }
-        }, 500);
+        }, OVERLAY_REINJECT_DELAY_MS);
+        pendingOverlayReinjects.set(tabId, timer);
       }
     }
   });
 
   // Cleanup when tab is closed
   chrome.tabs.onRemoved.addListener(tabId => {
+    cancelOverlayReinject(tabId);
     void browserContext.detachPage(tabId).catch(error => {
       logger.warning('Failed to detach tab after removal', tabId, error);
       browserContext.removeAttachedPage(tabId);

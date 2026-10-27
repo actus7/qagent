@@ -79,6 +79,8 @@ export class BridgeHandshake {
       return { kind: 'ignore' };
     }
     if (type === 'request') return { kind: 'drop' };
+    // A frame arriving while the server proof is still being verified (async) is not a protocol error: ignore it.
+    if (this.phase === 'verifying') return { kind: 'ignore' };
     if (this.phase === 'awaiting_challenge') return this.onChallenge(frame);
     if (this.phase === 'awaiting_ready') return this.onReady(frame);
     return { kind: 'fail', reason: 'unexpected frame during handshake' };

@@ -85,10 +85,11 @@ function waitForDomMutation(timeoutMs: number): Promise<boolean> {
   return new Promise(resolve => {
     const observer = new MutationObserver(() => {
       observer.disconnect();
+      clearTimeout(timer);
       resolve(true);
     });
     observer.observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
-    setTimeout(
+    const timer = setTimeout(
       () => {
         observer.disconnect();
         resolve(false);

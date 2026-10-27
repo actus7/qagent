@@ -175,7 +175,8 @@ export class AgentBrowserCompanionClient {
   async request(sessionId: string, taskId: string, action: CompanionAction): Promise<CompanionRpcResponse> {
     await this.connect();
 
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    const socket = this.ws;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
       throw new Error('Companion websocket is not connected');
     }
 
@@ -195,7 +196,13 @@ export class AgentBrowserCompanionClient {
       }, this.requestTimeoutMs);
 
       this.pending.set(id, { resolve, reject, timeout });
-      this.ws?.send(JSON.stringify(payload));
+      try {
+        socket.send(JSON.stringify(payload));
+      } catch (error) {
+        clearTimeout(timeout);
+        this.pending.delete(id);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
     });
   }
 

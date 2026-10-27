@@ -47,6 +47,15 @@ export function isWatching(record: MonitorRecord): boolean {
   return record.status === 'watching';
 }
 
+/** Tabs that host at least one watch. */
+export function tabsWithWatches(records: Record<string, MonitorRecord>): Set<number> {
+  return new Set(
+    Object.values(records)
+      .filter(isWatching)
+      .map(record => record.tabId),
+  );
+}
+
 /** Only a watching monitor moves; once it changed, expired, stopped or lost, the outcome is final. */
 export function applyMonitorEvent(record: MonitorRecord, event: MonitorEvent): MonitorRecord {
   if (!isWatching(record)) return record;

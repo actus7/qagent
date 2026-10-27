@@ -329,13 +329,18 @@ async function setOverlayInert(element: ElementHandle, inert: boolean): Promise<
     .catch(() => undefined);
 }
 
+/** Throws when another element covers the centre of the target, naming it so the model can dismiss it. */
+async function assertNotCovered(element: ElementHandle, errorPrefix: string): Promise<void> {
+  const blocker = await element.evaluate(findClickBlocker, QAGENT_OVERLAY_HOST_ID);
+  if (blocker) throw new Error(`${errorPrefix}: the element is ${blocker}. Dismiss it, then retry.`);
+}
+
 /**
  * Click with Puppeteer (2s timeout), falling back to a DOM `el.click()`.
  * Refuses to click when another element covers the target, and names that element so the model can dismiss it.
  */
 export async function clickWithFallback(element: ElementHandle, errorPrefix: string): Promise<void> {
-  const blocker = await element.evaluate(findClickBlocker, QAGENT_OVERLAY_HOST_ID);
-  if (blocker) throw new Error(`${errorPrefix}: the element is ${blocker}. Dismiss it, then retry.`);
+  await assertNotCovered(element, errorPrefix);
 
   await setOverlayInert(element, true);
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -368,8 +373,7 @@ export async function clickWithFallback(element: ElementHandle, errorPrefix: str
  * clickWithFallback. Opt-in (BrowserContextConfig.smoothClicks) for sites that watch for teleporting pointers.
  */
 export async function easedClick(page: PuppeteerPage, element: ElementHandle, errorPrefix: string): Promise<void> {
-  const blocker = await element.evaluate(findClickBlocker, QAGENT_OVERLAY_HOST_ID);
-  if (blocker) throw new Error(`${errorPrefix}: the element is ${blocker}. Dismiss it, then retry.`);
+  await assertNotCovered(element, errorPrefix);
   const box = await element.boundingBox();
   if (!box) throw new Error(`${errorPrefix}: the element has no box`);
   const to = centerOfBox(box);

@@ -71,7 +71,7 @@ export async function routeSidePanelCommand(message: SidePanelCommandMessage, po
     case 'screenshot': {
       const page = await browserContext.switchTab(message.tabId);
       const screenshot = await page.takeScreenshot();
-      logger.info('screenshot', message.tabId, screenshot);
+      logger.info('screenshot captured', { tabId: message.tabId, size: screenshot?.length ?? 0 });
       return post({ type: 'success', screenshot });
     }
 

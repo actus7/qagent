@@ -1,5 +1,5 @@
 import { DOMElementNode } from '../views';
-import { hashText } from '../hash';
+import { hashText, serializeAttributes } from '../hash';
 
 /**
  * Get all clickable elements in the DOM tree using an iterative approach
@@ -43,11 +43,7 @@ export function getClickableElements(domElement: DOMElementNode): DOMElementNode
  */
 export function hashDomElement(domElement: DOMElementNode): string {
   const branchPathHash = hashText(_getParentBranchPath(domElement).join('/'));
-  const attributesHash = hashText(
-    Object.entries(domElement.attributes)
-      .map(([key, value]) => `${key}=${value}`)
-      .join(''),
-  );
+  const attributesHash = hashText(serializeAttributes(domElement.attributes));
   const xpathHash = hashText(domElement.xpath || '');
   return `${branchPathHash}-${attributesHash}-${xpathHash}`;
 }

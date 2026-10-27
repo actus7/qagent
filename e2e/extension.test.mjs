@@ -23,6 +23,10 @@ const POINTER_PAGE = `<!doctype html><title>Pointer target</title><h1 id="status
   onclick="document.getElementById('status').textContent='clicked:'+Math.round(event.clientX)+','+Math.round(event.clientY)">pad</div>`;
 // A controlled field like React's: a plain `.value =` is ignored, only the native setter and typing stick.
 // It starts with stale text, so a fill that does not clear first leaves "old text" behind.
+const XPATH_PAGE = `<!doctype html><title>XPath target</title>
+<div id="outer"><section><ul><li><a href="#one">one</a></li><li><button>two</button></li></ul></section></div>
+<div><div><p><a href="#deep">deep</a></p></div></div>
+`;
 const UI_PAGE = `<!doctype html><title>UI target</title><h1 id="status">idle</h1>
 <input id="name" aria-label="Name">
 <output id="echo"></output>
@@ -241,6 +245,7 @@ describe('extension e2e', { timeout: 300_000 }, () => {
         if (req.url.startsWith('/telemetry')) return res.end(TELEMETRY_PAGE);
         if (req.url.startsWith('/pointer')) return res.end(POINTER_PAGE);
         if (req.url.startsWith('/ui')) return res.end(UI_PAGE);
+        if (req.url.startsWith('/xpath')) return res.end(XPATH_PAGE);
         if (req.url.startsWith('/frame-host')) {
           // localhost is a different origin from the 127.0.0.1 page, so the iframe is cross-origin.
           return res.end(frameHostPage(`http://localhost:${server.address().port}`));
@@ -1144,6 +1149,41 @@ describe('extension e2e', { timeout: 300_000 }, () => {
     assert.ok(seen.includes('system:task.ok'), `task did not finish ok: ${seen.join(', ')}`);
     assert.ok(prompts[2]?.includes('[changed]'), 'the monitor did not report the change');
     assert.ok(prompts[2]?.includes('v2'), 'the changed text was not reported');
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('builds XPaths that resolve back to their own elements in buildDomTree', async () => {
+    const target = await context.newPage();
+    await target.goto(`${baseUrl}/xpath`);
+    await target.addScriptTag({ path: path.join(extensionDir, 'buildDomTree.js') });
+    // Each node's XPath must point at an element with the same tag; a wrong ancestor cache would break this.
+    const report = await target.evaluate(() => {
+      const { map } = window.buildDomTree({
+        showHighlightElements: false,
+        focusHighlightIndex: -1,
+        viewportExpansion: 0,
+        startId: 0,
+        startHighlightIndex: 0,
+      });
+      const nodes = Object.values(map).filter(node => node.tagName && node.xpath);
+      const mismatches = nodes
+        .filter(node => {
+          const hit = document.evaluate(
+            node.xpath,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null,
+          ).singleNodeValue;
+          return hit?.nodeName.toLowerCase() !== node.tagName;
+        })
+        .map(node => node.xpath);
+      return { checked: nodes.length, mismatches };
+    });
+    await target.close();
+
+    assert.ok(report.checked >= 4, `too few elements were checked: ${report.checked}`);
+    assert.deepEqual(report.mismatches, []);
     assert.deepEqual(pageErrors, []);
   });
 });

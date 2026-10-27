@@ -1,6 +1,6 @@
 import { DOMElementNode } from '../views';
 import { DOMHistoryElement, HashedDomElement } from './view';
-import { hashText } from '../hash';
+import { hashText, serializeAttributes } from '../hash';
 
 /**
  * Convert a DOM element to a history element
@@ -109,10 +109,7 @@ async function _parentBranchPathHash(parentBranchPath: string[]): Promise<string
  * Create a hash from the element attributes
  */
 async function _attributesHash(attributes: Record<string, string>): Promise<string> {
-  const attributesString = Object.entries(attributes)
-    .map(([key, value]) => `${key}=${value}`)
-    .join('');
-  return hashText(attributesString);
+  return hashText(serializeAttributes(attributes));
 }
 
 /**

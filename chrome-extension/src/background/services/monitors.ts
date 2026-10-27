@@ -8,6 +8,7 @@ import {
   monitorDeadline,
   monitorIdFromAlarm,
   newMonitorId,
+  tabsWithWatches,
   type MonitorEvent,
   type MonitorRecord,
 } from './monitor-logic';
@@ -22,6 +23,10 @@ const POLL_MS = 500;
 
 // Writes are queued so two events (a change and an alarm) never overwrite each other's record.
 let writeQueue: Promise<unknown> = Promise.resolve();
+// In-memory mirror of the tabs with a watch, so the hot tabs.onUpdated listener skips storage on unrelated tabs.
+// Kept in sync via storage.onChanged; the initial read yields to any change that arrived first.
+let watchedTabs = new Set<number>();
+let watchedTabsFromEvents = false;
 
 function queued<T>(task: () => Promise<T>): Promise<T> {
   const run = writeQueue.then(task);
@@ -111,6 +116,18 @@ async function finish(id: string, event: MonitorEvent): Promise<void> {
 
 /** Registers the change, alarm and navigation listeners. Chrome needs them at top level in the worker. */
 export function registerMonitorListeners(): void {
+  chrome.storage.session.onChanged.addListener(changes => {
+    const change = changes[SESSION_KEY];
+    if (!change) return;
+    watchedTabsFromEvents = true;
+    watchedTabs = tabsWithWatches((change.newValue ?? {}) as Record<string, MonitorRecord>);
+  });
+  void readAll()
+    .then(all => {
+      if (!watchedTabsFromEvents) watchedTabs = tabsWithWatches(all);
+    })
+    .catch(error => logger.error('Failed to load watched tabs:', error));
+
   chrome.runtime.onMessage.addListener((message: unknown, sender) => {
     if (sender.id !== chrome.runtime.id || !sender.tab?.id) return false;
     const data = message as { type?: unknown; id?: unknown; text?: unknown };
@@ -142,7 +159,7 @@ export function registerMonitorListeners(): void {
 
   // A navigation or reload destroys the content-script observer, so the watch cannot report anymore.
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    if (changeInfo.status !== 'loading') return;
+    if (changeInfo.status !== 'loading' || !watchedTabs.has(tabId)) return;
     void listMonitors()
       .then(records =>
         Promise.all(

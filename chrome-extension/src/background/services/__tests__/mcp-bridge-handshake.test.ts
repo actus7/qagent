@@ -143,4 +143,23 @@ describe('BridgeHandshake (extension side)', () => {
     await handshake.handle({ type: 'ready' });
     expect(await handshake.handle({ type: 'ping' })).toEqual({ kind: 'ignore' });
   });
+
+  // Frames that arrive while the server proof is still being verified.
+  it('ignores a second challenge that arrives while the first one is still being verified', async () => {
+    const handshake = new BridgeHandshake(TOKEN);
+    const { nonce: extNonce } = handshake.helloFrame('0.1.13');
+    const first = handshake.handle(challengeFor(extNonce));
+    expect(await handshake.handle(challengeFor(extNonce))).toEqual({ kind: 'ignore' });
+    expect((await first).kind).toBe('reply');
+    expect(handshake.isReady()).toBe(false);
+  });
+
+  it('still drops requests while verifying and completes the handshake afterwards', async () => {
+    const handshake = new BridgeHandshake(TOKEN);
+    const { nonce: extNonce } = handshake.helloFrame('0.1.13');
+    const first = handshake.handle(challengeFor(extNonce));
+    expect(await handshake.handle(request)).toEqual({ kind: 'drop' });
+    expect((await first).kind).toBe('reply');
+    expect(await handshake.handle({ type: 'ready' })).toEqual({ kind: 'ready' });
+  });
 });
