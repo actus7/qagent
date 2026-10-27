@@ -56,6 +56,14 @@ overrides:
   "@opentelemetry/core@<2.8.0": "^2.8.0"
   "basic-ftp@<6.2.1": "^6.2.1"
   "@puppeteer/browsers@<3": "^3.2.6"
+  "zod@>=4.0.0 <4.6.6": "^4.6.6"
+
+auditConfig:
+  ignoreGhsas:
+    # zod 3.x has no fix (patched only in >=4.6.6) and the 3.x consumers break on zod 4 (`z.record(v)`, `error.errors`).
+    # They are dev-only and never bundled: agent-browser 0.19 (dev-utils companion) and eslint-plugin-react-hooks.
+    # The extension ships zod 4, kept patched by the override above.
+    - GHSA-mrhx-c7xc-m3w5
 
 # Tested on 2026-10-23 (unit tests + real-browser E2E) while younger than pnpm's 1-day minimumReleaseAge.
 # Exact versions only: any newer release still waits the full day.
