@@ -7,7 +7,7 @@ import { hostRequest } from '../../services/mcpBridge/hostRelay';
 import { Actors, ExecutionState } from '../event/types';
 import { wrapUntrustedContent } from '../messages/utils';
 import { Action } from './action';
-import { clipText } from './shared';
+import { actionErrorResult, clipText } from './shared';
 import type { ActionSchema } from './schemas';
 import {
   fsListActionSchema,
@@ -39,9 +39,8 @@ function createHostAction(context: AgentContext, spec: HostActionSpec) {
       return new ActionResult({ extractedContent: `${msg}\n${body}`, includeInMemory: true });
     } catch (error) {
       const msg = t('act_host_fail', [spec.label]);
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
       const reason = error instanceof Error ? error.message : String(error);
-      return new ActionResult({ error: `${msg}: ${reason}`, includeInMemory: true });
+      return actionErrorResult(context, msg, `${msg}: ${reason}`);
     }
   }, spec.schema);
 }

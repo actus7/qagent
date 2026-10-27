@@ -253,7 +253,8 @@ export default class MessageManager {
       for (const [key, val] of Object.entries(this.settings.sensitiveData)) {
         // Skip empty values to match Python behavior
         if (!val) continue;
-        filteredValue = filteredValue.replace(val, `<secret>${key}</secret>`);
+        // every occurrence, not just the first: split/join is replaceAll without the ES2021 lib requirement
+        filteredValue = filteredValue.split(val).join(`<secret>${key}</secret>`);
       }
       return filteredValue;
     };

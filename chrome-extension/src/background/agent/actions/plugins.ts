@@ -36,8 +36,7 @@ export function createCallPluginToolAction(context: AgentContext) {
 
     const checked = checkToolArgs(tool, input.args);
     if (!checked.ok) {
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, t('act_callPluginTool_invalidArgs', [tool.name]));
-      return new ActionResult({ error: checked.error, includeInMemory: true });
+      return actionErrorResult(context, t('act_callPluginTool_invalidArgs', [tool.name]), checked.error);
     }
 
     const page = await context.browserContext.getCurrentPage();
@@ -85,8 +84,7 @@ export function createSavePluginAction(context: AgentContext) {
     } catch (error) {
       if (!(error instanceof PluginValidationError)) throw error;
       // The validation message goes back to the agent so it can fix the plugin and try again.
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, t('act_savePlugin_fail'));
-      return new ActionResult({ error: `Invalid plugin: ${error.message}`, includeInMemory: true });
+      return actionErrorResult(context, t('act_savePlugin_fail'), `Invalid plugin: ${error.message}`);
     }
 
     const now = Date.now();

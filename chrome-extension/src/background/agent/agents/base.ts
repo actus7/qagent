@@ -304,10 +304,10 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
   }
 
   /** Options shared by every call: the model, its sampling settings, our own retry policy. */
-  private baseCallOptions(messages: ModelMessage[], signal: AbortSignal) {
+  private baseCallOptions(chatModel: ChatModel, messages: ModelMessage[], signal: AbortSignal) {
     return {
-      model: this.chatLLM.model,
-      ...this.chatLLM.settings,
+      model: chatModel.model,
+      ...chatModel.settings,
       ...this.callOptions,
       messages,
       // the history starts with the agent's system prompt
@@ -324,7 +324,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
    * configured default is restored and the first error is thrown. User cancellation is never retried.
    */
   async invoke(inputMessages: ModelMessage[]): Promise<this['ModelOutput']> {
-    return runWithFailover(this.chatLLM, () => this.invokeCurrentModel(inputMessages), {
+    return runWithFailover(this.chatLLM, model => this.invokeChatModel(inputMessages, model), {
       shouldTryNext: error => shouldTryAnotherModel(error, this.context.controller.signal),
       onSwitch: model => {
         logger.warning(`[${this.modelName}] failed; trying ${model.provider}:${model.modelName}`);
@@ -359,7 +359,8 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
   /** Hook for agents whose settings depend on the model (e.g. Gemini without structured output). */
   protected onModelChanged(): void {}
 
-  private async invokeCurrentModel(inputMessages: ModelMessage[]): Promise<this['ModelOutput']> {
+  /** One call with `chatModel`, the candidate the failover picked (it is also the model in use). */
+  private async invokeChatModel(inputMessages: ModelMessage[], chatModel: ChatModel): Promise<this['ModelOutput']> {
     // Structured output: one tool the model is forced to call, so OpenAI-compatible routers that reject
     // response_format json_schema still work. The tool input is validated by the agent, not by the SDK.
     if (this.withStructuredOutput) {
@@ -383,7 +384,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
         const result = await this.invokeWithTimeout(
           signal =>
             generateText({
-              ...this.baseCallOptions(inputMessages, signal),
+              ...this.baseCallOptions(chatModel, inputMessages, signal),
               tools,
               toolChoice: { type: 'tool', toolName },
             }),
@@ -441,7 +442,7 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
 
     try {
       const response = await this.invokeWithTimeout(
-        signal => generateText(this.baseCallOptions(convertedInputMessages, signal)),
+        signal => generateText(this.baseCallOptions(chatModel, convertedInputMessages, signal)),
         `[${this.modelName}] fallback invocation`,
       );
 

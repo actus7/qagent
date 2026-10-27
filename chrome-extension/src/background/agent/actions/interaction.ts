@@ -279,11 +279,7 @@ export function createGetDropdownOptionsAction(context: AgentContext) {
         });
       } catch (error) {
         const errorMsg = t('act_getDropdownOptions_failed', [error instanceof Error ? error.message : String(error)]);
-        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-        return new ActionResult({
-          error: errorMsg,
-          includeInMemory: true,
-        });
+        return actionErrorResult(context, errorMsg);
       }
     },
     getDropdownOptionsActionSchema,
@@ -312,11 +308,7 @@ export function createSelectDropdownOptionAction(context: AgentContext) {
           input.index.toString(),
           elementNode.tagName || 'unknown',
         ]);
-        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-        return new ActionResult({
-          error: errorMsg,
-          includeInMemory: true,
-        });
+        return actionErrorResult(context, errorMsg);
       }
 
       logger.debug(`Attempting to select '${input.text}' using xpath: ${elementNode.xpath}`);
@@ -331,11 +323,7 @@ export function createSelectDropdownOptionAction(context: AgentContext) {
         });
       } catch (error) {
         const errorMsg = t('act_selectDropdownOption_failed', [error instanceof Error ? error.message : String(error)]);
-        context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMsg);
-        return new ActionResult({
-          error: errorMsg,
-          includeInMemory: true,
-        });
+        return actionErrorResult(context, errorMsg);
       }
     },
     selectDropdownOptionActionSchema,

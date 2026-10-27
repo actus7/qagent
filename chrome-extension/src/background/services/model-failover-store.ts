@@ -1,7 +1,7 @@
 import { agentModelStore, type AgentNameEnum, type ModelConfig, type ProviderConfig } from '@extension/storage';
 import { isManagedProviderAllowed } from '@extension/shared';
 import { type ChatModel, createChatModel } from '../agent/helper';
-import { ModelFailover, type ModelHealth, orderCandidates } from '../agent/model-failover';
+import { mergeModelHealth, ModelFailover, type ModelHealth, orderCandidates } from '../agent/model-failover';
 import { createLogger } from '../log';
 import { getManagedPolicy } from '../state/managedPolicyState';
 
@@ -19,8 +19,17 @@ async function loadHealth(): Promise<ModelHealth> {
   }
 }
 
-async function saveHealth(health: ModelHealth): Promise<void> {
-  await chrome.storage.local.set({ [HEALTH_STORAGE_KEY]: health });
+// Navigator and planner each hold their own snapshot, so writes run one at a time: each one reads what the
+// previous write stored and merges into it instead of overwriting the other's counts.
+let healthWrites: Promise<void> = Promise.resolve();
+
+function saveHealth(health: ModelHealth): Promise<void> {
+  const write = healthWrites.then(async () => {
+    const stored = await loadHealth();
+    await chrome.storage.local.set({ [HEALTH_STORAGE_KEY]: mergeModelHealth(stored, health) });
+  });
+  healthWrites = write.catch(() => undefined);
+  return write;
 }
 
 /**

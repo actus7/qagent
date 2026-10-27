@@ -4,7 +4,7 @@ import type { z } from 'zod';
 import { Actors, ExecutionState } from '../event/types';
 import { wrapUntrustedContent } from '../messages/utils';
 import { Action } from './action';
-import { clipText } from './shared';
+import { actionErrorResult, clipText } from './shared';
 import { webFetchActionSchema } from './schemas';
 
 // ponytail: a plain fetch of the whole body, cut afterwards. Add a streamed read if large downloads matter.
@@ -49,8 +49,7 @@ export function createWebFetchAction(context: AgentContext) {
     context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
     const failure = (reason: string) => {
       const msg = t('act_webFetch_fail', [input.url]);
-      context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
-      return new ActionResult({ error: `${msg}: ${reason}`, includeInMemory: true });
+      return actionErrorResult(context, msg, `${msg}: ${reason}`);
     };
 
     const controller = new AbortController();

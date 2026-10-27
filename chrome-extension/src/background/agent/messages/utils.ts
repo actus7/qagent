@@ -324,13 +324,6 @@ function neutralizeUntrustedTags(content: string): string {
   return content.replace(/<(\s*\/?\s*nano_untrusted_content\b[^>]*)>/gi, '&lt;$1&gt;');
 }
 
-export function filterExternalContentWithReport(rawContent: string | undefined, strict: boolean = true) {
-  if (!rawContent || rawContent.trim() === '') {
-    return { sanitized: '', threats: [], modified: false };
-  }
-  return guardrails.sanitize(rawContent, { strict });
-}
-
 /**
  * Wrap untrusted content (e.g., web page content) with security tags and warnings
  * @param rawContent - The untrusted content to wrap

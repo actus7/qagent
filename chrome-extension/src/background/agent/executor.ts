@@ -327,9 +327,6 @@ export class Executor {
 
         // Track task cancellation
         void analytics.trackTaskCancelled(this.context.taskId);
-      } else {
-        await this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_PAUSE, t('exec_task_pause'));
-        // Note: We don't track pause as it's not a final state
       }
     } catch (error) {
       if (error instanceof RequestCancelledError) {
@@ -387,19 +384,16 @@ export class Executor {
   private async runPlanner(): Promise<AgentOutput<PlannerOutput> | null> {
     const context = this.context;
     try {
-      // Add current browser state to memory
-      let positionForPlan = 0;
-      if (this.tasks.length > 1 || this.context.nSteps > 0) {
-        await this.navigator.addStateMessageToMemory();
-        positionForPlan = this.context.messageManager.length() - 1;
-      } else {
-        positionForPlan = this.context.messageManager.length();
-      }
+      // Add current browser state to memory; the navigator reuses it in the same step, so the page is read once
+      await this.navigator.addStateMessageToMemory();
+      const positionForPlan = this.context.messageManager.length() - 1;
 
       // Execute planner
       this.context.messageManager.cutMessages();
       this.jevRuntime?.metrics.recordLlmCall();
       const planOutput = await this.planner.execute();
+      // A planner failure counts like a navigator failure (see navigate), so a broken planner fails the task fast
+      if (planOutput.error) throw new Error(planOutput.error);
       if (planOutput.result) {
         this.context.messageManager.addPlan(JSON.stringify(planOutput.result), positionForPlan);
       }

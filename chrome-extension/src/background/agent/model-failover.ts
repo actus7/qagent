@@ -43,6 +43,29 @@ function healthScore(entry: ModelHealth[string] | undefined): number {
   return recentWin * 2 + successRate;
 }
 
+const latestOf = (a: number | undefined, b: number | undefined): number | undefined =>
+  a === undefined ? b : b === undefined ? a : Math.max(a, b);
+
+/**
+ * Merges a health snapshot into the stored one. Counts and timestamps only grow, so the larger value of each field
+ * is the newer one; two writers that each saw an older snapshot keep both sets of results.
+ */
+export function mergeModelHealth(stored: ModelHealth, next: ModelHealth): ModelHealth {
+  const merged: ModelHealth = { ...stored };
+  for (const [key, entry] of Object.entries(next)) {
+    const previous = merged[key];
+    merged[key] = previous
+      ? {
+          ok: Math.max(previous.ok, entry.ok),
+          fail: Math.max(previous.fail, entry.fail),
+          lastOk: latestOf(previous.lastOk, entry.lastOk),
+          lastFail: latestOf(previous.lastFail, entry.lastFail),
+        }
+      : entry;
+  }
+  return merged;
+}
+
 /**
  * Every model the user configured, with `primary` first and the rest ordered by past results.
  * Providers that are blocked (managed policy) or have no API key are left out by the caller / here.

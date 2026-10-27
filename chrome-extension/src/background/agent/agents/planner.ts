@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { AgentOutput } from '../types';
 import { userMessage } from '../messages/model-messages';
 import { Actors, ExecutionState } from '../event/types';
-import { classifyModelError, LLMTimeoutError, RequestCancelledError } from './errors';
+import { classifyModelError } from './errors';
 import { filterExternalContent } from '../messages/utils';
 const logger = createLogger('PlannerAgent');
 
@@ -105,11 +105,7 @@ export class PlannerAgent extends BaseAgent<typeof plannerOutputSchema, PlannerO
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      // Check if this is an authentication error
-      // A planner timeout cancels the planner for the task; the navigator counts it as a step failure instead
-      if (error instanceof LLMTimeoutError) {
-        throw new RequestCancelledError(errorMessage);
-      }
+      // Check if this is an authentication error; a timeout is a plain failure, counted like a navigator timeout
       const modelError = classifyModelError(error);
       if (modelError) throw modelError;
 
