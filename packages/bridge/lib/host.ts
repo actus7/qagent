@@ -16,6 +16,9 @@ const SEARCH_DEFAULT_RESULTS = 100;
 const SEARCH_MAX_RESULTS = 500;
 const SEARCH_MAX_FILES = 20_000;
 const SEARCH_MAX_FILE_BYTES = 1024 * 1024;
+const SEARCH_REGEX_MAX_PATTERN_CHARS = 200;
+// Regex matching backtracks, so it only looks at the start of each line. Literal search is linear and has no cap.
+const SEARCH_REGEX_LINE_CHARS = 300;
 const WRITE_MAX_CHARS = 2_000_000;
 const SKIPPED_DIRS: ReadonlySet<string> = new Set(['node_modules', '.git']);
 
@@ -35,6 +38,13 @@ function readString(params: Params, key: string, min: number, max: number): stri
 
 function readOptionalString(params: Params, key: string, max: number): string | undefined {
   return params[key] === undefined ? undefined : readString(params, key, 1, max);
+}
+
+function readOptionalBoolean(params: Params, key: string): boolean {
+  const value = params[key];
+  if (value === undefined) return false;
+  if (typeof value !== 'boolean') invalid(`${key} must be true or false`);
+  return value;
 }
 
 function readInt(params: Params, key: string, min: number, max: number, fallback: number): number {
@@ -174,20 +184,30 @@ export interface SearchMatch {
   text: string;
 }
 
-/** A regex when the pattern compiles, otherwise the pattern as a literal. */
-function searchExpression(pattern: string): RegExp {
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** The pattern as literal text by default. A regex is compiled only when asked for, and only if it is short. */
+function searchExpression(pattern: string, asRegex: boolean): RegExp {
+  if (!asRegex) return new RegExp(escapeRegExp(pattern), 'i');
+  if (pattern.length > SEARCH_REGEX_MAX_PATTERN_CHARS) {
+    invalid(`regex pattern must have at most ${SEARCH_REGEX_MAX_PATTERN_CHARS} characters`);
+  }
   try {
     return new RegExp(pattern, 'i');
   } catch {
-    return new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    invalid('pattern is not a valid regular expression');
   }
 }
 
 export async function searchFiles(params: Params): Promise<unknown> {
   const root = resolvePath(params);
   const pattern = readString(params, 'pattern', 1, 500);
+  const asRegex = readOptionalBoolean(params, 'regex');
   const maxResults = readInt(params, 'maxResults', 1, SEARCH_MAX_RESULTS, SEARCH_DEFAULT_RESULTS);
-  const expression = searchExpression(pattern);
+  const expression = searchExpression(pattern, asRegex);
+  const lineChars = asRegex ? SEARCH_REGEX_LINE_CHARS : Number.POSITIVE_INFINITY;
   const matches: SearchMatch[] = [];
   const pending = [root];
   let visited = 0;
@@ -202,8 +222,12 @@ export async function searchFiles(params: Params): Promise<unknown> {
         pending.push(full);
         continue;
       }
-      if (!entry.isFile() || ++visited > SEARCH_MAX_FILES) continue;
-      const found = await searchFile(full, expression, maxResults - matches.length, root);
+      if (!entry.isFile()) continue;
+      if (++visited > SEARCH_MAX_FILES) {
+        truncated = true;
+        break;
+      }
+      const found = await searchFile(full, expression, lineChars, maxResults - matches.length, root);
       matches.push(...found.matches);
       if (matches.length >= maxResults) {
         truncated = true;
@@ -217,6 +241,7 @@ export async function searchFiles(params: Params): Promise<unknown> {
 async function searchFile(
   file: string,
   expression: RegExp,
+  lineChars: number,
   budget: number,
   root: string,
 ): Promise<{ matches: SearchMatch[] }> {
@@ -228,7 +253,7 @@ async function searchFile(
   const matches: SearchMatch[] = [];
   const lines = buffer.toString('utf8').split(/\r?\n/);
   for (let index = 0; index < lines.length && matches.length < budget; index += 1) {
-    if (expression.test(lines[index])) {
+    if (expression.test(lines[index].slice(0, lineChars))) {
       matches.push({ file: path.relative(root, file), line: index + 1, text: lines[index].slice(0, 300) });
     }
   }

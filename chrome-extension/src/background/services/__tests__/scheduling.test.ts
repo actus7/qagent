@@ -167,6 +167,28 @@ describe('runScheduledTaskWith', () => {
     return { deps, runs, started, current: () => stored };
   }
 
+  it('does not resurrect a task deleted while it was running', async () => {
+    const { deps, runs } = fakeDeps(task);
+    let deleted = false;
+    let savesAfterDelete = 0;
+    const getTask = deps.getTask;
+    const saveTask = deps.saveTask;
+    deps.startTask = async () => {
+      deleted = true;
+      return ExecutionState.TASK_OK;
+    };
+    deps.getTask = async id => (deleted ? undefined : getTask(id));
+    deps.saveTask = async next => {
+      if (deleted) savesAfterDelete++;
+      await saveTask(next);
+    };
+
+    await runScheduledTaskWith('t1', deps);
+
+    expect(runs).toHaveLength(1);
+    expect(savesAfterDelete).toBe(0);
+  });
+
   it('runs the task in a new session on the start tab and records the completion', async () => {
     const { deps, runs, started, current } = fakeDeps(task);
 

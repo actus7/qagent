@@ -9,11 +9,12 @@ import { CONTROL_DEFAULT_PORT, MCP_BRIDGE_DEFAULT_HOST, MCP_BRIDGE_DEFAULT_PORT 
 import { readToken, stateDirFrom } from './config';
 import { createQaAgentToolHost, type BridgeRequester } from './tools';
 import { readToolsCache, writeToolsCache } from './tools-cache';
+import { PACKAGE_VERSION } from './version';
 import { join } from 'node:path';
 
 const SERVER_INFO = {
   name: 'qagent',
-  version: '0.1.0',
+  version: PACKAGE_VERSION,
   instructions:
     'Drive the QAgent browser extension. page_* tools act on the page (page_info, page_click, page_fill, ...). ' +
     'qagent_run_task runs a whole task in the extension and waits for the answer.',

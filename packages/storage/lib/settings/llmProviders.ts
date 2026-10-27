@@ -10,6 +10,9 @@ import {
 } from './types';
 
 const AZURE_API_VERSION = '2025-04-01-preview';
+// Providers saved before createdAt existed have no real creation time. 1 is the earliest value, so they still sort
+// first (oldest) in the options list, and it stays deterministic across reads, unlike Date.now().
+const LEGACY_CREATED_AT = 1;
 
 // Interface for a single provider configuration
 export interface ProviderConfig {
@@ -184,7 +187,7 @@ function ensureBackwardCompatibility(providerId: string, config: ProviderConfig)
 
   // Ensure createdAt exists
   if (!updatedConfig.createdAt) {
-    updatedConfig.createdAt = new Date('03/04/2025').getTime();
+    updatedConfig.createdAt = LEGACY_CREATED_AT;
   }
 
   return updatedConfig;

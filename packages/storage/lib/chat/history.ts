@@ -24,22 +24,93 @@ const chatSessionsMetaStorage = createStorage<ChatSessionMetadata[]>(CHAT_SESSIO
   liveUpdate: true,
 });
 
-// Helper function to get storage key for a specific session's messages
-const getSessionMessagesKey = (sessionId: string) => `chat_messages_${sessionId}`;
-const sessionMessagesStorageCache = new Map<string, BaseStorage<ChatMessage[]>>();
+// Messages are stored in fixed-size chunks, so an append rewrites only the last chunk instead of the whole session.
+// Sessions written by older versions keep one flat array under chat_messages_<id>; it is converted on first access.
+const CHAT_MESSAGE_CHUNK_SIZE = 50;
+const getLegacyMessagesKey = (sessionId: string) => `chat_messages_${sessionId}`;
+const getMessagesManifestKey = (sessionId: string) => `chat_chunks_manifest_${sessionId}`;
+const getMessagesChunkKey = (sessionId: string, index: number) => `chat_chunks_${sessionId}_${index}`;
 
-// Helper function to create storage for a specific session's messages
-const getSessionMessagesStorage = (sessionId: string) => {
-  const cachedStorage = sessionMessagesStorageCache.get(sessionId);
-  if (cachedStorage) return cachedStorage;
+interface ChatMessagesManifest {
+  chunkCount: number;
+}
 
-  const storage = createStorage<ChatMessage[]>(getSessionMessagesKey(sessionId), [], {
-    storageEnum: StorageEnum.Local,
-    liveUpdate: false,
+// A write can span several keys and a delete must reach every chunk, so these calls go to chrome.storage.local directly.
+const localArea = () => globalThis.chrome?.storage.local;
+const readKeys = async (keys: string[]): Promise<Record<string, unknown>> => (await localArea()?.get(keys)) ?? {};
+const chunkCountFor = (messageCount: number) => Math.ceil(messageCount / CHAT_MESSAGE_CHUNK_SIZE);
+const chunkKeys = (sessionId: string, chunkCount: number) =>
+  Array.from({ length: chunkCount }, (_, index) => getMessagesChunkKey(sessionId, index));
+
+// Panel and service worker share an origin, so a Web Lock also serializes cross-context writes and migrations.
+const withMessagesLock = <T>(work: () => Promise<T>): Promise<T> =>
+  globalThis.navigator?.locks ? navigator.locks.request('qagent-chat-history-write', work) : work();
+
+/** Returns the session's manifest, converting a legacy flat array into chunks the first time. Call under the lock. */
+async function loadMessagesManifest(sessionId: string): Promise<ChatMessagesManifest> {
+  const manifestKey = getMessagesManifestKey(sessionId);
+  const legacyKey = getLegacyMessagesKey(sessionId);
+  const stored = await readKeys([manifestKey, legacyKey]);
+  const manifest = stored[manifestKey] as ChatMessagesManifest | undefined;
+  const legacy = stored[legacyKey];
+  if (manifest) {
+    // A crash between the conversion's two writes leaves the old key behind; the manifest is the source of truth.
+    if (legacy !== undefined) await localArea()?.remove(legacyKey);
+    return manifest;
+  }
+  if (!Array.isArray(legacy)) return { chunkCount: 0 };
+  await writeMessagesLayout(sessionId, legacy as ChatMessage[], 0);
+  await localArea()?.remove(legacyKey);
+  return { chunkCount: chunkCountFor(legacy.length) };
+}
+
+/** Replaces the session's messages with full chunks and a manifest in one write, then drops chunks past the new end. */
+async function writeMessagesLayout(sessionId: string, messages: ChatMessage[], previousChunkCount: number) {
+  const chunkCount = chunkCountFor(messages.length);
+  const entries: Record<string, unknown> = { [getMessagesManifestKey(sessionId)]: { chunkCount } };
+  for (let index = 0; index < chunkCount; index += 1) {
+    const start = index * CHAT_MESSAGE_CHUNK_SIZE;
+    entries[getMessagesChunkKey(sessionId, index)] = messages.slice(start, start + CHAT_MESSAGE_CHUNK_SIZE);
+  }
+  await localArea()?.set(entries);
+  const stale = chunkKeys(sessionId, previousChunkCount).slice(chunkCount);
+  if (stale.length > 0) await localArea()?.remove(stale);
+}
+
+/** Reads every message in order. Call under the lock, after loadMessagesManifest. */
+async function readChunkedMessages(sessionId: string, chunkCount: number): Promise<ChatMessage[]> {
+  const keys = chunkKeys(sessionId, chunkCount);
+  const stored = await readKeys(keys);
+  return keys.flatMap(key => (stored[key] as ChatMessage[] | undefined) ?? []);
+}
+
+/** Appends to the last chunk, or starts a new one when it is full. Call under the lock, after loadMessagesManifest. */
+async function appendChunkedMessage(sessionId: string, manifest: ChatMessagesManifest, message: ChatMessage) {
+  const lastIndex = manifest.chunkCount - 1;
+  if (lastIndex >= 0) {
+    const lastKey = getMessagesChunkKey(sessionId, lastIndex);
+    const lastChunk = ((await readKeys([lastKey]))[lastKey] as ChatMessage[] | undefined) ?? [];
+    if (lastChunk.length < CHAT_MESSAGE_CHUNK_SIZE) {
+      await localArea()?.set({ [lastKey]: [...lastChunk, message] });
+      return;
+    }
+  }
+  // The new chunk and the manifest go in one write, so the manifest never points at a missing chunk.
+  await localArea()?.set({
+    [getMessagesChunkKey(sessionId, manifest.chunkCount)]: [message],
+    [getMessagesManifestKey(sessionId)]: { chunkCount: manifest.chunkCount + 1 },
   });
-  sessionMessagesStorageCache.set(sessionId, storage);
-  return storage;
-};
+}
+
+/** Removes every stored key of a session: chunks, manifest and any legacy array. */
+async function removeSessionMessages(sessionId: string): Promise<void> {
+  await withMessagesLock(async () => {
+    const manifestKey = getMessagesManifestKey(sessionId);
+    const stored = await readKeys([manifestKey]);
+    const chunkCount = (stored[manifestKey] as ChatMessagesManifest | undefined)?.chunkCount ?? 0;
+    await localArea()?.remove([manifestKey, getLegacyMessagesKey(sessionId), ...chunkKeys(sessionId, chunkCount)]);
+  });
+}
 
 // Helper function to get storage key for a specific session's agent state history
 const getSessionAgentStepHistoryKey = (sessionId: string) => `chat_agent_step_${sessionId}`;
@@ -79,13 +150,11 @@ const getSessionTaskMemoryStorage = (sessionId: string) => {
 };
 
 const clearSessionStorageCaches = (sessionId: string) => {
-  sessionMessagesStorageCache.delete(sessionId);
   sessionAgentStepHistoryStorageCache.delete(sessionId);
   sessionTaskMemoryStorageCache.delete(sessionId);
 };
 
 const clearAllSessionStorageCaches = () => {
-  sessionMessagesStorageCache.clear();
   sessionAgentStepHistoryStorageCache.clear();
   sessionTaskMemoryStorageCache.clear();
 };
@@ -112,8 +181,7 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
     clearAllSessions: async (): Promise<void> => {
       const sessionsMeta = await chatSessionsMetaStorage.get();
       for (const sessionMeta of sessionsMeta) {
-        const messagesStorage = getSessionMessagesStorage(sessionMeta.id);
-        await messagesStorage.set([]);
+        await removeSessionMessages(sessionMeta.id);
         const agentStepHistoryStorage = getSessionAgentStepHistoryStorage(sessionMeta.id);
         await agentStepHistoryStorage.set(EMPTY_AGENT_STEP_HISTORY);
         await getSessionTaskMemoryStorage(sessionMeta.id).set('');
@@ -135,8 +203,10 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
       if (!sessionMeta) return null;
 
       // Load messages only when a specific session is requested
-      const messagesStorage = getSessionMessagesStorage(sessionId);
-      const messages = await messagesStorage.get();
+      const messages = await withMessagesLock(async () => {
+        const manifest = await loadMessagesManifest(sessionId);
+        return readChunkedMessages(sessionId, manifest.chunkCount);
+      });
 
       return {
         ...sessionMeta,
@@ -154,10 +224,6 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
         updatedAt: currentTime,
         messageCount: 0,
       };
-
-      // Create empty messages array for the new session
-      const messagesStorage = getSessionMessagesStorage(newSessionId);
-      await messagesStorage.set([]);
 
       // Add session metadata to the index
       await chatSessionsMetaStorage.set(prevSessions => [...prevSessions, newSessionMeta]);
@@ -205,8 +271,7 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
       await chatSessionsMetaStorage.set(prevSessions => prevSessions.filter(session => session.id !== sessionId));
 
       // Remove the session's messages
-      const messagesStorage = getSessionMessagesStorage(sessionId);
-      await messagesStorage.set([]);
+      await removeSessionMessages(sessionId);
       const agentStepHistoryStorage = getSessionAgentStepHistoryStorage(sessionId);
       await agentStepHistoryStorage.set(EMPTY_AGENT_STEP_HISTORY);
       await getSessionTaskMemoryStorage(sessionId).set('');
@@ -242,33 +307,30 @@ export function createChatHistoryStorage(): ChatHistoryStorage {
           throw new Error(`Session with ID ${sessionId} not found`);
         }
 
-        // Only add the message if the session exists
-        const messagesStorage = getSessionMessagesStorage(sessionId);
-        // Both the panel and the service worker write messages. This storage intentionally does not
-        // keep a live listener per session, so refresh before appending instead of using its old cache.
-        const currentMessages = await messagesStorage.get();
-        await messagesStorage.set([...currentMessages, newMessage]);
+        // Only add the message if the session exists. The manifest is read fresh: the panel and the service worker
+        // both write messages, and this storage keeps no per-session cache.
+        const manifest = await loadMessagesManifest(sessionId);
+        await appendChunkedMessage(sessionId, manifest, newMessage);
 
         return newMessage;
       };
-      // Panel and service worker share an origin, so a Web Lock also serializes cross-context writes.
-      return globalThis.navigator?.locks
-        ? await navigator.locks.request('qagent-chat-history-write', writeMessage)
-        : await writeMessage();
+      return withMessagesLock(writeMessage);
     },
 
     deleteMessage: async (sessionId: string, messageId: string): Promise<void> => {
-      // Get the messages storage for this session
-      const messagesStorage = getSessionMessagesStorage(sessionId);
+      const removed = await withMessagesLock(async () => {
+        const manifest = await loadMessagesManifest(sessionId);
+        const currentMessages = await readChunkedMessages(sessionId, manifest.chunkCount);
+        if (!currentMessages.some(msg => msg.id === messageId)) return false;
+        await writeMessagesLayout(
+          sessionId,
+          currentMessages.filter(msg => msg.id !== messageId),
+          manifest.chunkCount,
+        );
+        return true;
+      });
 
-      // Get current messages to calculate the new count
-      const currentMessages = await messagesStorage.get();
-      const messageToDelete = currentMessages.find(msg => msg.id === messageId);
-
-      if (!messageToDelete) return; // Message not found
-
-      // Remove the message directly from the messages storage
-      await messagesStorage.set(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+      if (!removed) return; // Message not found
 
       // Update the session's metadata (updatedAt timestamp and messageCount)
       await chatSessionsMetaStorage.set(prevSessions => {

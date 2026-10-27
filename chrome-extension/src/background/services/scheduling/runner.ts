@@ -74,7 +74,12 @@ export async function runScheduledTaskWith(id: string, deps: ScheduleRunDeps): P
 
 async function finishRun(task: ScheduledTask, run: ScheduleRun, deps: ScheduleRunDeps): Promise<void> {
   await deps.appendRun(task.id, run);
-  const latest = (await deps.getTask(task.id)) ?? task;
+  const latest = await deps.getTask(task.id);
+  // Deleted while running: re-saving would resurrect it (and can now hit the schedule limit)
+  if (!latest) {
+    await deps.syncAlarms();
+    return;
+  }
   // A one-time schedule is done after its first attempt; recurring ones move to the next occurrence after now.
   const isOnce = latest.frequency === 'once';
   await deps.saveTask({

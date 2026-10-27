@@ -2,6 +2,7 @@ import { StorageEnum } from '../base/enums';
 import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
 import type { ScheduleTiming } from './nextRun';
+import { upsertById } from '../base/collection';
 
 export type ScheduleMode = 'act' | 'plan' | 'chat';
 export type ScheduleRunOutcome = 'completed' | 'failed' | 'cancelled' | 'skipped' | 'blocked';
@@ -33,6 +34,7 @@ export interface ScheduledTasksConfig {
 
 export const SCHEDULE_HISTORY_LIMIT = 10;
 export const SCHEDULE_LIMIT = 20;
+const SCHEDULE_LIMIT_ERROR = `Schedule limit reached (${SCHEDULE_LIMIT}). Delete a scheduled task before adding another.`;
 
 type ScheduledTasksStorage = BaseStorage<ScheduledTasksConfig> & {
   getTasks: () => Promise<ScheduledTask[]>;
@@ -74,11 +76,7 @@ export const scheduledTasksStore: ScheduledTasksStorage = {
     return (await this.getTasks()).find(task => task.id === id);
   },
   async saveTask(task: ScheduledTask) {
-    await storage.set(prev => {
-      const exists = prev.tasks.some(item => item.id === task.id);
-      const tasks = exists ? prev.tasks.map(item => (item.id === task.id ? task : item)) : [...prev.tasks, task];
-      return { tasks: tasks.slice(-SCHEDULE_LIMIT) };
-    });
+    await storage.set(prev => ({ tasks: upsertById(prev.tasks, task, SCHEDULE_LIMIT, SCHEDULE_LIMIT_ERROR) }));
   },
   async removeTask(id: string) {
     await storage.set(prev => ({ tasks: prev.tasks.filter(task => task.id !== id) }));

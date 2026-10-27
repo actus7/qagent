@@ -38,22 +38,21 @@ export const analyticsSettingsStore: AnalyticsSettingsStorage = {
   },
   async getSettings() {
     const settings = await storage.get();
-
-    // If no anonymousUserId exists, generate one
-    if (!settings?.anonymousUserId) {
-      const newSettings = {
-        ...DEFAULT_ANALYTICS_SETTINGS,
-        ...settings,
-        anonymousUserId: generateAnonymousUserId(),
-      };
-      await storage.set(newSettings);
-      return newSettings;
+    if (settings?.anonymousUserId) {
+      return { ...DEFAULT_ANALYTICS_SETTINGS, ...settings };
     }
 
-    return {
-      ...DEFAULT_ANALYTICS_SETTINGS,
-      ...settings,
-    };
+    // Generate the ID inside the queued updater: it re-reads the stored value, so concurrent callers keep the first ID.
+    let resolved: AnalyticsSettingsConfig | undefined;
+    await storage.set(prev => {
+      resolved = {
+        ...DEFAULT_ANALYTICS_SETTINGS,
+        ...prev,
+        anonymousUserId: prev?.anonymousUserId || generateAnonymousUserId(),
+      };
+      return resolved;
+    });
+    return resolved as AnalyticsSettingsConfig;
   },
   async resetToDefaults() {
     // Keep the same user ID when resetting to defaults

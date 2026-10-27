@@ -150,8 +150,8 @@ exports[`navigator model contract > keeps the action prompts stable 1`] = `
 {fs_write: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'file path, absolute or relative to the daemon folder', 'required': true}, 'content': {'type': 'full file content', 'required': true}}}",
   "List the entries of a folder on the host machine (names and types, capped):
 {fs_list: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'folder path', 'required': true}}}",
-  "Search text files under a folder on the host machine for a pattern (regex if it compiles, else literal, case-insensitive). Skips node_modules and .git:
-{fs_search: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'folder to search', 'required': true}, 'pattern': {'type': 'text or regex to find', 'required': true}, 'maxResults': {'type': 'stop after this many matches', 'optional': true}}}",
+  "Search text files under a folder on the host machine for a case-insensitive pattern (literal text unless regex is true). Skips node_modules and .git:
+{fs_search: {'intent': {'type': 'purpose of this action', 'optional': true}, 'path': {'type': 'folder to search', 'required': true}, 'pattern': {'type': 'text to find, or a regex (max 200 chars) when regex is true', 'required': true}, 'regex': {'type': 'treat pattern as a regular expression', 'optional': true}, 'maxResults': {'type': 'stop after this many matches', 'optional': true}}}",
   "Crawl the current site (same host only, read-only, up to 15 pages) and save a site map as a browser plugin for this host, so the map is in context on later visits. Defaults to the current page:
 {map_site: {'intent': {'type': 'purpose of this action', 'optional': true}, 'url': {'type': 'start URL, default the current page', 'optional': true}, 'maxPages': {'type': 'pages to read, 1 to 15', 'optional': true}}}",
   "Replay a saved workflow (recorded by the user with "Gravar fluxo") through the normal browser actions. Pass the variables it lists, e.g. {name: "Checkout", variables: {email: "a@b.com"}}. Stops at the first failing step:
@@ -867,7 +867,7 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
             "type": "object",
           },
           "fs_search": {
-            "description": "Search text files under a folder on the host machine for a pattern (regex if it compiles, else literal, case-insensitive). Skips node_modules and .git",
+            "description": "Search text files under a folder on the host machine for a case-insensitive pattern (literal text unless regex is true). Skips node_modules and .git",
             "nullable": true,
             "properties": {
               "intent": {
@@ -892,11 +892,17 @@ exports[`navigator model contract > keeps the structured-output JSON schema stab
                 "type": "string",
               },
               "pattern": {
-                "description": "text or regex to find",
+                "description": "text to find, or a regex (max 200 chars) when regex is true",
                 "maxLength": 500,
                 "minLength": 1,
                 "title": "Pattern",
                 "type": "string",
+              },
+              "regex": {
+                "default": false,
+                "description": "treat pattern as a regular expression",
+                "title": "Regex",
+                "type": "boolean",
               },
             },
             "required": [

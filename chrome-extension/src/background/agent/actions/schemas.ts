@@ -858,11 +858,12 @@ export const fsListActionSchema = {
 export const fsSearchActionSchema = {
   name: 'fs_search',
   description:
-    'Search text files under a folder on the host machine for a pattern (regex if it compiles, else literal, case-insensitive). Skips node_modules and .git',
+    'Search text files under a folder on the host machine for a case-insensitive pattern (literal text unless regex is true). Skips node_modules and .git',
   schema: z.object({
     intent: z.string().default('').describe('purpose of this action'),
     path: z.string().min(1).max(1024).describe('folder to search'),
-    pattern: z.string().min(1).max(500).describe('text or regex to find'),
+    pattern: z.string().min(1).max(500).describe('text to find, or a regex (max 200 chars) when regex is true'),
+    regex: z.boolean().default(false).describe('treat pattern as a regular expression'),
     maxResults: z.number().int().min(1).max(500).default(100).describe('stop after this many matches'),
   }),
 } satisfies ActionSchema;

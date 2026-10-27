@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -65,10 +65,51 @@ describe('host tools', () => {
       found.matches.map(match => [match.file, match.line]),
       [['code.ts', 1]],
     );
-    const regex = (await runHostTool('fs_search', { path: dir, pattern: 'const \\w+ = 2' })) as {
+    const regex = (await runHostTool('fs_search', { path: dir, pattern: 'const \\w+ = 2', regex: true })) as {
       matches: { line: number }[];
     };
     assert.equal(regex.matches[0].line, 2);
+  });
+
+  it('fs_search matches literal text unless regex is requested', async () => {
+    const sub = join(dir, 'literal-search');
+    mkdirSync(sub);
+    writeFileSync(join(sub, 'lines.txt'), 'abc\na.c\n');
+    const literal = (await runHostTool('fs_search', { path: sub, pattern: 'a.c' })) as {
+      matches: { line: number }[];
+    };
+    assert.deepEqual(
+      literal.matches.map(match => match.line),
+      [2],
+    );
+    const regex = (await runHostTool('fs_search', { path: sub, pattern: 'a.c', regex: true })) as {
+      matches: { line: number }[];
+    };
+    assert.deepEqual(
+      regex.matches.map(match => match.line),
+      [1, 2],
+    );
+  });
+
+  it('fs_search refuses long or non-compiling regex patterns and a non-boolean regex flag', async () => {
+    const isInvalidParams = (error: unknown) => error instanceof BridgeError && error.code === 'INVALID_PARAMS';
+    await assert.rejects(runHostTool('fs_search', { path: dir, pattern: '(', regex: true }), isInvalidParams);
+    await assert.rejects(runHostTool('fs_search', { path: dir, pattern: 'a'.repeat(201), regex: true }), isInvalidParams);
+    await assert.rejects(runHostTool('fs_search', { path: dir, pattern: 'a', regex: 'yes' }), isInvalidParams);
+  });
+
+  it('fs_search applies regex to the first 300 characters of a line and never backtracks on literal text', async () => {
+    const sub = join(dir, 'long-lines');
+    mkdirSync(sub);
+    writeFileSync(join(sub, 'long.txt'), `${'x'.repeat(400)}needle\n${'a'.repeat(5000)}!\n`);
+    const literal = (await runHostTool('fs_search', { path: sub, pattern: 'needle' })) as { matches: unknown[] };
+    assert.equal(literal.matches.length, 1);
+    const regex = (await runHostTool('fs_search', { path: sub, pattern: 'needle', regex: true })) as {
+      matches: unknown[];
+    };
+    assert.equal(regex.matches.length, 0);
+    const catastrophic = (await runHostTool('fs_search', { path: sub, pattern: '(a+)+$' })) as { matches: unknown[] };
+    assert.equal(catastrophic.matches.length, 0);
   });
 
   it('refuses unknown methods and bad parameters with stable codes', async () => {

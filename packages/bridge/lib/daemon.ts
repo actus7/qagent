@@ -1,7 +1,7 @@
 // The daemon: the WebSocket server the extension dials, the local control channel, host tools and CLI agents.
 import { join } from 'node:path';
 import { QAgentMcpBridge, type ExtensionHandler } from './bridge';
-import { CliTaskRunner, isRunner, resolveCliCommand, type CliRunnerOptions } from './cli/runner';
+import { CliTaskRunner, isRunner, isValidTaskId, resolveCliCommand, type CliRunnerOptions } from './cli/runner';
 import { ControlServer } from './control';
 import { runHostTool } from './host';
 import {
@@ -34,8 +34,8 @@ function readCliTaskParams(params: Record<string, unknown>): {
   tabId?: number;
 } {
   const { taskId, runner, task, tabId } = params;
-  if (typeof taskId !== 'string' || taskId.length === 0 || taskId.length > 128) {
-    throw new BridgeError('INVALID_PARAMS', 'taskId must be a non-empty string');
+  if (!isValidTaskId(taskId)) {
+    throw new BridgeError('INVALID_PARAMS', 'taskId must be 1 to 128 letters, digits, "_" or "-"');
   }
   if (!isRunner(runner)) throw new BridgeError('INVALID_PARAMS', `runner must be one of: ${CLI_RUNNERS.join(', ')}`);
   if (typeof task !== 'string' || task.trim().length === 0 || task.length > CLI_TASK_MAX_CHARS) {

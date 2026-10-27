@@ -74,7 +74,6 @@ This is a **monorepo** using **Turbo** for build orchestration and **pnpm worksp
 - `shared/` - Common utilities and types
 - `storage/` - Chrome extension storage abstraction
 - `ui/` - Shared React components
-- `schema-utils/` - Validation schemas
 - `i18n/` - Internationalization
 - Others: `dev-utils/`, `zipper/`, `vite-config/`, `tailwind-config/`, `hmr/`,
   `tsconfig/`

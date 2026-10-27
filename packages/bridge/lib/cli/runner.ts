@@ -10,6 +10,12 @@ import type { CliEvent, StreamParser } from './types';
 const DEFAULT_TIMEOUT_MS = 20 * 60 * 1000;
 const MAX_TASK_CHARS = 8000;
 const STDERR_TAIL_CHARS = 2000;
+/** Task ids become file names (`<taskId>.mcp.json`), so only letters, digits, `_` and `-` are allowed. */
+export const TASK_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+export function isValidTaskId(value: unknown): value is string {
+  return typeof value === 'string' && TASK_ID_PATTERN.test(value);
+}
 
 export interface CliCommand {
   file: string;
@@ -123,6 +129,9 @@ export class CliTaskRunner {
 
   /** Runs the task to completion. Step events go to `emit` as they happen. Never rejects for a CLI failure. */
   run(input: CliTaskInput, emit: CliStepEmitter): Promise<CliTaskResult> {
+    if (!isValidTaskId(input.taskId)) {
+      throw new BridgeError('INVALID_PARAMS', 'taskId must be 1 to 128 letters, digits, "_" or "-"');
+    }
     const resolve = this.options.resolve ?? ((runner: CliRunner) => resolveCliCommand(runner));
     const command = resolve(input.runner);
     if (!command) {
