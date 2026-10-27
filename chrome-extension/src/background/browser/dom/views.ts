@@ -5,6 +5,9 @@ import { ariaStateFlags, formatAriaState } from './aria-state';
 import { createLogger } from '@src/background/log';
 
 const logger = createLogger('dom/views');
+const ATTRIBUTE_MAX_CHARS = 15;
+const HREF_MAX_CHARS = 60;
+const ELEMENT_TEXT_MAX_CHARS = 120;
 
 export const DEFAULT_INCLUDE_ATTRIBUTES = [
   'title',
@@ -32,7 +35,7 @@ const REGION_BY_TAG: Record<string, string> = {
 };
 
 /** Landmark that contains the node, or '' outside every landmark. */
-export function regionOfNode(node: DOMElementNode): string {
+function regionOfNode(node: DOMElementNode): string {
   for (let current = node.parent; current; current = current.parent) {
     const region = current.tagName ? REGION_BY_TAG[current.tagName] : undefined;
     if (region) return region;
@@ -318,7 +321,11 @@ export class DOMElementNode extends DOMBaseNode {
             if (Object.keys(attributesToInclude).length > 0) {
               // Format as key1='value1' key2='value2'
               attributesHtmlStr = Object.entries(attributesToInclude)
-                .map(([key, value]) => `${key}=${capTextLength(value, 15)}`)
+                // links need more room, or every href on a page looks the same
+                .map(
+                  ([key, value]) =>
+                    `${key}=${capTextLength(value, key === 'href' ? HREF_MAX_CHARS : ATTRIBUTE_MAX_CHARS)}`,
+                )
                 .join(' ');
             }
           }
@@ -328,10 +335,10 @@ export class DOMElementNode extends DOMBaseNode {
           if (stateToken) attributesHtmlStr = attributesHtmlStr ? `${attributesHtmlStr} ${stateToken}` : stateToken;
 
           // Build the line
+          // [N] is both the index and the ref (@eN); printing both forms cost tokens on every element
           const highlightIndicator = node.isNew ? `*[${node.highlightIndex}]` : `[${node.highlightIndex}]`;
-          const refIndicator = `[ref=e${node.highlightIndex}]`;
 
-          let line = `${depthStr}${highlightIndicator}${refIndicator}<${node.tagName}`;
+          let line = `${depthStr}${highlightIndicator}<${node.tagName}`;
 
           if (attributesHtmlStr) {
             line += ` ${attributesHtmlStr}`;
@@ -339,7 +346,8 @@ export class DOMElementNode extends DOMBaseNode {
 
           if (text) {
             // Add space before >text only if there were NO attributes added before
-            const trimmedText = text.trim();
+            // One line per element: a clickable card can hold a whole paragraph, so its text is collapsed and capped
+            const trimmedText = capTextLength(text.replace(/\s+/g, ' ').trim(), ELEMENT_TEXT_MAX_CHARS);
             if (!attributesHtmlStr) {
               line += ' ';
             }

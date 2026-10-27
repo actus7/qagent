@@ -61,12 +61,16 @@ export default class BrowserContext implements BrowserContextLike {
     return new Page(tabId, url, title, this._config);
   }
 
+  private readonly _pendingAttaches = new Map<number, Promise<boolean>>();
+
   public async cleanup(): Promise<void> {
-    // detach all pages
-    for (const page of this._attachedPages.values()) {
-      await page.removeHighlight().catch(() => {});
-      await page.detachPuppeteer();
-    }
+    // detach all pages; one failing tab must not keep the others attached
+    await Promise.allSettled(
+      [...this._attachedPages.values()].map(async page => {
+        await page.removeHighlight().catch(() => {});
+        await page.detachPuppeteer();
+      }),
+    );
     this._attachedPages.clear();
     this._currentTabId = null;
   }
@@ -114,7 +118,15 @@ export default class BrowserContext implements BrowserContextLike {
       this.touchAttachedPage(page.tabId);
       return true;
     }
+    // Two overlapping calls for one tab would attach the debugger twice; the second must wait for the first
+    const pending = this._pendingAttaches.get(page.tabId);
+    if (pending) return pending;
+    const attaching = this._attachPage(page).finally(() => this._pendingAttaches.delete(page.tabId));
+    this._pendingAttaches.set(page.tabId, attaching);
+    return attaching;
+  }
 
+  private async _attachPage(page: BrowserPageLike): Promise<boolean> {
     if (await page.attachPuppeteer()) {
       logger.info('attachPage', page.tabId, 'attached');
       // add page to managed pages
@@ -161,8 +173,13 @@ export default class BrowserContext implements BrowserContextLike {
       return page;
     }
 
-    // 2. If _currentTabId is set but not in attachedPages, attach the tab
-    const existingPage = this._attachedPages.get(this._currentTabId);
+    // 2. If _currentTabId is set but not in attachedPages (or its connection died), attach the tab
+    let existingPage = this._attachedPages.get(this._currentTabId);
+    if (existingPage && !existingPage.attached) {
+      logger.warning('Attached page lost its connection; attaching the tab again', this._currentTabId);
+      this._attachedPages.delete(this._currentTabId);
+      existingPage = undefined;
+    }
     if (!existingPage) {
       const tab = await chrome.tabs.get(this._currentTabId);
       const page = await this._getOrCreatePage(tab);
@@ -177,11 +194,11 @@ export default class BrowserContext implements BrowserContextLike {
   }
 
   /**
-   * Get all tab IDs from the browser and the current window.
+   * Get all tab IDs from every window: a popup opened by a click lands in a new window.
    * @returns A set of tab IDs.
    */
   public async getAllTabIds(): Promise<Set<number>> {
-    const tabs = await chrome.tabs.query({ currentWindow: true });
+    const tabs = await chrome.tabs.query({});
     return new Set(tabs.map(tab => tab.id).filter(id => id !== undefined));
   }
 
@@ -271,13 +288,17 @@ export default class BrowserContext implements BrowserContextLike {
       promises.push(activatedPromise);
     }
 
+    // A slow page is not a failure: the tab exists, and attaching plus the network-idle wait cover the rest
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error(`Tab operation timed out after ${timeoutMs} ms`)), timeoutMs);
+    const timeoutPromise = new Promise<void>(resolve => {
+      timeoutId = setTimeout(() => {
+        logger.warning(`Tab ${tabId} still loading after ${timeoutMs} ms; continuing`);
+        resolve();
+      }, timeoutMs);
     });
 
     try {
-      await Promise.race([Promise.all(promises), timeoutPromise]);
+      await Promise.race([Promise.all(promises).then(() => undefined), timeoutPromise]);
     } finally {
       clearTimeout(timeoutId);
       cleanups.forEach(cleanup => cleanup());
@@ -367,11 +388,13 @@ export default class BrowserContext implements BrowserContextLike {
     const tabInfos: TabInfo[] = [];
 
     for (const tab of tabs) {
-      if (tab.id && tab.url && tab.title) {
+      // A tab that was just opened may only have a pending URL and no title yet
+      const url = tab.url || tab.pendingUrl;
+      if (tab.id && url) {
         tabInfos.push({
           id: tab.id,
-          url: tab.url,
-          title: tab.title,
+          url,
+          title: tab.title ?? '',
         });
       }
     }
@@ -397,10 +420,11 @@ export default class BrowserContext implements BrowserContextLike {
   public async getState(useVision = false, cacheClickableElementsHashes = false): Promise<BrowserState> {
     const currentPage = await this.getCurrentPage();
 
-    const pageState = !currentPage
-      ? build_initial_state()
-      : await currentPage.getState(useVision, cacheClickableElementsHashes);
-    const tabInfos = await this.getTabInfos();
+    // Independent reads: the page snapshot and the tab list
+    const [pageState, tabInfos] = await Promise.all([
+      currentPage ? currentPage.getState(useVision, cacheClickableElementsHashes) : build_initial_state(),
+      this.getTabInfos(),
+    ]);
     const browserState: BrowserState = {
       ...pageState,
       tabs: tabInfos,

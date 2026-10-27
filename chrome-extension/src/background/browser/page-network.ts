@@ -8,7 +8,20 @@ import { createLogger } from '@src/background/log';
 
 const logger = createLogger('Page');
 
-const RELEVANT_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'font', 'script', 'iframe']);
+// xhr/fetch are included so SPA data loads after an action are waited for
+const RELEVANT_RESOURCE_TYPES = new Set([
+  'document',
+  'stylesheet',
+  'image',
+  'font',
+  'script',
+  'iframe',
+  'xhr',
+  'fetch',
+]);
+
+// A request still pending after this long is treated as long-polling/streaming and no longer blocks idleness
+const STALE_REQUEST_MS = 2000;
 
 const RELEVANT_CONTENT_TYPES = new Set([
   'text/html',
@@ -53,10 +66,20 @@ const IGNORED_URL_PATTERNS = new Set([
   'webrtc',
   'rtmp://',
   'wss://',
-  // Common CDNs
-  'cloudfront.net',
-  'fastly.net',
 ]);
+
+/**
+ * True when the URL matches an ignored pattern. Plain words must equal a whole URL token
+ * ("ping" matches `/ping` but not `/shopping`); patterns with punctuation match as substrings.
+ */
+export function isIgnoredUrl(rawUrl: string): boolean {
+  const url = rawUrl.toLowerCase();
+  const tokens = new Set(url.split(/[^a-z0-9]+/));
+  for (const pattern of IGNORED_URL_PATTERNS) {
+    if (/^[a-z0-9]+$/.test(pattern) ? tokens.has(pattern) : url.includes(pattern)) return true;
+  }
+  return false;
+}
 
 type NetworkWaitConfig = Pick<BrowserContextConfig, 'waitForNetworkIdlePageLoadTime' | 'maximumWaitPageLoadTime'>;
 
@@ -65,7 +88,8 @@ type NetworkWaitConfig = Pick<BrowserContextConfig, 'waitForNetworkIdlePageLoadT
  * or once `maximumWaitPageLoadTime` seconds have elapsed.
  */
 export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkWaitConfig): Promise<void> {
-  const pendingRequests = new Set();
+  // request -> time it started
+  const pendingRequests = new Map<HTTPRequest, number>();
   // Start almost idle: a page with no new request in the first ~150 ms is already stable and must not pay the full idle window
   let lastActivity = Date.now() - Math.max(0, config.waitForNetworkIdlePageLoadTime * 1000 - 150);
 
@@ -83,7 +107,7 @@ export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkW
 
     // Filter out by URL patterns
     const url = request.url().toLowerCase();
-    if (Array.from(IGNORED_URL_PATTERNS).some(pattern => url.includes(pattern))) {
+    if (isIgnoredUrl(url)) {
       return;
     }
 
@@ -103,8 +127,13 @@ export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkW
       return;
     }
 
-    pendingRequests.add(request);
+    pendingRequests.set(request, Date.now());
     lastActivity = Date.now();
+  };
+
+  // A failed/aborted request never gets a response; without this it would hold the wait until the maximum
+  const onRequestDone = (request: HTTPRequest) => {
+    if (pendingRequests.delete(request)) lastActivity = Date.now();
   };
 
   const onResponse = (response: HTTPResponse) => {
@@ -112,6 +141,8 @@ export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkW
     if (!pendingRequests.has(request)) {
       return;
     }
+    // Every outcome below settles this request, so it leaves the pending set up front
+    pendingRequests.delete(request);
 
     // Filter by content type
     const contentType = response.headers()['content-type']?.toLowerCase() || '';
@@ -122,13 +153,11 @@ export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkW
         contentType.includes(t),
       )
     ) {
-      pendingRequests.delete(request);
       return;
     }
 
     // Only process relevant content types
     if (!Array.from(RELEVANT_CONTENT_TYPES).some(ct => contentType.includes(ct))) {
-      pendingRequests.delete(request);
       return;
     }
 
@@ -136,17 +165,17 @@ export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkW
     const contentLength = response.headers()['content-length'];
     if (contentLength && Number.parseInt(contentLength) > 5 * 1024 * 1024) {
       // 5MB
-      pendingRequests.delete(request);
       return;
     }
 
-    pendingRequests.delete(request);
     lastActivity = Date.now();
   };
 
   // Add event listeners
   page.on('request', onRequest);
   page.on('response', onResponse);
+  page.on('requestfailed', onRequestDone);
+  page.on('requestfinished', onRequestDone);
 
   try {
     const startTime = Date.now();
@@ -157,7 +186,10 @@ export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkW
       const now = Date.now();
       const timeSinceLastActivity = (now - lastActivity) / 1000; // Convert to seconds
 
-      if (pendingRequests.size === 0 && timeSinceLastActivity >= config.waitForNetworkIdlePageLoadTime) {
+      let activeRequests = 0;
+      for (const startedAt of pendingRequests.values()) if (now - startedAt < STALE_REQUEST_MS) activeRequests++;
+
+      if (activeRequests === 0 && timeSinceLastActivity >= config.waitForNetworkIdlePageLoadTime) {
         break;
       }
 
@@ -165,7 +197,7 @@ export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkW
       if (elapsedTime > config.maximumWaitPageLoadTime) {
         logger.debug(
           `Network timeout after ${config.maximumWaitPageLoadTime}s with ${pendingRequests.size} pending requests:`,
-          Array.from(pendingRequests).map(r => (r as HTTPRequest).url()),
+          Array.from(pendingRequests.keys()).map(r => r.url()),
         );
         break;
       }
@@ -174,6 +206,8 @@ export async function waitForStableNetwork(page: PuppeteerPage, config: NetworkW
     // Clean up event listeners
     page.off('request', onRequest);
     page.off('response', onResponse);
+    page.off('requestfailed', onRequestDone);
+    page.off('requestfinished', onRequestDone);
   }
   logger.debug(`Network stabilized for ${config.waitForNetworkIdlePageLoadTime} seconds`);
 }

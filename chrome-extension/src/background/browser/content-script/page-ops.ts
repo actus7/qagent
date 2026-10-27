@@ -7,21 +7,21 @@
 /** Where an element lives in the top document: an XPath from the DOM tree, or a raw CSS selector. */
 export type PageLocator = { xpath: string } | { css: string };
 
-export type PageOutcome = { ok: true } | { ok: false; error: string };
+type PageOutcome = { ok: true } | { ok: false; error: string };
 
-export type ClickOutcome = { ok: true; x: number; y: number } | { ok: false; error: string };
+type ClickOutcome = { ok: true; x: number; y: number } | { ok: false; error: string };
 
-export type TextOutcome = { ok: true; text: string } | { ok: false; error: string };
+type TextOutcome = { ok: true; text: string } | { ok: false; error: string };
 
-export interface SelectOption {
+interface SelectOption {
   index: number;
   text: string;
   value: string;
 }
 
-export type OptionsOutcome = { ok: true; options: SelectOption[] } | { ok: false; error: string };
+type OptionsOutcome = { ok: true; options: SelectOption[] } | { ok: false; error: string };
 
-export type SelectOutcome = { ok: true; selected: string } | { ok: false; error: string };
+type SelectOutcome = { ok: true; selected: string } | { ok: false; error: string };
 
 /** Lists at most this many option labels in an error, so a long select cannot flood the model's context. */
 const MAX_LISTED_OPTIONS = 30;

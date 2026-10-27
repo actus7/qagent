@@ -92,7 +92,7 @@ export function convertKey(key: string, isMac: boolean): KeyInput {
   }
 
   const convertedKey = KEY_MAP[lowerKey] || key;
-  logger.info('convertedKey', convertedKey);
+  logger.debug('convertedKey', convertedKey);
   return convertedKey as KeyInput;
 }
 

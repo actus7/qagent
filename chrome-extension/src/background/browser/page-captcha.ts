@@ -1,6 +1,6 @@
 // In-page captcha reads. Self-contained: these run inside the widget frames and the top document.
 
-export interface ChallengeTileRaw {
+interface ChallengeTileRaw {
   x: number;
   y: number;
   width: number;

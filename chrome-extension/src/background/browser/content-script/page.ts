@@ -1,5 +1,5 @@
 import { getClickableElements, getScrollInfo, removeHighlights } from '../dom/service';
-import { ClickableElementProcessor } from '../dom/clickable/service';
+import { markNewClickableElements } from '../dom/clickable/service';
 import type { DOMElementNode } from '../dom/views';
 import { build_initial_state, CachedStateClickableElementsHashes, parseSelectorIndex } from '../page-state';
 import { parseKeyCombination } from '../page-keys';
@@ -24,6 +24,11 @@ import {
   type PageLocator,
 } from './page-ops';
 import { runInPage, waitForTabComplete } from './run-in-page';
+import { installDialogGuard, setNextDialogAnswer, takeRecordedDialogs } from './dialogs';
+import { wrapUntrustedContent } from '../../agent/messages/utils';
+import { createLogger } from '@src/background/log';
+
+const logger = createLogger('ContentScriptPage');
 
 const UNSUPPORTED_ON_ENGINE = 'not supported by the content-script engine';
 const PAGE_SCROLL_RATIO = 0.9;
@@ -123,6 +128,22 @@ export default class ContentScriptPage implements BrowserPageLike {
     // Nothing to release: no debugger session is held.
   }
 
+  private highlightsDrawn = false;
+
+  /** Dialogs the page opened since the last step, reported to the model (the message is page-controlled). */
+  async takeDialogNotices(): Promise<string[]> {
+    const dialogs = await runInPage(this.tabId, takeRecordedDialogs, [], 'MAIN').catch(() => []);
+    return dialogs.map(
+      dialog =>
+        `JavaScript ${dialog.type} dialog was ${dialog.accepted ? 'accepted' : 'dismissed'}. Its message:\n${wrapUntrustedContent(dialog.message)}`,
+    );
+  }
+
+  async setNextDialogResponse(response: { accept: boolean; promptText?: string }): Promise<void> {
+    await runInPage(this.tabId, installDialogGuard, [], 'MAIN');
+    await runInPage(this.tabId, setNextDialogAnswer, [response.accept, response.promptText ?? null], 'MAIN');
+  }
+
   getCachedState(): PageState | null {
     return this.cachedState;
   }
@@ -135,6 +156,10 @@ export default class ContentScriptPage implements BrowserPageLike {
     }
     const config = this.getConfig();
     const displayHighlights = config.displayHighlights || useVision;
+    // Each new document needs the guard again; a blocking dialog would freeze every later script call
+    await runInPage(this.tabId, installDialogGuard, [], 'MAIN').catch(error =>
+      logger.debug('Could not install the dialog guard', error),
+    );
     await this.removeHighlight();
     const dom = await getClickableElements(
       this.tabId,
@@ -143,6 +168,7 @@ export default class ContentScriptPage implements BrowserPageLike {
       -1,
       config.viewportExpansion,
     );
+    if (displayHighlights) this.highlightsDrawn = true;
     const screenshot = useVision ? await this.takeScreenshot() : null;
     const [scrollY, visualViewportHeight, scrollHeight] = await getScrollInfo(this.tabId);
     const state: PageState = {
@@ -155,27 +181,22 @@ export default class ContentScriptPage implements BrowserPageLike {
       visualViewportHeight,
       scrollHeight,
     };
-    if (cacheClickableElementsHashes) await this.markNewElements(state);
+    if (cacheClickableElementsHashes) this.markNewElements(state);
     this.cachedState = state;
     return state;
   }
 
   /** Flags elements that were not clickable in the previous state of the same URL. */
-  private async markNewElements(state: PageState): Promise<void> {
-    const previous = this.cachedHashes;
-    if (previous && previous.url === state.url) {
-      for (const element of ClickableElementProcessor.getClickableElements(state.elementTree)) {
-        const hash = await ClickableElementProcessor.hashDomElement(element);
-        element.isNew = !previous.hashes.has(hash);
-      }
-    }
-    const hashes = await ClickableElementProcessor.getClickableElementsHashes(state.elementTree);
+  private markNewElements(state: PageState): void {
+    const hashes = markNewClickableElements(state.elementTree, state.url, this.cachedHashes);
     this.cachedHashes = new CachedStateClickableElementsHashes(state.url, hashes);
   }
 
   async removeHighlight(): Promise<void> {
-    if (this.getConfig().displayHighlights && this.validWebPage) {
+    // Vision also draws highlights, so removal follows what was drawn, not the config
+    if (this.highlightsDrawn && this.validWebPage) {
       await removeHighlights(this.tabId);
+      this.highlightsDrawn = false;
     }
   }
 

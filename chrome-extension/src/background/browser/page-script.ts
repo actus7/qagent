@@ -2,7 +2,7 @@ export const JS_RESULT_MAX_CHARS = 10_000;
 export const JS_EVALUATION_TIMEOUT_MS = 10_000;
 
 /** The parts of a Runtime.evaluate response that the result formatter reads. */
-export interface EvaluationResponseLike {
+interface EvaluationResponseLike {
   result: { type: string; value?: unknown; unserializableValue?: string; description?: string };
   exceptionDetails?: { text?: string; exception?: { description?: string } };
 }

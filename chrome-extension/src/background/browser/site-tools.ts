@@ -2,7 +2,7 @@
 // world through chrome.scripting, so they must stay self-contained (no references to this module).
 // The page is untrusted: everything it returns is validated here before the model sees it.
 
-export const SITE_TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,100}$/;
+const SITE_TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,100}$/;
 const MAX_DESCRIPTION_CHARS = 300;
 const MAX_SCHEMA_CHARS = 2000;
 export const MAX_SITE_TOOLS = 50;

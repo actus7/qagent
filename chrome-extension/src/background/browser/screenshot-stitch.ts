@@ -1,7 +1,7 @@
 // Fallback for full-page capture when CDP refuses: viewport tiles drawn into one OffscreenCanvas.
 import type { CaptureTile } from './screenshot-tiles';
 
-export interface TileGrab {
+interface TileGrab {
   /** Scrolls to the given offset and returns the viewport as base64 PNG. */
   grab(scrollY: number): Promise<string>;
 }

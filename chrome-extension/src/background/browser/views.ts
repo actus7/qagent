@@ -94,6 +94,8 @@ export interface PageState extends DOMState {
   scrollY: number;
   scrollHeight: number;
   visualViewportHeight: number;
+  /** True when reading the page failed and this is the last state that could be read. */
+  stale?: boolean;
 }
 
 export interface TabInfo {

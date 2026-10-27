@@ -47,6 +47,24 @@ export function readJpegSizeFromBase64(base64: string): Size | null {
   }
 }
 
+// PNG signature (8 bytes) + IHDR length/type (8 bytes), then width and height as big-endian uint32
+const PNG_SIZE_OFFSET = 16;
+const PNG_HEAD_BASE64_CHARS = 32;
+
+/** Decodes the head of a base64 PNG and returns its pixel size, or null when it is not a readable PNG. */
+export function readPngSizeFromBase64(base64: string): Size | null {
+  try {
+    const head = atob(base64.slice(0, PNG_HEAD_BASE64_CHARS));
+    if (!head.startsWith('PNG')) return null;
+    const view = new DataView(Uint8Array.from(head, char => char.charCodeAt(0)).buffer);
+    const width = view.getUint32(PNG_SIZE_OFFSET);
+    const height = view.getUint32(PNG_SIZE_OFFSET + 4);
+    return width > 0 && height > 0 ? { width, height } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Maps a point in screenshot pixels to CSS pixels of the viewport.
  * The screenshot may be captured at device pixel ratio, so the scale is viewport size / image size.

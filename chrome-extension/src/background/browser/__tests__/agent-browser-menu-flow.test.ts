@@ -154,7 +154,8 @@ describe('AgentBrowser menu flow', () => {
       .map(action => action.selector);
 
     expect(clickSelectors).toEqual(MENU_ITEMS.map(item => item.selector));
-    expect(screenshotCounter).toBe(MENU_ITEMS.length + 1);
+    // one capture per state read; navigation no longer reads the state itself
+    expect(screenshotCounter).toBe(MENU_ITEMS.length);
   });
 
   it('builds menu selector map from snapshot when refs are missing', async () => {

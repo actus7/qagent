@@ -3,13 +3,11 @@
 
 import { ariaStateFlags, formatAriaState, type AttributeBag } from './dom/aria-state';
 
-export const PAGE_INFO_DEFAULT_LIMIT = 15;
-export const PAGE_INFO_MAX_LIMIT = 50;
 export const PAGE_INFO_MAX_HEADINGS = 60;
 
-export type InventoryKind = 'links' | 'buttons' | 'fields' | 'forms';
+type InventoryKind = 'links' | 'buttons' | 'fields' | 'forms';
 
-export interface InventoryItem {
+interface InventoryItem {
   label: string;
   role: string;
   tag: string;
@@ -19,13 +17,13 @@ export interface InventoryItem {
   box?: { x: number; y: number; width: number; height: number };
 }
 
-export interface LandmarkFact {
+interface LandmarkFact {
   role: string;
   label: string;
   depth: number;
 }
 
-export interface HeadingFact {
+interface HeadingFact {
   level: number;
   text: string;
 }

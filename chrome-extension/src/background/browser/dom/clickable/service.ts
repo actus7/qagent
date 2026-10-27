@@ -1,15 +1,5 @@
 import { DOMElementNode } from '../views';
-import { createSHA256Hash } from '../hash';
-
-/**
- * Get all clickable elements hashes in the DOM tree
- */
-export async function getClickableElementsHashes(domElement: DOMElementNode): Promise<Set<string>> {
-  const clickableElements = getClickableElements(domElement);
-  const hashPromises = clickableElements.map(element => hashDomElement(element));
-  const hashes = await Promise.all(hashPromises);
-  return new Set(hashes);
-}
+import { hashText } from '../hash';
 
 /**
  * Get all clickable elements in the DOM tree using an iterative approach
@@ -49,19 +39,36 @@ export function getClickableElements(domElement: DOMElementNode): DOMElementNode
 }
 
 /**
- * Hash a DOM element for identification
+ * Hash a DOM element for identification. Synchronous: every input is an in-memory string.
  */
-export async function hashDomElement(domElement: DOMElementNode): Promise<string> {
-  const parentBranchPath = _getParentBranchPath(domElement);
+export function hashDomElement(domElement: DOMElementNode): string {
+  const branchPathHash = hashText(_getParentBranchPath(domElement).join('/'));
+  const attributesHash = hashText(
+    Object.entries(domElement.attributes)
+      .map(([key, value]) => `${key}=${value}`)
+      .join(''),
+  );
+  const xpathHash = hashText(domElement.xpath || '');
+  return `${branchPathHash}-${attributesHash}-${xpathHash}`;
+}
 
-  // Run all hash operations in parallel
-  const [branchPathHash, attributesHash, xpathHash] = await Promise.all([
-    _parentBranchPathHash(parentBranchPath),
-    _attributesHash(domElement.attributes),
-    _xpathHash(domElement.xpath),
-  ]);
-
-  return _hashString(`${branchPathHash}-${attributesHash}-${xpathHash}`);
+/**
+ * Flags the clickable elements that were not clickable in the previous read of the same URL, and returns their
+ * hashes so the next read can compare against them. Each element is hashed once.
+ */
+export function markNewClickableElements(
+  domElement: DOMElementNode,
+  url: string,
+  previous: { url: string; hashes: Set<string> } | null | undefined,
+): Set<string> {
+  const sameUrl = previous?.url === url;
+  const hashes = new Set<string>();
+  for (const element of getClickableElements(domElement)) {
+    const hash = hashDomElement(element);
+    hashes.add(hash);
+    if (sameUrl && previous) element.isNew = !previous.hashes.has(hash);
+  }
+  return hashes;
 }
 
 /**
@@ -80,47 +87,3 @@ function _getParentBranchPath(domElement: DOMElementNode): string[] {
 
   return parents.map(parent => parent.tagName || '');
 }
-
-/**
- * Create a hash from the parent branch path
- */
-async function _parentBranchPathHash(parentBranchPath: string[]): Promise<string> {
-  const parentBranchPathString = parentBranchPath.join('/');
-  return createSHA256Hash(parentBranchPathString);
-}
-
-/**
- * Create a hash from the element attributes
- */
-async function _attributesHash(attributes: Record<string, string>): Promise<string> {
-  const attributesString = Object.entries(attributes)
-    .map(([key, value]) => `${key}=${value}`)
-    .join('');
-  return createSHA256Hash(attributesString);
-}
-
-/**
- * Create a hash from the element xpath
- */
-async function _xpathHash(xpath: string | null): Promise<string> {
-  return createSHA256Hash(xpath || '');
-}
-
-/**
- * Create a hash from a string - synchronous version for combining hashes
- * Used only for the final string combination
- */
-function _hashString(string: string): string {
-  // Simple hash for combining existing hashes
-  // Real hashing is done in createSHA256Hash
-  return string;
-}
-
-/**
- * ClickableElementProcessor namespace for backward compatibility
- */
-export const ClickableElementProcessor = {
-  getClickableElementsHashes,
-  getClickableElements,
-  hashDomElement,
-};

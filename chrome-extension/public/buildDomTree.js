@@ -102,16 +102,6 @@ window.buildDomTree = (
   // Add a WeakMap cache for XPath strings
   const xpathCache = new WeakMap();
 
-  // // Initialize once and reuse
-  // const viewportObserver = new IntersectionObserver(
-  //   (entries) => {
-  //     entries.forEach(entry => {
-  //       elementVisibilityMap.set(entry.target, entry.isIntersecting);
-  //     });
-  //   },
-  //   { rootMargin: `${viewportExpansion}px` }
-  // );
-
   /**
    * Highlights an element in the DOM and returns the index of the next element.
    *
@@ -312,24 +302,27 @@ window.buildDomTree = (
         }
       };
 
-      const throttleFunction = (func, delay) => {
-        let lastCall = 0;
-        return (...args) => {
-          const now = performance.now();
-          if (now - lastCall < delay) return;
-          lastCall = now;
-          return func(...args);
+      // One shared scroll/resize listener repositions every highlight once per animation frame;
+      // a listener per element made each scroll event run hundreds of layout reads.
+      const updaters = (window._qagentHighlightUpdaters = window._qagentHighlightUpdaters || new Set());
+      if (!window._qagentHighlightListener) {
+        let scheduled = false;
+        window._qagentHighlightListener = () => {
+          if (scheduled) return;
+          scheduled = true;
+          requestAnimationFrame(() => {
+            scheduled = false;
+            window._qagentHighlightUpdaters.forEach(update => update());
+          });
         };
-      };
-
-      const throttledUpdatePositions = throttleFunction(updatePositions, 16); // ~60fps
-      window.addEventListener('scroll', throttledUpdatePositions, true);
-      window.addEventListener('resize', throttledUpdatePositions);
+        window.addEventListener('scroll', window._qagentHighlightListener, true);
+        window.addEventListener('resize', window._qagentHighlightListener);
+      }
+      updaters.add(updatePositions);
 
       // Add cleanup function
       cleanupFn = () => {
-        window.removeEventListener('scroll', throttledUpdatePositions, true);
-        window.removeEventListener('resize', throttledUpdatePositions);
+        updaters.delete(updatePositions);
         // Remove overlay elements if needed
         overlays.forEach(overlay => overlay.element.remove());
         if (label) label.remove();
@@ -347,18 +340,6 @@ window.buildDomTree = (
       }
     }
   }
-
-  // // Add this function to perform cleanup when needed
-  // function cleanupHighlights() {
-  //   if (window._highlightCleanupFunctions && window._highlightCleanupFunctions.length) {
-  //     window._highlightCleanupFunctions.forEach(fn => fn());
-  //     window._highlightCleanupFunctions = [];
-  //   }
-
-  //   // Also remove the container
-  //   const container = document.getElementById(HIGHLIGHT_CONTAINER_ID);
-  //   if (container) container.remove();
-  // }
 
   /**
    * Gets the position of an element in its parent.
@@ -391,9 +372,16 @@ window.buildDomTree = (
     if (xpathCache.has(element)) return xpathCache.get(element);
 
     const segments = [];
+    let ancestorPath = '';
     let currentElement = element;
 
     while (currentElement && currentElement.nodeType === Node.ELEMENT_NODE) {
+      // Parents are built before their children, so a cached ancestor already holds the rest of the path
+      if (currentElement !== element && xpathCache.has(currentElement)) {
+        ancestorPath = xpathCache.get(currentElement);
+        break;
+      }
+
       // Stop if we hit a shadow root or iframe
       if (
         stopAtBoundary &&
@@ -410,7 +398,8 @@ window.buildDomTree = (
       currentElement = currentElement.parentNode;
     }
 
-    const result = segments.join('/');
+    const ownPath = segments.join('/');
+    const result = ancestorPath && ownPath ? `${ancestorPath}/${ownPath}` : ancestorPath || ownPath;
     xpathCache.set(element, result);
     return result;
   }
@@ -536,6 +525,98 @@ window.buildDomTree = (
    *
    * @param {HTMLElement} element - The element to check.
    */
+  // Constant sets used by isInteractiveElement, built once instead of on every call
+  const INTERACTIVE_ELEMENT_INTERACTIVE_CURSORS = new Set([
+    'pointer', // Link/clickable elements
+    'move', // Movable elements
+    'text', // Text selection
+    'grab', // Grabbable elements
+    'grabbing', // Currently grabbing
+    'cell', // Table cell selection
+    'copy', // Copy operation
+    'alias', // Alias creation
+    'all-scroll', // Scrollable content
+    'col-resize', // Column resize
+    'context-menu', // Context menu available
+    'crosshair', // Precise selection
+    'e-resize', // East resize
+    'ew-resize', // East-west resize
+    'help', // Help available
+    'n-resize', // North resize
+    'ne-resize', // Northeast resize
+    'nesw-resize', // Northeast-southwest resize
+    'ns-resize', // North-south resize
+    'nw-resize', // Northwest resize
+    'nwse-resize', // Northwest-southeast resize
+    'row-resize', // Row resize
+    's-resize', // South resize
+    'se-resize', // Southeast resize
+    'sw-resize', // Southwest resize
+    'vertical-text', // Vertical text selection
+    'w-resize', // West resize
+    'zoom-in', // Zoom in
+    'zoom-out', // Zoom out
+  ]);
+  const INTERACTIVE_ELEMENT_NON_INTERACTIVE_CURSORS = new Set([
+    'not-allowed', // Action not allowed
+    'no-drop', // Drop not allowed
+    'wait', // Processing
+    'progress', // In progress
+    'initial', // Initial value
+    'inherit', // Inherited value
+    //? Let's just include all potentially clickable elements that are not specifically blocked
+    // 'none',        // No cursor
+    // 'default',     // Default cursor
+    // 'auto',        // Browser default
+  ]);
+  const INTERACTIVE_ELEMENT_INTERACTIVE_ELEMENTS = new Set([
+    'a', // Links
+    'button', // Buttons
+    'input', // All input types (text, checkbox, radio, etc.)
+    'select', // Dropdown menus
+    'textarea', // Text areas
+    'details', // Expandable details
+    'summary', // Summary element (clickable part of details)
+    'label', // Form labels (often clickable)
+    'option', // Select options
+    'optgroup', // Option groups
+    'fieldset', // Form fieldsets (can be interactive with legend)
+    'legend', // Fieldset legends
+  ]);
+  const INTERACTIVE_ELEMENT_EXPLICIT_DISABLE_TAGS = new Set([
+    'disabled', // Standard disabled attribute
+    // 'aria-disabled',      // ARIA disabled state
+    'readonly', // Read-only state
+    // 'aria-readonly',     // ARIA read-only state
+    // 'aria-hidden',       // Hidden from accessibility
+    // 'hidden',            // Hidden attribute
+    // 'inert',             // Inert attribute
+    // 'aria-inert',        // ARIA inert state
+    // 'tabindex="-1"',     // Removed from tab order
+    // 'aria-hidden="true"' // Hidden from screen readers
+  ]);
+  const INTERACTIVE_ELEMENT_INTERACTIVE_ROLES = new Set([
+    'button', // Directly clickable element
+    // 'link',            // Clickable link
+    'menu', // Menu container (ARIA menus)
+    'menubar', // Menu bar container
+    'menuitem', // Clickable menu item
+    'menuitemradio', // Radio-style menu item (selectable)
+    'menuitemcheckbox', // Checkbox-style menu item (toggleable)
+    'radio', // Radio button (selectable)
+    'checkbox', // Checkbox (toggleable)
+    'tab', // Tab (clickable to switch content)
+    'switch', // Toggle switch (clickable to change state)
+    'slider', // Slider control (draggable)
+    'spinbutton', // Number input with up/down controls
+    'combobox', // Dropdown with text input
+    'searchbox', // Search input field
+    'textbox', // Text input field
+    'listbox', // Selectable list
+    'option', // Selectable option in a list
+    'scrollbar', // Scrollable control
+  ]);
+
   function isInteractiveElement(element) {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) {
       return false;
@@ -544,53 +625,6 @@ window.buildDomTree = (
     // Cache the tagName and style lookups
     const tagName = element.tagName.toLowerCase();
     const style = getCachedComputedStyle(element);
-
-    // Define interactive cursors
-    const interactiveCursors = new Set([
-      'pointer', // Link/clickable elements
-      'move', // Movable elements
-      'text', // Text selection
-      'grab', // Grabbable elements
-      'grabbing', // Currently grabbing
-      'cell', // Table cell selection
-      'copy', // Copy operation
-      'alias', // Alias creation
-      'all-scroll', // Scrollable content
-      'col-resize', // Column resize
-      'context-menu', // Context menu available
-      'crosshair', // Precise selection
-      'e-resize', // East resize
-      'ew-resize', // East-west resize
-      'help', // Help available
-      'n-resize', // North resize
-      'ne-resize', // Northeast resize
-      'nesw-resize', // Northeast-southwest resize
-      'ns-resize', // North-south resize
-      'nw-resize', // Northwest resize
-      'nwse-resize', // Northwest-southeast resize
-      'row-resize', // Row resize
-      's-resize', // South resize
-      'se-resize', // Southeast resize
-      'sw-resize', // Southwest resize
-      'vertical-text', // Vertical text selection
-      'w-resize', // West resize
-      'zoom-in', // Zoom in
-      'zoom-out', // Zoom out
-    ]);
-
-    // Define non-interactive cursors
-    const nonInteractiveCursors = new Set([
-      'not-allowed', // Action not allowed
-      'no-drop', // Drop not allowed
-      'wait', // Processing
-      'progress', // In progress
-      'initial', // Initial value
-      'inherit', // Inherited value
-      //? Let's just include all potentially clickable elements that are not specifically blocked
-      // 'none',        // No cursor
-      // 'default',     // Default cursor
-      // 'auto',        // Browser default
-    ]);
 
     /**
      * Checks if an element has an interactive pointer.
@@ -601,7 +635,7 @@ window.buildDomTree = (
     function doesElementHaveInteractivePointer(element) {
       if (element.tagName.toLowerCase() === 'html') return false;
 
-      if (style?.cursor && interactiveCursors.has(style.cursor)) return true;
+      if (style?.cursor && INTERACTIVE_ELEMENT_INTERACTIVE_CURSORS.has(style.cursor)) return true;
 
       return false;
     }
@@ -613,44 +647,17 @@ window.buildDomTree = (
       return true;
     }
 
-    const interactiveElements = new Set([
-      'a', // Links
-      'button', // Buttons
-      'input', // All input types (text, checkbox, radio, etc.)
-      'select', // Dropdown menus
-      'textarea', // Text areas
-      'details', // Expandable details
-      'summary', // Summary element (clickable part of details)
-      'label', // Form labels (often clickable)
-      'option', // Select options
-      'optgroup', // Option groups
-      'fieldset', // Form fieldsets (can be interactive with legend)
-      'legend', // Fieldset legends
-    ]);
-
     // Define explicit disable attributes and properties
-    const explicitDisableTags = new Set([
-      'disabled', // Standard disabled attribute
-      // 'aria-disabled',      // ARIA disabled state
-      'readonly', // Read-only state
-      // 'aria-readonly',     // ARIA read-only state
-      // 'aria-hidden',       // Hidden from accessibility
-      // 'hidden',            // Hidden attribute
-      // 'inert',             // Inert attribute
-      // 'aria-inert',        // ARIA inert state
-      // 'tabindex="-1"',     // Removed from tab order
-      // 'aria-hidden="true"' // Hidden from screen readers
-    ]);
 
     // handle inputs, select, checkbox, radio, textarea, button and make sure they are not cursor style disabled/not-allowed
-    if (interactiveElements.has(tagName)) {
+    if (INTERACTIVE_ELEMENT_INTERACTIVE_ELEMENTS.has(tagName)) {
       // Check for non-interactive cursor
-      if (style?.cursor && nonInteractiveCursors.has(style.cursor)) {
+      if (style?.cursor && INTERACTIVE_ELEMENT_NON_INTERACTIVE_CURSORS.has(style.cursor)) {
         return false;
       }
 
       // Check for explicit disable attributes
-      for (const disableTag of explicitDisableTags) {
+      for (const disableTag of INTERACTIVE_ELEMENT_EXPLICIT_DISABLE_TAGS) {
         if (
           element.hasAttribute(disableTag) ||
           element.getAttribute(disableTag) === 'true' ||
@@ -698,33 +705,11 @@ window.buildDomTree = (
       return true;
     }
 
-    const interactiveRoles = new Set([
-      'button', // Directly clickable element
-      // 'link',            // Clickable link
-      'menu', // Menu container (ARIA menus)
-      'menubar', // Menu bar container
-      'menuitem', // Clickable menu item
-      'menuitemradio', // Radio-style menu item (selectable)
-      'menuitemcheckbox', // Checkbox-style menu item (toggleable)
-      'radio', // Radio button (selectable)
-      'checkbox', // Checkbox (toggleable)
-      'tab', // Tab (clickable to switch content)
-      'switch', // Toggle switch (clickable to change state)
-      'slider', // Slider control (draggable)
-      'spinbutton', // Number input with up/down controls
-      'combobox', // Dropdown with text input
-      'searchbox', // Search input field
-      'textbox', // Text input field
-      'listbox', // Selectable list
-      'option', // Selectable option in a list
-      'scrollbar', // Scrollable control
-    ]);
-
     // Basic role/attribute checks
     const hasInteractiveRole =
-      interactiveElements.has(tagName) ||
-      (role && interactiveRoles.has(role)) ||
-      (ariaRole && interactiveRoles.has(ariaRole));
+      INTERACTIVE_ELEMENT_INTERACTIVE_ELEMENTS.has(tagName) ||
+      (role && INTERACTIVE_ELEMENT_INTERACTIVE_ROLES.has(role)) ||
+      (ariaRole && INTERACTIVE_ELEMENT_INTERACTIVE_ROLES.has(ariaRole));
 
     if (hasInteractiveRole) return true;
 
@@ -926,31 +911,6 @@ window.buildDomTree = (
 
     return false; // No rects were found in the viewport
   }
-
-  // /**
-  //  * Gets the effective scroll of an element.
-  //  *
-  //  * @param {HTMLElement} element - The element to get the effective scroll for.
-  //  * @returns {Object} The effective scroll of the element.
-  //  */
-  // function getEffectiveScroll(element) {
-  //   let currentEl = element;
-  //   let scrollX = 0;
-  //   let scrollY = 0;
-
-  //   while (currentEl && currentEl !== document.documentElement) {
-  //     if (currentEl.scrollLeft || currentEl.scrollTop) {
-  //       scrollX += currentEl.scrollLeft;
-  //       scrollY += currentEl.scrollTop;
-  //     }
-  //     currentEl = currentEl.parentElement;
-  //   }
-
-  //   scrollX += window.scrollX;
-  //   scrollY += window.scrollY;
-
-  //   return { scrollX, scrollY };
-  // }
 
   /**
    * Checks if an element is an interactive candidate.
@@ -1209,8 +1169,9 @@ window.buildDomTree = (
           } else {
             highlightElement(node, nodeData.highlightIndex, parentIframe);
           }
-          return true; // Successfully highlighted
         }
+        // Indexed: nested interactive children are folded into it whether or not boxes are drawn
+        return true;
       } else {
         // console.log(`Skipping highlight for ${nodeData.tagName} (outside viewport)`);
       }
@@ -1277,11 +1238,6 @@ window.buildDomTree = (
       const id = `${ID.current++}`;
       DOM_HASH_MAP[id] = nodeData;
       return id;
-    }
-
-    // Early bailout for non-element nodes except text
-    if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE) {
-      return null;
     }
 
     // Process text nodes
@@ -1380,14 +1336,19 @@ window.buildDomTree = (
     if (node.nodeType === Node.ELEMENT_NODE) {
       nodeData.isVisible = isElementVisible(node); // isElementVisible uses offsetWidth/Height, which is fine
       if (nodeData.isVisible) {
-        nodeData.isTopElement = isTopElement(node);
-
         // Special handling for ARIA menu containers - check interactivity even if not top element
         const role = node.getAttribute('role');
         const isMenuContainer = role === 'menu' || role === 'menubar' || role === 'listbox';
+        const isInteractive = isInteractiveElement(node);
+        const hasDirectText = Array.prototype.some.call(
+          node.childNodes,
+          child => child.nodeType === Node.TEXT_NODE && child.textContent.trim(),
+        );
+        // isTopElement is a hit test (elementFromPoint); only these nodes ever read it
+        nodeData.isTopElement = isInteractive || isMenuContainer || hasDirectText ? isTopElement(node) : false;
 
         if (nodeData.isTopElement || isMenuContainer) {
-          nodeData.isInteractive = isInteractiveElement(node);
+          nodeData.isInteractive = isInteractive;
           // Call the dedicated highlighting function
           nodeWasHighlighted = handleHighlighting(nodeData, node, parentIframe, isParentHighlighted);
         }

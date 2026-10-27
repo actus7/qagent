@@ -16,7 +16,7 @@ export interface ThemeReport {
   customProperties: Array<{ name: string; value: string }>;
 }
 
-export interface ContrastSampleRaw {
+interface ContrastSampleRaw {
   text: string;
   fg: string;
   /** Computed background colors from the element up to the root; transparent layers are left out. */
@@ -99,7 +99,7 @@ export function collectContrastSamplesInPage(maxSamples: number, scanLimit: numb
 }
 
 /** Composites the background layers (nearest first) over white, the default when nothing paints one. */
-export function backgroundFromLayers(layers: string[]): Rgba {
+function backgroundFromLayers(layers: string[]): Rgba {
   let base: Rgba = WHITE;
   for (const layer of [...layers].reverse()) {
     const color = parseCssColor(layer);

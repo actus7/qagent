@@ -5,23 +5,11 @@ import { type DOMState, type DOMBaseNode, DOMElementNode, DOMTextNode } from './
 import type { ViewportInfo } from './history/view';
 import { isNewTabPage } from '../util';
 
+const MAIN_FRAME_ID = 0;
 const logger = createLogger('DOMService');
 
 function isNotNull<T>(item: T | null | undefined): item is T {
   return item != null;
-}
-
-interface ReadabilityResult {
-  title: string;
-  content: string;
-  textContent: string;
-  length: number;
-  excerpt: string;
-  byline: string;
-  dir: string;
-  siteName: string;
-  lang: string;
-  publishedTime: string;
 }
 
 interface FrameInfo {
@@ -36,28 +24,7 @@ interface FrameInfo {
 declare global {
   interface Window {
     buildDomTree: (args: BuildDomTreeArgs) => RawDomTreeNode | null;
-    turn2Markdown: (selector?: string) => string;
-    parserReadability: () => ReadabilityResult | null;
   }
-}
-
-/**
- * Get the readability content for the current page.
- * @param tabId - The ID of the tab to get the readability content for.
- * @returns The readability content for the current page.
- */
-export async function getReadabilityContent(tabId: number): Promise<ReadabilityResult> {
-  const results = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: () => {
-      return window.parserReadability();
-    },
-  });
-  const result = results[0]?.result;
-  if (!result) {
-    throw new Error('Failed to get readability content');
-  }
-  return result as ReadabilityResult;
 }
 
 /**
@@ -148,25 +115,31 @@ async function _buildDomTree(
   const visibleIframesFailedLoadingCount = Object.values(visibleIframesFailedLoading).length;
   if (visibleIframesFailedLoadingCount > 0) {
     const tabFrames = await chrome.webNavigation.getAllFrames({ tabId });
-    const subFrames = (tabFrames ?? []).filter(frame => frame.frameId !== mainFrameResult[0].frameId).sort();
+    const subFrames = (tabFrames ?? []).filter(frame => frame.frameId !== mainFrameResult[0].frameId);
 
     // Get sub-frames info, so that we can run the buildDomTree only on the frames that failed,
     // to avoid double parsing & highlighting on the frames that succeeded.
     const frameInfoResultsRaw = await Promise.all(
       subFrames.map(async frame => {
-        const result = await chrome.scripting.executeScript({
-          target: { tabId, frameIds: [frame.frameId] },
-          func: frameId => ({
-            frameId,
-            computedHeight: window.innerHeight,
-            computedWidth: window.innerWidth,
-            href: window.location.href,
-            name: window.name,
-            title: document.title,
-          }),
-          args: [frame.frameId],
-        });
-        return result[0].result;
+        // A frame can detach or be blocked by policy between the frame list and this call: skip it, keep the tab
+        const result = await chrome.scripting
+          .executeScript({
+            target: { tabId, frameIds: [frame.frameId] },
+            func: frameId => ({
+              frameId,
+              computedHeight: window.innerHeight,
+              computedWidth: window.innerWidth,
+              href: window.location.href,
+              name: window.name,
+              title: document.title,
+            }),
+            args: [frame.frameId],
+          })
+          .catch((error: unknown) => {
+            logger.debug(`Frame ${frame.frameId} could not be read, skipping it:`, error);
+            return [];
+          });
+        return result[0]?.result;
       }),
     );
     const frameInfoResults = frameInfoResultsRaw.filter(isNotNull);
@@ -216,6 +189,10 @@ async function constructFrameTree(
   let maxNodeId = startingNodeId;
   let maxHighlightIndex = startingHighlightIndex;
 
+  await injectBuildDomTreeScripts(
+    tabId,
+    failedLoadingFrames.map(frame => frame.frameId),
+  );
   for (const subFrame of failedLoadingFrames) {
     // Processing one frame at a time, to start from the proper highlightIndex and element id.
     const subFrameResult = await chrome.scripting.executeScript({
@@ -254,10 +231,8 @@ async function constructFrameTree(
     maxHighlightIndex = _getMaxHighlighIndex(subFramePage, maxHighlightIndex);
 
     // Expand lookup map to subframe elements
-    parentFramePage.map = {
-      ...parentFramePage.map,
-      ...subFramePage.map,
-    };
+    // In place: copying the whole map for every subframe is quadratic on pages with many iframes
+    Object.assign(parentFramePage.map, subFramePage.map);
 
     // Question: should we verify by checking subFrame.parentFrameId to ensure it's the correct parent to this subframe?
     const iframeNode = _locateMatchingIframeNode(parentIframesFailedLoading, subFrame);
@@ -588,11 +563,16 @@ export async function getClickableElementsInFrame(
   return { elementTree, selectorMap };
 }
 
-export async function injectBuildDomTreeScripts(tabId: number) {
+/**
+ * Makes sure buildDomTree is defined in the given frames (main frame by default). Same-origin iframes are walked
+ * from the main frame, so only the frames it could not read (see constructFrameTree) need the script; injecting
+ * into every ad and tracker iframe on each step cost a 51 KB script per frame.
+ */
+async function injectBuildDomTreeScripts(tabId: number, frameIds: number[] = [MAIN_FRAME_ID]) {
   let frames: chrome.scripting.InjectionResult<boolean>[];
   try {
     frames = await chrome.scripting.executeScript({
-      target: { tabId, allFrames: true },
+      target: { tabId, frameIds },
       func: () => Object.prototype.hasOwnProperty.call(window, 'buildDomTree'),
     });
   } catch (err) {

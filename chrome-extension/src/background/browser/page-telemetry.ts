@@ -5,9 +5,9 @@ import type {
   Page as PuppeteerPage,
 } from 'puppeteer-core/internal/puppeteer-core-browser.js';
 
-export const CONSOLE_BUFFER_SIZE = 200;
-export const NETWORK_BUFFER_SIZE = 200;
-export const DEFAULT_READ_LIMIT = 50;
+const CONSOLE_BUFFER_SIZE = 200;
+const NETWORK_BUFFER_SIZE = 200;
+const DEFAULT_READ_LIMIT = 50;
 export const MAX_READ_LIMIT = 200;
 const MAX_TEXT_LENGTH = 500;
 const MAX_URL_LENGTH = 500;
@@ -19,7 +19,7 @@ const REDACTED_VALUE = 'REDACTED';
 const SENSITIVE_PARAM_PATTERN =
   /token|key|auth|pass|pwd|secret|session|credential|jwt|cookie|otp|(^|[^a-z])sig(nature)?([^a-z]|$)/i;
 
-export type ConsoleLevel = 'log' | 'info' | 'warning' | 'error' | 'debug';
+type ConsoleLevel = 'log' | 'info' | 'warning' | 'error' | 'debug';
 
 export interface ConsoleEntry {
   level: ConsoleLevel;
@@ -110,7 +110,7 @@ export function redactUrl(rawUrl: string): string {
   return truncateText(url.toString(), MAX_URL_LENGTH);
 }
 
-export function mimeTypeOf(contentType: string | undefined): string | null {
+function mimeTypeOf(contentType: string | undefined): string | null {
   const mimeType = contentType?.split(';')[0]?.trim().toLowerCase();
   return mimeType || null;
 }
@@ -120,7 +120,7 @@ function matchesText(value: string, pattern: string | null | undefined): boolean
   return value.toLowerCase().includes(pattern.toLowerCase());
 }
 
-export function normalizeLimit(limit: number | null | undefined): number {
+function normalizeLimit(limit: number | null | undefined): number {
   if (!limit || limit < 1) return DEFAULT_READ_LIMIT;
   return Math.min(Math.floor(limit), MAX_READ_LIMIT);
 }
@@ -143,7 +143,7 @@ export function filterNetworkEntries(entries: NetworkEntry[], options: NetworkRe
   return matching.slice(-normalizeLimit(options.limit));
 }
 
-export function isFailedRequest(entry: NetworkEntry): boolean {
+function isFailedRequest(entry: NetworkEntry): boolean {
   return entry.failure !== null || (entry.status !== null && entry.status >= 400);
 }
 

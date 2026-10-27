@@ -1,6 +1,6 @@
 import { DOMElementNode } from '../views';
 import { DOMHistoryElement, HashedDomElement } from './view';
-import { createSHA256Hash } from '../hash';
+import { hashText } from '../hash';
 
 /**
  * Convert a DOM element to a history element
@@ -102,7 +102,7 @@ export function _getParentBranchPath(domElement: DOMElementNode): string[] {
  */
 async function _parentBranchPathHash(parentBranchPath: string[]): Promise<string> {
   if (parentBranchPath.length === 0) return '';
-  return createSHA256Hash(parentBranchPath.join('/'));
+  return hashText(parentBranchPath.join('/'));
 }
 
 /**
@@ -112,14 +112,14 @@ async function _attributesHash(attributes: Record<string, string>): Promise<stri
   const attributesString = Object.entries(attributes)
     .map(([key, value]) => `${key}=${value}`)
     .join('');
-  return createSHA256Hash(attributesString);
+  return hashText(attributesString);
 }
 
 /**
  * Create a hash from the element xpath
  */
 async function _xpathHash(xpath: string): Promise<string> {
-  return createSHA256Hash(xpath);
+  return hashText(xpath);
 }
 
 /**
@@ -127,7 +127,7 @@ async function _xpathHash(xpath: string): Promise<string> {
  */
 async function _textHash(domElement: DOMElementNode): Promise<string> {
   const textString = domElement.getAllTextTillNextClickableElement();
-  return createSHA256Hash(textString);
+  return hashText(textString);
 }
 
 /**

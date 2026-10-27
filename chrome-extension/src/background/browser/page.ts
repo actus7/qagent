@@ -20,10 +20,12 @@ import {
 import type { DOMElementNode, DOMState } from './dom/views';
 import { type BrowserContextConfig, DEFAULT_BROWSER_CONTEXT_CONFIG, type PageState } from './views';
 import { createLogger } from '@src/background/log';
+import { type AccessibilityNodeLike, formatAccessibilityTree } from './accessibility-tree';
+import { wrapUntrustedContent } from '../agent/messages/utils';
 import { ExtensionConflictError } from '../agent/agents/errors';
 import { showAgentPointer } from '../overlay/overlayMessaging';
 import { isDebuggerConflictError } from './debugger-conflict';
-import { ClickableElementProcessor } from './dom/clickable/service';
+import { markNewClickableElements } from './dom/clickable/service';
 import { build_initial_state, CachedStateClickableElementsHashes, parseSelectorIndex } from './page-state';
 import { parseKeyCombination, convertKey, isMacUserAgent } from './page-keys';
 import { typeIntoElementNode, typeIntoSelectorElement } from './page-input';
@@ -76,6 +78,25 @@ import { callSiteToolInPage, parseSiteToolList, readSiteToolsInPage, type SiteTo
 import type { CaptchaWidgetView } from '../services/captcha-solver';
 
 const TARGET_POLL_MS = 250;
+const TARGET_MUTATION_WAIT_MS = 1000;
+
+/** Runs in the page: resolves on the first DOM mutation, or after `timeoutMs`. */
+function waitForDomMutation(timeoutMs: number): Promise<boolean> {
+  return new Promise(resolve => {
+    const observer = new MutationObserver(() => {
+      observer.disconnect();
+      resolve(true);
+    });
+    observer.observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+    setTimeout(
+      () => {
+        observer.disconnect();
+        resolve(false);
+      },
+      Math.max(0, timeoutMs),
+    );
+  });
+}
 const PROGRESS_TEXT_CHARS = 80;
 
 function originOf(url: string): string {
@@ -98,6 +119,14 @@ type ContrastAudit = ReturnType<typeof auditContrastSamples>;
 
 const OVERLAY_HOST_ID = 'qagent-overlay-host';
 const CAPTURE_SETTLE_MS = 120;
+const PROTOCOL_TIMEOUT_MS = 30_000;
+const PAGE_PROBE_TIMEOUT_MS = 2000;
+// `load` waits on every third-party resource (up to 30 s); the network-idle wait covers the rest
+const NAVIGATION_OPTIONS = { waitUntil: 'domcontentloaded', timeout: 15_000 } as const;
+const SCREENSHOT_JPEG_QUALITY = 70;
+const RECENT_LOAD_WAIT_MS = 300;
+// Vision screenshots wider than this cost tokens without helping the model; coordinates map back via the real size
+const SCREENSHOT_MAX_WIDTH_PX = 1280;
 
 export default class Page {
   private _tabId: number;
@@ -106,12 +135,16 @@ export default class Page {
   private _config: BrowserContextConfig;
   private _state: PageState;
   private _dialogNotices: string[] = [];
+  private _nextDialogResponse: { accept: boolean; promptText?: string } | null = null;
   private _validWebPage = false;
   private _cachedState: PageState | null = null;
   private _cachedStateClickableElementsHashes: CachedStateClickableElementsHashes | null = null;
   private _telemetry = new PageTelemetry();
   private _lastScreenshotSize: Size | null = null;
   private _viewportOverridden = false;
+  private _highlightsDrawn = false;
+  private _lastLoadWaitAt = 0;
+  private _listedFrames: Frame[] | null = null;
   // A frame chosen with switch_frame; null means the top document. Cleared when the top document navigates.
   private _focusedFrame: Frame | null = null;
 
@@ -170,11 +203,20 @@ export default class Page {
       }
       throw error;
     }
-    const browser = await connect({
-      transport,
-      defaultViewport: null,
-      protocol: 'cdp' as ProtocolType,
-    });
+    let browser: Browser;
+    try {
+      browser = await connect({
+        transport,
+        defaultViewport: null,
+        protocol: 'cdp' as ProtocolType,
+        // Puppeteer's default is 180 s: a hung renderer would freeze the step for 3 minutes
+        protocolTimeout: PROTOCOL_TIMEOUT_MS,
+      });
+    } catch (error) {
+      // The transport already holds the chrome.debugger attachment; release it or the tab stays debugged
+      transport.close();
+      throw error;
+    }
     this._browser = browser;
 
     try {
@@ -199,17 +241,26 @@ export default class Page {
   }
 
   /**
-   * Blocking JS dialogs would hang the page and the task. alert/beforeunload are accepted,
-   * confirm/prompt are dismissed; each one is recorded so the next step can report it.
+   * Blocking JS dialogs would hang the page and the task. alert/beforeunload are accepted;
+   * confirm/prompt are dismissed unless the agent chose an answer with handle_dialog.
+   * Each one is recorded so the next step can report it. The message is page-controlled, so it is wrapped as untrusted.
    */
   private _handleDialog(dialog: Dialog): void {
     const type = dialog.type();
-    const accept = type === 'alert' || type === 'beforeunload';
+    const answerable = type === 'confirm' || type === 'prompt';
+    const chosen = answerable ? this._nextDialogResponse : null;
+    if (chosen) this._nextDialogResponse = null;
+    const accept = chosen ? chosen.accept : !answerable;
     this._dialogNotices.push(
-      `JavaScript ${type} dialog "${dialog.message()}" was ${accept ? 'accepted' : 'dismissed'} automatically.`,
+      `JavaScript ${type} dialog was ${accept ? 'accepted' : 'dismissed'}${chosen ? '' : ' automatically'}. Its message:
+${wrapUntrustedContent(dialog.message())}`,
     );
-    const handled = accept ? dialog.accept() : dialog.dismiss();
+    const handled = accept ? dialog.accept(chosen?.promptText) : dialog.dismiss();
     handled.catch(error => logger.warning('Failed to handle JS dialog:', error));
+  }
+
+  setNextDialogResponse(response: { accept: boolean; promptText?: string }): void {
+    this._nextDialogResponse = response;
   }
 
   /** Returns and clears the notices about JS dialogs handled since the last call. */
@@ -236,14 +287,22 @@ export default class Page {
 
     this._browser = null;
     this._puppeteerPage = null;
+    // Frame handles and dialog notices belong to the old connection
+    this._focusedFrame = null;
+    this._listedFrames = null;
+    this._dialogNotices = [];
+    this._nextDialogResponse = null;
+    this._highlightsDrawn = false;
     this._state = build_initial_state(this._tabId);
     this._cachedState = null;
     this._cachedStateClickableElementsHashes = null;
   }
 
   async removeHighlight(): Promise<void> {
-    if (this._config.displayHighlights && this._validWebPage) {
+    // Highlights are also drawn when vision is on, so removal follows what was drawn, not the config
+    if (this._highlightsDrawn && this._validWebPage) {
       await _removeHighlights(this._tabId);
+      this._highlightsDrawn = false;
     }
   }
 
@@ -329,29 +388,18 @@ export default class Page {
       // return the initial state
       return build_initial_state(this._tabId);
     }
-    await this.waitForPageAndFramesLoad();
+    // Actions that already waited for the page (typing, keys, navigation) just did; waiting again costs >= 0.25 s
+    if (Date.now() - this._lastLoadWaitAt > RECENT_LOAD_WAIT_MS) await this.waitForPageAndFramesLoad();
     const updatedState = await this._updateState(useVision);
 
     // Find out which elements are new
     // Do this only if url has not changed
     if (cacheClickableElementsHashes) {
-      // If we are on the same url as the last state, we can use the cached hashes
-      if (
-        this._cachedStateClickableElementsHashes &&
-        this._cachedStateClickableElementsHashes.url === updatedState.url
-      ) {
-        // Get clickable elements from the updated state
-        const updatedStateClickableElements = ClickableElementProcessor.getClickableElements(updatedState.elementTree);
-
-        // Mark elements as new if they weren't in the previous state
-        for (const domElement of updatedStateClickableElements) {
-          const hash = await ClickableElementProcessor.hashDomElement(domElement);
-          domElement.isNew = !this._cachedStateClickableElementsHashes.hashes.has(hash);
-        }
-      }
-
-      // In any case, we need to cache the new hashes
-      const newHashes = await ClickableElementProcessor.getClickableElementsHashes(updatedState.elementTree);
+      const newHashes = markNewClickableElements(
+        updatedState.elementTree,
+        updatedState.url,
+        this._cachedStateClickableElementsHashes,
+      );
       this._cachedStateClickableElementsHashes = new CachedStateClickableElementsHashes(updatedState.url, newHashes);
     }
 
@@ -364,17 +412,18 @@ export default class Page {
   async _updateState(useVision = false, focusElement = -1): Promise<PageState> {
     try {
       // Test if page is still accessible
-      // @ts-expect-error - puppeteerPage is not null, already checked before calling this function
-      await this._puppeteerPage.evaluate('1');
+      await this._probePage();
     } catch (error) {
-      logger.warning('Current page is no longer accessible:', error);
-      if (this._browser) {
-        const pages = await this._browser.pages();
-        if (pages.length > 0) {
-          this._puppeteerPage = pages[0];
-        } else {
-          throw new Error('Browser closed: no valid pages available', { cause: error });
-        }
+      // Usually a transient "execution context destroyed" mid-navigation: wait for the load and retry once.
+      // A page that still does not answer is dead; throwing lets the context reattach the tab.
+      logger.warning('Current page is not answering, retrying once:', error);
+      await this.waitForPageAndFramesLoad();
+      try {
+        await this._probePage();
+      } catch (retryError) {
+        // Dropping the connection marks the page unattached, so the context attaches the tab again next step
+        await this.detachPuppeteer();
+        throw new Error('Page is no longer accessible', { cause: retryError });
       }
     }
 
@@ -386,10 +435,11 @@ export default class Page {
       // showHighlightElements is true if either useVision or displayHighlights is true
       const displayHighlights = this._config.displayHighlights || useVision;
       const content = await this.getClickableElements(displayHighlights, focusElement);
+      if (displayHighlights) this._highlightsDrawn = true;
       if (!content) {
         logger.warning('Failed to get clickable elements');
-        // Return last known good state if available
-        return this._state;
+        // The last good state, flagged so the model does not take it for the page as it is now
+        return { ...this._state, stale: true };
       }
       // log the attributes of content object
       if ('selectorMap' in content) {
@@ -403,25 +453,52 @@ export default class Page {
         logger.debug('content.elementTree: not found');
       }
 
-      // Take screenshot if needed
-      const screenshot = useVision ? await this.takeScreenshot() : null;
-      const [scrollY, visualViewportHeight, scrollHeight] = await this.getScrollInfo();
+      // Independent reads: run them together
+      const [screenshot, [scrollY, visualViewportHeight, scrollHeight], title] = await Promise.all([
+        useVision ? this.takeScreenshot() : Promise.resolve(null),
+        this.getScrollInfo(),
+        this._puppeteerPage?.title() ?? Promise.resolve(''),
+      ]);
 
       // update the state
       this._state.elementTree = content.elementTree;
       this._state.selectorMap = content.selectorMap;
       this._state.url = this._puppeteerPage?.url() || '';
-      this._state.title = (await this._puppeteerPage?.title()) || '';
+      this._state.title = title || '';
       this._state.screenshot = screenshot;
       this._state.scrollY = scrollY;
       this._state.visualViewportHeight = visualViewportHeight;
       this._state.scrollHeight = scrollHeight;
+      this._state.stale = false;
       return this._state;
     } catch (error) {
       logger.error('Failed to update state:', error);
-      // Return last known good state if available
-      return this._state;
+      // The last good state, flagged so the model does not take it for the page as it is now
+      return { ...this._state, stale: true };
     }
+  }
+
+  private async _probePage(): Promise<void> {
+    if (!this._puppeteerPage) throw new Error('Puppeteer page is not connected');
+    await withTimeout(this._puppeteerPage.evaluate('1'), PAGE_PROBE_TIMEOUT_MS, () => {});
+  }
+
+  /** Viewport clip scaled down so the image is at most SCREENSHOT_MAX_WIDTH_PX wide (empty when no scaling is needed). */
+  private async _downscaledViewportClip(): Promise<{
+    clip?: { x: number; y: number; width: number; height: number; scale: number };
+    captureBeyondViewport?: boolean;
+  }> {
+    const viewport = await this._puppeteerPage?.evaluate(() => {
+      const vv = window.visualViewport;
+      return vv
+        ? { x: vv.pageLeft, y: vv.pageTop, width: vv.width, height: vv.height, dpr: window.devicePixelRatio || 1 }
+        : null;
+    });
+    if (!viewport || viewport.width <= 0 || viewport.height <= 0) return {};
+    const scale = SCREENSHOT_MAX_WIDTH_PX / (viewport.width * viewport.dpr);
+    if (scale >= 1) return {};
+    const { x, y, width, height } = viewport;
+    return { clip: { x, y, width, height, scale }, captureBeyondViewport: false };
   }
 
   async takeScreenshot(fullPage = false): Promise<string | null> {
@@ -430,44 +507,44 @@ export default class Page {
     }
 
     try {
-      // First disable animations/transitions
-      await this._puppeteerPage.evaluate(() => {
-        const styleId = 'puppeteer-disable-animations';
-        if (!document.getElementById(styleId)) {
-          const style = document.createElement('style');
-          style.id = styleId;
-          style.textContent = `
+      // Independent page reads: disable animations/transitions and work out the clip in one round trip
+      const [, clip] = await Promise.all([
+        this._puppeteerPage.evaluate(() => {
+          const styleId = 'puppeteer-disable-animations';
+          if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
             *, *::before, *::after {
               animation: none !important;
               transition: none !important;
             }
           `;
-          document.head.appendChild(style);
-        }
-      });
+            (document.head ?? document.documentElement).appendChild(style);
+          }
+        }),
+        fullPage ? {} : this._downscaledViewportClip(),
+      ]);
 
-      // Take the screenshot using JPEG format with 80% quality
       const screenshot = await this._puppeteerPage.screenshot({
         fullPage: fullPage,
         encoding: 'base64',
         type: 'jpeg',
-        quality: 80, // Good balance between quality and file size
+        quality: SCREENSHOT_JPEG_QUALITY,
+        optimizeForSpeed: true,
+        ...clip,
       });
 
       this._lastScreenshotSize = readJpegSizeFromBase64(screenshot as string);
-
-      // Clean up the style element
-      await this._puppeteerPage.evaluate(() => {
-        const style = document.getElementById('puppeteer-disable-animations');
-        if (style) {
-          style.remove();
-        }
-      });
-
       return screenshot as string;
     } catch (error) {
       logger.error('Failed to take screenshot:', error);
       throw error;
+    } finally {
+      // Always restore the page's own animations, even when the capture failed
+      await this._puppeteerPage
+        ?.evaluate(() => document.getElementById('puppeteer-disable-animations')?.remove())
+        .catch(() => {});
     }
   }
 
@@ -492,7 +569,7 @@ export default class Page {
     logger.info('navigateTo', url);
 
     try {
-      await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.goto(url)]);
+      await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.goto(url, NAVIGATION_OPTIONS)]);
       logger.info('navigateTo complete');
     } catch (error) {
       if (error instanceof Error && error.message.includes('timeout')) {
@@ -509,7 +586,7 @@ export default class Page {
     if (!this._puppeteerPage) return;
 
     try {
-      await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.reload()]);
+      await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.reload(NAVIGATION_OPTIONS)]);
       logger.info('Page refresh complete');
     } catch (error) {
       if (error instanceof Error && error.message.includes('timeout')) {
@@ -526,7 +603,7 @@ export default class Page {
     if (!this._puppeteerPage) return;
 
     try {
-      await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.goBack()]);
+      await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.goBack(NAVIGATION_OPTIONS)]);
       logger.info('Navigation back completed');
     } catch (error) {
       if (error instanceof Error && error.message.includes('timeout')) {
@@ -543,7 +620,7 @@ export default class Page {
     if (!this._puppeteerPage) return;
 
     try {
-      await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.goForward()]);
+      await Promise.all([this.waitForPageAndFramesLoad(), this._puppeteerPage.goForward(NAVIGATION_OPTIONS)]);
       logger.info('Navigation forward completed');
     } catch (error) {
       if (error instanceof Error && error.message.includes('timeout')) {
@@ -802,10 +879,9 @@ export default class Page {
       throw new Error('Puppeteer is not connected');
     }
 
+    let element: ElementHandle | null = null;
     try {
-      // Highlight before typing
-
-      const element = await this.locateElement(elementNode);
+      element = await this.locateElement(elementNode);
       if (!element) {
         throw new Error(`Element: ${elementNode} not found`);
       }
@@ -819,6 +895,9 @@ export default class Page {
       const errorMsg = `Failed to input text into element: ${elementNode}. Error: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       throw new Error(errorMsg, { cause: error });
+    } finally {
+      // Remote objects otherwise live until the document goes away, which on a SPA is never
+      await element?.dispose().catch(() => {});
     }
   }
 
@@ -845,16 +924,14 @@ export default class Page {
       throw new Error('Puppeteer is not connected');
     }
 
+    let element: ElementHandle | null = null;
     try {
-      // Highlight before clicking
-
-      const element = await this.locateElement(elementNode);
+      // locateElement already scrolled a visible element into view
+      element = await this.locateElement(elementNode);
       if (!element) {
         throw new Error(`Element: ${elementNode} not found`);
       }
 
-      // Scroll element into view if needed
-      await this._scrollIntoViewIfNeeded(element);
       await this._showAgentPointer(element);
       await this._clickHandle(element, 'Failed to click element');
     } catch (error) {
@@ -862,6 +939,8 @@ export default class Page {
         `Failed to click element: ${elementNode}. Error: ${error instanceof Error ? error.message : String(error)}`,
         { cause: error },
       );
+    } finally {
+      await element?.dispose().catch(() => {});
     }
   }
 
@@ -961,18 +1040,36 @@ export default class Page {
   /** Resolves a readable target ({selector, text, role, nth}) to a live element in the current root. */
   async resolveTargetHandle(spec: TargetSpec): Promise<ElementHandle> {
     const root = this._root();
-    const candidates = await root.evaluate(collectTargetCandidates, spec.selector ?? null, DEFAULT_TARGET_SELECTOR);
-    const position = pickTargetIndex(candidates, spec);
-    const handle = await root.evaluateHandle(
-      (selector: string | null, index: number, fallback: string) =>
-        document.querySelectorAll(selector ?? fallback)[index] ?? null,
-      spec.selector ?? null,
-      position,
-      DEFAULT_TARGET_SELECTOR,
-    );
-    const element = handle.asElement();
-    if (!element) throw new Error(`Target ${describeTargetSpec(spec)} is no longer on the page`);
-    return element;
+    // The pick and the fetch are two round trips; if the page changed in between, the element at that position
+    // may be another one, so its tag and text are checked and the lookup is redone once.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const candidates = await root.evaluate(collectTargetCandidates, spec.selector ?? null, DEFAULT_TARGET_SELECTOR);
+      const position = pickTargetIndex(candidates, spec);
+      const expected = candidates[position];
+      const handle = await root.evaluateHandle(
+        (selector: string | null, index: number, fallback: string, tag: string, text: string) => {
+          const el = document.querySelectorAll<HTMLElement>(selector ?? fallback)[index];
+          if (!el || el.tagName.toLowerCase() !== tag) return null;
+          const current = (el.getAttribute('aria-label') ?? el.textContent ?? '').replace(/\s+/g, ' ').trim();
+          const named = [
+            current,
+            el.getAttribute('placeholder'),
+            el.getAttribute('title'),
+            (el as HTMLInputElement).value,
+          ];
+          return !text || named.some(value => value?.trim().includes(text)) ? el : null;
+        },
+        spec.selector ?? null,
+        position,
+        DEFAULT_TARGET_SELECTOR,
+        expected?.tag ?? '',
+        expected?.text ?? '',
+      );
+      const element = handle.asElement() as ElementHandle | null;
+      if (element) return element;
+      await handle.dispose();
+    }
+    throw new Error(`Target ${describeTargetSpec(spec)} is no longer on the page`);
   }
 
   async clickByTarget(spec: TargetSpec): Promise<void> {
@@ -1023,7 +1120,23 @@ export default class Page {
       if (Date.now() - started >= timeoutMs) {
         throw new Error(`Timed out after ${timeoutMs} ms waiting for ${describeTargetSpec(spec)} to be ${state}`);
       }
-      await new Promise(resolve => setTimeout(resolve, TARGET_POLL_MS));
+      // Re-check as soon as the DOM changes instead of on a fixed tick; the cap still catches CSS-only changes
+      const waitMs = Math.min(TARGET_MUTATION_WAIT_MS, timeoutMs - (Date.now() - started));
+      await this._root()
+        .evaluate(waitForDomMutation, waitMs)
+        .catch(() => new Promise(resolve => setTimeout(resolve, TARGET_POLL_MS)));
+    }
+  }
+
+  async getAccessibilityTree(maxNodes: number): Promise<string> {
+    const page = this._requirePuppeteerPage();
+    const root = this._focusedFrame ? await this._focusedFrame.frameElement() : null;
+    try {
+      // interestingOnly drops generic containers; a focused frame is read from its owner element down
+      const snapshot = await page.accessibility.snapshot({ interestingOnly: true, root: root ?? undefined });
+      return formatAccessibilityTree(snapshot as AccessibilityNodeLike | null, maxNodes);
+    } finally {
+      await root?.dispose().catch(() => {});
     }
   }
 
@@ -1038,6 +1151,7 @@ export default class Page {
   /** Frames of the tab, top document first. Index 0 is always the top document. */
   async listFrames(): Promise<FrameSummary[]> {
     const frames = this._frameList();
+    this._listedFrames = frames;
     const top = frames[0];
     const focused = this._focusedFrame ?? top;
     return frames.map((frame, index) => ({
@@ -1051,7 +1165,9 @@ export default class Page {
 
   /** Makes a frame the scope of later snapshots and element actions. Index 0 returns to the top document. */
   async focusFrame(index: number): Promise<FrameSummary> {
-    const frame = this._frameList()[index];
+    // Indexes refer to the list the model saw: ad iframes appearing since then would shift a fresh list
+    const listed = this._listedFrames?.[index];
+    const frame = listed && !listed.detached ? listed : this._frameList()[index];
     if (!frame) throw new Error(`No frame with index ${index}; list the frames first`);
     this._focusedFrame = index === 0 ? null : frame;
     const summaries = await this.listFrames();
@@ -1183,11 +1299,6 @@ export default class Page {
     return false;
   }
 
-  async waitForPageLoadState(timeout?: number) {
-    const timeoutValue = timeout || 8000;
-    await this._puppeteerPage?.waitForNavigation({ timeout: timeoutValue });
-  }
-
   private async _waitForStableNetwork() {
     if (!this._puppeteerPage) {
       throw new Error('Puppeteer page is not connected');
@@ -1220,6 +1331,7 @@ export default class Page {
     if (remaining > 0) {
       await new Promise(resolve => setTimeout(resolve, remaining * 1000)); // Convert seconds to milliseconds
     }
+    this._lastLoadWaitAt = Date.now();
   }
 
   readConsoleMessages(options: ConsoleReadOptions): ConsoleEntry[] {
@@ -1276,10 +1388,14 @@ export default class Page {
     if (!element) throw new Error(`element with index ${index} not found`);
     const handle = await this.locateElement(element);
     if (!handle) throw new Error(`element with index ${index} is not on the page`);
-    await this._scrollIntoViewIfNeeded(handle);
-    const box = await handle.boundingBox();
-    if (!box) throw new Error(`element with index ${index} has no visible box`);
-    return centerOfBox(box);
+    try {
+      await this._scrollIntoViewIfNeeded(handle);
+      const box = await handle.boundingBox();
+      if (!box) throw new Error(`element with index ${index} has no visible box`);
+      return centerOfBox(box);
+    } finally {
+      await handle.dispose().catch(() => {});
+    }
   }
 
   async clickAt(
@@ -1420,24 +1536,34 @@ export default class Page {
   /** Captcha widgets in the page: one per vendor frame that holds a checkbox. */
   async captchaWidgets(): Promise<CaptchaWidgetView[]> {
     const views: CaptchaWidgetView[] = [];
-    for (const [frameIndex, frame] of this._frameList().entries()) {
+    const frames = this._frameList();
+    // One answer per vendor, from the frame list read once (it was rebuilt for every widget)
+    const challengeOpenByVendor = new Map<CaptchaVendor, Promise<boolean>>();
+    for (const [frameIndex, frame] of frames.entries()) {
       const spec = matchCaptchaVendor(frame.url());
       if (!spec) continue;
       const facts = await frame.evaluate(inspectCaptchaFrame, spec.checkboxSelector).catch(() => null);
       if (!facts) continue;
-      const challengeOpen = await this._challengeFrameVisible(spec.vendor);
+      if (!challengeOpenByVendor.has(spec.vendor)) {
+        challengeOpenByVendor.set(spec.vendor, this._challengeFrameVisible(spec.vendor, frames));
+      }
+      const challengeOpen = await challengeOpenByVendor.get(spec.vendor)!;
       views.push({ frameIndex, vendor: spec.vendor, checkbox: facts.checkbox, checked: facts.checked, challengeOpen });
     }
     return views;
   }
 
-  private async _challengeFrameVisible(vendor: CaptchaVendor): Promise<boolean> {
+  private async _challengeFrameVisible(vendor: CaptchaVendor, frames: Frame[] = this._frameList()): Promise<boolean> {
     const challenge = CAPTCHA_VENDORS.find(item => item.vendor === vendor)?.challengeFrameUrl;
     if (!challenge) return false;
-    const frame = this._frameList().find(item => challenge.test(item.url()));
+    const frame = frames.find(item => challenge.test(item.url()));
     const element = frame ? await frame.frameElement() : null;
-    const box = element ? await element.boundingBox() : null;
-    return box !== null && box.width > 0 && box.height > 0;
+    try {
+      const box = element ? await element.boundingBox() : null;
+      return box !== null && box.width > 0 && box.height > 0;
+    } finally {
+      await element?.dispose().catch(() => {});
+    }
   }
 
   async captchaSolved(): Promise<boolean> {
@@ -1492,10 +1618,17 @@ export default class Page {
     if (!element) throw new Error(`Element not found for selector: ${selector}`);
     const isFileInput = await element.evaluate(el => el instanceof HTMLInputElement && el.type === 'file');
     if (!isFileInput) throw new Error(`Element ${selector} is not a file input`);
-    await chrome.debugger.sendCommand({ tabId: this._tabId }, 'DOM.setFileInputFiles', {
-      files: [filePath],
-      objectId: element.remoteObject().objectId,
-    });
+    const params = { files: [filePath], objectId: element.remoteObject().objectId };
+    // The objectId belongs to the element's own CDP session: an input inside an out-of-process iframe
+    // lives in that frame's session, where the tab-level debugger session cannot resolve it.
+    const session = (element as unknown as { client?: { send(method: string, params: object): Promise<unknown> } })
+      .client;
+    try {
+      if (session) await session.send('DOM.setFileInputFiles', params);
+      else await chrome.debugger.sendCommand({ tabId: this._tabId }, 'DOM.setFileInputFiles', params);
+    } finally {
+      await element.dispose().catch(() => {});
+    }
   }
 
   private _requirePuppeteerPage(): PuppeteerPage {

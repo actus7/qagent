@@ -4,6 +4,8 @@ import { createLogger } from '@src/background/log';
 import { scrollIntoViewIfNeeded } from './page-scroll';
 import { centerOfBox, easedPath } from './page-pointer';
 
+const CLICK_TIMEOUT_MS = 2000;
+
 const EASED_APPROACH_PX = 120;
 const EASED_STEPS = 8;
 const EASED_HOVER_MS = 80;
@@ -166,7 +168,8 @@ export async function selectOptionByText(
 }
 
 /**
- * Resolve a DOM tree node to a live element handle, walking through parent iframes.
+ * Resolve a DOM tree node to a live element handle, walking through parent iframes and open shadow roots
+ * (the tree's selectors and xpaths are relative to the nearest one, so each is entered in turn).
  * Falls back to XPath when the CSS selector misses, and scrolls visible elements into view.
  */
 export async function locateElementInPage(
@@ -174,7 +177,9 @@ export async function locateElementInPage(
   element: DOMElementNode,
   includeDynamicAttributes: boolean,
 ): Promise<ElementHandle | null> {
-  let currentFrame: PuppeteerPage | Frame = page;
+  // The root the next selector is resolved in: a document (page/frame) or a shadow root
+  let currentFrame: PuppeteerPage | Frame | ElementHandle = page;
+  let insideShadowRoot = false;
 
   // Start with the target element and collect all parents
   const parents: DOMElementNode[] = [];
@@ -184,22 +189,34 @@ export async function locateElementInPage(
     current = current.parent;
   }
 
-  // Process all iframe parents in sequence (in reverse order - top to bottom)
-  const iframes = parents.reverse().filter(item => item.tagName === 'iframe');
-  for (const parent of iframes) {
+  // Enter every iframe and shadow host on the way down (reverse order: top to bottom)
+  const boundaries = parents.reverse().filter(item => item.tagName === 'iframe' || item.shadowRoot);
+  for (const parent of boundaries) {
     const cssSelector = parent.enhancedCssSelectorForElement(includeDynamicAttributes);
-    const frameElement: ElementHandle | null = await currentFrame.$(cssSelector);
-    if (!frameElement) {
-      logger.warning(`Could not find iframe with selector: ${cssSelector}`);
+    const hostElement: ElementHandle | null = await currentFrame.$(cssSelector);
+    if (!hostElement) {
+      logger.warning(`Could not find ${parent.tagName} with selector: ${cssSelector}`);
       return null;
     }
-    const frame: Frame | null = await frameElement.contentFrame();
-    if (!frame) {
-      logger.warning(`Could not access frame content for selector: ${cssSelector}`);
+    if (parent.tagName === 'iframe') {
+      const frame: Frame | null = await hostElement.contentFrame();
+      await hostElement.dispose();
+      if (!frame) {
+        logger.warning(`Could not access frame content for selector: ${cssSelector}`);
+        return null;
+      }
+      currentFrame = frame;
+      insideShadowRoot = false;
+      continue;
+    }
+    const shadowRoot = (await hostElement.evaluateHandle(host => host.shadowRoot)).asElement() as ElementHandle | null;
+    await hostElement.dispose();
+    if (!shadowRoot) {
+      logger.warning(`Shadow root is closed or missing for selector: ${cssSelector}`);
       return null;
     }
-    currentFrame = frame;
-    logger.info('currentFrame changed', currentFrame);
+    currentFrame = shadowRoot;
+    insideShadowRoot = true;
   }
 
   const cssSelector = element.enhancedCssSelectorForElement(includeDynamicAttributes);
@@ -208,8 +225,8 @@ export async function locateElementInPage(
     // Try CSS selector first
     let elementHandle: ElementHandle | null = await currentFrame.$(cssSelector);
 
-    // If CSS selector failed, try XPath
-    if (!elementHandle) {
+    // If CSS selector failed, try XPath (an absolute xpath means nothing inside a shadow root)
+    if (!elementHandle && !insideShadowRoot) {
       const xpath = element.xpath;
       if (xpath) {
         try {
@@ -321,11 +338,16 @@ export async function clickWithFallback(element: ElementHandle, errorPrefix: str
   if (blocker) throw new Error(`${errorPrefix}: the element is ${blocker}. Dismiss it, then retry.`);
 
   await setOverlayInert(element, true);
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await Promise.race([
-      element.click(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Click timeout')), 2000)),
+    const outcome = await Promise.race([
+      element.click().then(() => 'clicked' as const),
+      new Promise<'pending'>(resolve => {
+        timer = setTimeout(() => resolve('pending'), CLICK_TIMEOUT_MS);
+      }),
     ]);
+    // A slow click (navigation, heavy handler) is still in flight: clicking again would submit or toggle twice
+    if (outcome === 'pending') logger.info('Click still in progress after timeout; not clicking again');
   } catch (error) {
     logger.info('Failed to click element, trying again', error);
     try {
@@ -336,6 +358,7 @@ export async function clickWithFallback(element: ElementHandle, errorPrefix: str
       });
     }
   } finally {
+    clearTimeout(timer);
     await setOverlayInert(element, false);
   }
 }

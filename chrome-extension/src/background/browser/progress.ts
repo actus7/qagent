@@ -1,8 +1,8 @@
 // Finds signals that a page is busy or measurably progressing: progress bars, percent text, spinners, busy regions.
 
-export type ProgressKind = 'progressbar' | 'progress-element' | 'percent-text' | 'spinner' | 'busy-region';
+type ProgressKind = 'progressbar' | 'progress-element' | 'percent-text' | 'spinner' | 'busy-region';
 
-export interface ProgressSignal {
+interface ProgressSignal {
   kind: ProgressKind;
   /** Short label such as `div#upload` or `progress.bar`; not guaranteed unique. */
   label: string;
@@ -27,7 +27,7 @@ const KIND_ORDER: Record<ProgressKind, number> = {
   'busy-region': 4,
 };
 
-export function clampPercent(value: number): number {
+function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, value));
 }
 
@@ -130,11 +130,14 @@ export function collectProgressSignals(maxTextChars: number): ProgressReport {
       percent: match ? Math.min(100, Number.parseFloat(match[1])) : undefined,
     });
   }
-  for (const el of Array.from(document.querySelectorAll<HTMLElement>('[class]'))) {
-    if (!visible(el)) continue;
-    const isSpinner =
-      /spinner|loading|progress/i.test(el.getAttribute('class') ?? '') && getComputedStyle(el).animationName !== 'none';
-    if (isSpinner) signals.push({ kind: 'spinner', label: labelOf(el) });
+  // The class filter runs in the selector engine, so layout (visible, computed style) is read only for candidates
+  const spinnerCandidates = document.querySelectorAll<HTMLElement>(
+    '[class*="spin" i], [class*="load" i], [class*="progress" i]',
+  );
+  for (const el of Array.from(spinnerCandidates)) {
+    if (!/spinner|loading|progress/i.test(el.getAttribute('class') ?? '')) continue;
+    if (!visible(el) || getComputedStyle(el).animationName === 'none') continue;
+    signals.push({ kind: 'spinner', label: labelOf(el) });
   }
   for (const el of Array.from(document.querySelectorAll('[aria-busy="true"]'))) {
     if (visible(el)) signals.push({ kind: 'busy-region', label: labelOf(el) });

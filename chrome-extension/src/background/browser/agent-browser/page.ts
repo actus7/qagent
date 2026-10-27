@@ -1,7 +1,8 @@
 import { createLogger } from '@src/background/log';
 import { sleep } from '../util';
 import type { DOMElementNode } from '../dom/views';
-import type { BrowserContextConfig, PageState } from '../views';
+import { type BrowserContextConfig, DEFAULT_BROWSER_CONTEXT_CONFIG, type PageState } from '../views';
+import { readJpegSizeFromBase64, readPngSizeFromBase64 } from '../page-pointer';
 import type { BrowserPageLike } from '../types';
 import type { AgentBrowserCompanionClient } from './client';
 import { buildPageStateFromSnapshot } from './snapshot';
@@ -70,24 +71,21 @@ export default class AgentBrowserPage implements BrowserPageLike {
   }
 
   async getState(useVision = false): Promise<PageState> {
-    void useVision;
-    const snapshotResult = await this.call({
-      action: 'snapshot',
-      interactive: true,
-      cursor: true,
-      compact: true,
-    });
-
-    let screenshot: string | null = null;
-    try {
-      const screenshotResult = await this.call({
-        action: 'screenshot',
-        fullPage: false,
-      });
-      screenshot = screenshotResult.screenshotBase64 ?? null;
-    } catch (error) {
-      logger.debug('Ignoring screenshot capture failure while building browser state', error);
-    }
+    // The screenshot is only sent when vision is on; snapshot and capture are independent, so they run together
+    const captureScreenshot = async (): Promise<string | null> => {
+      if (!useVision) return null;
+      try {
+        const screenshotResult = await this.call({ action: 'screenshot', fullPage: false });
+        return screenshotResult.screenshotBase64 ?? null;
+      } catch (error) {
+        logger.debug('Ignoring screenshot capture failure while building browser state', error);
+        return null;
+      }
+    };
+    const [snapshotResult, screenshot] = await Promise.all([
+      this.call({ action: 'snapshot', interactive: true, cursor: true, compact: true }),
+      captureScreenshot(),
+    ]);
 
     const nextState = buildPageStateFromSnapshot({
       tabId: this.tabId,
@@ -108,6 +106,14 @@ export default class AgentBrowserPage implements BrowserPageLike {
     // No-op: highlights are handled by the remote browser engine.
   }
 
+  /** Centre of the viewport, from the last screenshot's size or the configured window size. */
+  private viewportCenter(): { x: number; y: number } {
+    const shot = this.cachedState?.screenshot;
+    const size = shot ? (readJpegSizeFromBase64(shot) ?? readPngSizeFromBase64(shot)) : null;
+    const { width, height } = size ?? DEFAULT_BROWSER_CONTEXT_CONFIG.browserWindowSize;
+    return { x: Math.round(width / 2), y: Math.round(height / 2) };
+  }
+
   url(): string {
     return this.state.url;
   }
@@ -126,25 +132,21 @@ export default class AgentBrowserPage implements BrowserPageLike {
   async navigateTo(url: string): Promise<void> {
     const result = await this.call({ action: 'open', url, waitUntil: 'domcontentloaded' });
     this.updateMeta(result);
-    await this.getState(false);
   }
 
   async refreshPage(): Promise<void> {
     const result = await this.call({ action: 'reload', waitUntil: 'domcontentloaded' });
     this.updateMeta(result);
-    await this.getState(false);
   }
 
   async goBack(): Promise<void> {
     const result = await this.call({ action: 'back', waitUntil: 'domcontentloaded' });
     this.updateMeta(result);
-    await this.getState(false);
   }
 
   async goForward(): Promise<void> {
     const result = await this.call({ action: 'forward', waitUntil: 'domcontentloaded' });
     this.updateMeta(result);
-    await this.getState(false);
   }
 
   async clickBySelector(_useVision: boolean, selector: string): Promise<void> {
@@ -173,12 +175,14 @@ export default class AgentBrowserPage implements BrowserPageLike {
     const delta = Math.max(1, Math.abs(pixels));
     const amount = direction === 'up' || direction === 'left' ? -delta : delta;
 
+    // Wheel at the viewport centre: at (0,0) the wheel only reached the document, never an inner scroll container
+    const center = this.viewportCenter();
     await this.client.sendInput({
       type: 'input_mouse',
       sessionId: this.sessionIdProvider(),
       eventType: 'mouseWheel',
-      x: 0,
-      y: 0,
+      x: center.x,
+      y: center.y,
       deltaX: direction === 'left' || direction === 'right' ? amount : 0,
       deltaY: direction === 'up' || direction === 'down' ? amount : 0,
     });

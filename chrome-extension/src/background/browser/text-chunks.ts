@@ -1,8 +1,7 @@
 // Reads a long text one group at a time. A cursor carries the offset and a digest of the text already
 // handed out, so a page that changed underneath the reader is reported as stale instead of mixed.
 
-export const TEXT_CHUNK_MAX_CHARS = 200_000;
-export const TEXT_CHUNK_DEFAULT_CHARS = 20_000;
+const TEXT_CHUNK_MAX_CHARS = 200_000;
 
 const CURSOR_PATTERN = /^(\d+)\.([0-9a-f]{8})$/;
 const FNV_OFFSET_BASIS = 0x811c9dc5;
@@ -55,7 +54,7 @@ export function decodeCursor(cursor: string): { offset: number; digest: string }
   return match ? { offset: Number(match[1]), digest: match[2] } : null;
 }
 
-export type ChunkReadResult =
+type ChunkReadResult =
   | { status: 'invalid' }
   | { status: 'stale' }
   | { status: 'ok'; content: string; offset: number; totalLength: number; cursor: string | null };

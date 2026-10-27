@@ -96,7 +96,7 @@ function fakeCompletion(body, state) {
   } else {
     state.navigatorSteps += 1;
     const brain = { evaluation_previous_goal: 'ok', memory: '', next_goal: 'finish' };
-    // The DOM reaches the model as `[0][ref=e0]<button >Go />`.
+    // The DOM reaches the model as `[0]<button >Go />`.
     const index = prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<button[^>]*>Go \/>/)?.[1];
     const fileIndex = prompt.match(/\[(\d+)\](?:\[ref=e\d+\])?<input[^\]]*?file/)?.[1];
     const first = state.navigatorSteps === 1;

@@ -1,10 +1,18 @@
+const FNV_PRIME = 0x01000193;
+// Two FNV-1a passes with different offset bases give a 64-bit digest, so equal-looking elements rarely collide
+const OFFSET_BASES = [0x811c9dc5, 0x050c5d1f];
+
 /**
- * Create a SHA-256 hash from a string using Web Crypto API
+ * Digest used to tell DOM elements apart between page reads. Only equality matters, so a cheap synchronous
+ * hash replaces SHA-256: Web Crypto cost an async round trip per element and per hashed field.
  */
-export async function createSHA256Hash(input: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+export function hashText(input: string): string {
+  return OFFSET_BASES.map(basis => {
+    let hash = basis;
+    for (let index = 0; index < input.length; index += 1) {
+      hash ^= input.charCodeAt(index);
+      hash = Math.imul(hash, FNV_PRIME);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
+  }).join('');
 }

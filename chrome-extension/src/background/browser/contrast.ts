@@ -25,7 +25,7 @@ function channelLuminance(channel: number): number {
   return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
-export function relativeLuminance(color: Rgba): number {
+function relativeLuminance(color: Rgba): number {
   return (
     0.2126 * channelLuminance(color[0]) + 0.7152 * channelLuminance(color[1]) + 0.0722 * channelLuminance(color[2])
   );

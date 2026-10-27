@@ -66,7 +66,11 @@ export interface BrowserPageLike {
   url(): string;
   takeScreenshot(fullPage?: boolean): Promise<string | null>;
   removeHighlight(): Promise<void>;
-  takeDialogNotices?(): string[];
+  takeDialogNotices?(): string[] | Promise<string[]>;
+  /** Text form of Chrome's accessibility tree (CDP engine only). */
+  getAccessibilityTree?(maxNodes: number): Promise<string>;
+  /** One-shot answer for the next confirm/prompt dialog; later dialogs go back to being dismissed. */
+  setNextDialogResponse?(response: { accept: boolean; promptText?: string }): void | Promise<void>;
   uploadFileBySelector?(
     selector: string,
     file: { name: string; content?: string; base64?: string; mimeType?: string },

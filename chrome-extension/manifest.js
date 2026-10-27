@@ -97,7 +97,8 @@ const manifest = withSidebarAction(
     },
     content_scripts: [
       {
-        matches: ['http://*/*', 'https://*/*', '<all_urls>'],
+        // http(s) only: the agent, monitors and the workflow recorder never run on file:, ftp: or extension pages
+        matches: ['http://*/*', 'https://*/*'],
         all_frames: true,
         js: ['content/index.iife.js'],
       },

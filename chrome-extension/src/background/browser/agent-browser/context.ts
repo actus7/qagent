@@ -52,8 +52,7 @@ export default class AgentBrowserContext implements BrowserContextLike {
   }
 
   updateCurrentTabId(tabId: number): void {
-    void tabId;
-    this.currentTab = DEFAULT_TAB_ID;
+    this.currentTab = tabId;
   }
 
   async cleanup(): Promise<void> {
@@ -87,9 +86,18 @@ export default class AgentBrowserContext implements BrowserContextLike {
     return new Set(tabInfos.map(tab => tab.id));
   }
 
+  // Tab ids are the companion's tab index + 1 (see getTabInfos); the list is re-read every step, so an id always
+  // refers to the tab list the model was just shown.
   async switchTab(tabId: number): Promise<BrowserPageLike> {
-    this.currentTab = DEFAULT_TAB_ID;
-    logger.debug('switchTab in agent-browser mode maps to current chrome tab reference only', tabId);
+    const response = await this.companionClient.request(this.sessionId, this.sessionId, {
+      action: 'tab_switch',
+      tabIndex: Math.max(0, tabId - 1),
+    });
+    if (!response.success) {
+      throw new Error(response.error.message);
+    }
+    this.currentTab = tabId;
+    logger.debug('switchTab in agent-browser mode', tabId);
     return this.page;
   }
 
@@ -120,7 +128,7 @@ export default class AgentBrowserContext implements BrowserContextLike {
     if (!response.success) {
       throw new Error(response.error.message);
     }
-    this.currentTab = DEFAULT_TAB_ID;
+    if (this.currentTab === tabId) this.currentTab = DEFAULT_TAB_ID;
   }
 
   async getTabInfos(): Promise<TabInfo[]> {
@@ -150,11 +158,10 @@ export default class AgentBrowserContext implements BrowserContextLike {
 
   async getCachedState(useVision = false): Promise<BrowserState> {
     const page = await this.getCurrentPage();
-    let state = page.getCachedState();
-    if (!state) {
-      state = await page.getState(useVision, false);
-    }
-    const tabs = await this.getTabInfos();
+    const [state, tabs] = await Promise.all([
+      page.getCachedState() ?? page.getState(useVision, false),
+      this.getTabInfos(),
+    ]);
     return {
       ...state,
       tabs,
@@ -163,8 +170,7 @@ export default class AgentBrowserContext implements BrowserContextLike {
 
   async getState(useVision = false): Promise<BrowserState> {
     const page = await this.getCurrentPage();
-    const state = await page.getState(useVision, false);
-    const tabs = await this.getTabInfos();
+    const [state, tabs] = await Promise.all([page.getState(useVision, false), this.getTabInfos()]);
     return {
       ...state,
       tabs,

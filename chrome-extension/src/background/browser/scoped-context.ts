@@ -10,10 +10,17 @@ export default class ScopedBrowserContext extends BrowserContext {
     }
   };
 
+  // A tab the user closed leaves the scope, so switching tabs does not keep trying it
+  private readonly onTabRemoved = (tabId: number) => {
+    this.allowedTabs.delete(tabId);
+  };
+
   setAllowedTabs(tabIds: number[]): void {
     this.allowedTabs = new Set(tabIds);
     chrome.tabs.onCreated?.removeListener(this.onTabCreated);
     chrome.tabs.onCreated?.addListener(this.onTabCreated);
+    chrome.tabs.onRemoved?.removeListener(this.onTabRemoved);
+    chrome.tabs.onRemoved?.addListener(this.onTabRemoved);
   }
 
   private async assertTabAllowed(tabId: number): Promise<void> {
@@ -76,6 +83,7 @@ export default class ScopedBrowserContext extends BrowserContext {
   override async cleanup(): Promise<void> {
     // The user may have closed the current tab; cleanup must never open or attach another tab.
     chrome.tabs.onCreated?.removeListener(this.onTabCreated);
+    chrome.tabs.onRemoved?.removeListener(this.onTabRemoved);
     await super.cleanup();
   }
 }
