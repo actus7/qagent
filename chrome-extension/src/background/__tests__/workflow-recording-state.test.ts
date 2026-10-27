@@ -66,6 +66,19 @@ describe('createWorkflowRecorder', () => {
     expect((await recorder.snapshot()).steps).toEqual([clickStep]);
   });
 
+  it('keeps the step the content script flushes after stop, until discard', async () => {
+    const { recorder } = setup();
+    await recorder.start(7);
+    await recorder.stop();
+
+    expect(await recorder.appendStep(8, clickStep)).toBe(false);
+    expect(await recorder.appendStep(7, clickStep)).toBe(true);
+    expect((await recorder.snapshot()).steps).toEqual([clickStep]);
+
+    await recorder.discard();
+    expect(await recorder.appendStep(7, clickStep)).toBe(false);
+  });
+
   it('stops keeping steps when the cap is reached and marks the snapshot truncated', async () => {
     const { recorder } = setup();
     await recorder.start(7);

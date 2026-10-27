@@ -117,7 +117,9 @@ export function createWorkflowRecorder(deps: WorkflowRecordingDeps): WorkflowRec
 
     async appendStep(senderTabId, step) {
       await ready;
-      if (!isRecordingTab(senderTabId) || !isRecordedStep(step)) return false;
+      // A disarmed content script flushes its pending step after stop, so the stopped tab still counts until discard
+      const isRecordedTab = current.status !== 'idle' && current.tabId === senderTabId;
+      if (!isRecordedTab || !isRecordedStep(step)) return false;
       addStep(step);
       return true;
     },

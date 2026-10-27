@@ -1225,7 +1225,7 @@ window.buildDomTree = (
       const nodeData = {
         tagName: 'body',
         attributes: {},
-        xpath: '/body',
+        xpath: 'html/body', // same relative format getXPathTree gives its children
         children: [],
       };
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GeneralSettingsConfig } from '@extension/storage';
+import { Actors, type GeneralSettingsConfig } from '@extension/storage';
 import { installChromeStorageMock } from './utils/chromeStorageMock';
 
 describe('general settings hardening', () => {
@@ -119,7 +119,7 @@ describe('chat history memory-leak hardening', () => {
   });
 });
 
-const messageAt = (index: number) => ({ actor: 'user', content: `m${index}`, timestamp: index }) as const;
+const messageAt = (index: number) => ({ actor: Actors.USER, content: `m${index}`, timestamp: index });
 
 describe('chat message chunks', () => {
   beforeEach(() => {
