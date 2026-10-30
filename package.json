@@ -17,7 +17,7 @@
     "build:all": "pnpm build && pnpm build:firefox",
     "build:firefox": "node scripts/build-firefox.mjs",
     "zip:firefox": "node scripts/build-firefox.mjs --zip",
-    "dev": "bash scripts/dev.sh",
+    "dev": "node scripts/dev.mjs",
     "dev:watch": "turbo ready && cross-env __DEV__=true turbo watch dev --concurrency 20",
     "e2e": "pnpm build && node --test e2e/extension.test.mjs",
     "smoke": "bash scripts/smoke.sh",
