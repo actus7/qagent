@@ -21,6 +21,8 @@ import { clearRunningTask, saveRunningTask, startServiceWorkerKeepAlive, updateR
 import { setupExecutor } from './setupExecutor';
 import { taskTabGroups } from '../services/tab-groups';
 import { runCliAgentTask, selectedCliRunner } from '../services/mcpBridge/cliTask';
+import { driverForCliRunner } from '../overlay/overlayDriver';
+import { hideOverlay, showOverlay } from '../overlay/overlayMessaging';
 
 // The single in-flight assistant task. Only this module reads or writes it.
 let activeTask: AbortController | null = null;
@@ -66,6 +68,13 @@ export async function cancelActiveTask(): Promise<void> {
 
 export function isAssistantTaskRunning(): boolean {
   return activeTask !== null;
+}
+
+// A CLI agent task drives the page through the MCP tools itself, so those calls must not be refused as busy.
+let cliTaskRunning = false;
+
+export function isCliAgentTaskRunning(): boolean {
+  return cliTaskRunning;
 }
 
 export interface AssistantTaskHooks {
@@ -127,14 +136,27 @@ export async function runAssistantTask(
     if (cliRunner) {
       // The CLI agent is chosen in options: the daemon runs it and its steps reach the panel as they happen.
       emit(ExecutionState.TASK_START);
+      // The overlay takes the CLI's colour; the CLI's own steps drive the status text.
+      const overlayOn = !isAgentBrowserContext(browserContext);
+      const driver = driverForCliRunner(cliRunner);
+      if (overlayOn) showOverlay(primaryTabId, driver, t('sidepanel_progress_message'));
+      cliTaskRunning = true;
       const outcome = await runCliAgentTask({
         taskId: message.taskId,
         task: message.task,
         tabId: primaryTabId,
         runner: cliRunner,
         signal: controller.signal,
-        post: postToPanel,
+        post: event => {
+          if (overlayOn && event.state === ExecutionState.ACT_START && event.data.details) {
+            showOverlay(primaryTabId, driver, event.data.details);
+          }
+          postToPanel(event);
+        },
+      }).finally(() => {
+        cliTaskRunning = false;
       });
+      if (overlayOn) hideOverlay();
       if (controller.signal.aborted) emit(ExecutionState.TASK_CANCEL, t('bg_task_interrupted'));
       else if (outcome.ok) emit(ExecutionState.TASK_OK, outcome.text);
       else emit(ExecutionState.TASK_FAIL, outcome.error ?? '');

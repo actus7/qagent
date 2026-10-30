@@ -4,12 +4,11 @@ import {
   SIDE_PANEL_CONNECTION_PORT_NAME,
   type SidePanelResponseMessage,
 } from '@extension/shared';
-import { sendOverlayMessage } from '../overlay/overlayMessaging';
+import { hideOverlay } from '../overlay/overlayMessaging';
 import { createLogger } from '../log';
 import { openAgentPanel } from '../services/agent-panel';
-import { browserContext, isAgentBrowserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
-import { cancelActiveTask } from '../task/taskRunner';
+import { cancelActiveTask, isAssistantTaskRunning } from '../task/taskRunner';
 import { routeSidePanelCommand } from './commandRouter';
 
 const logger = createLogger('background');
@@ -77,14 +76,12 @@ export function registerSidePanelPortListener(): void {
     port.onDisconnect.addListener(() => {
       // this event is also triggered when the side panel is closed, so we need to cancel the task
       logger.info('Side panel disconnected');
-      const { currentPort, resetOverlay, setPort } = runtimeStore.getState();
+      const { currentPort, setPort } = runtimeStore.getState();
       if (currentPort !== port) return;
-      if (!isAgentBrowserContext(browserContext)) {
-        sendOverlayMessage(browserContext.currentTabId, { type: 'qagent:overlay:hide' });
-      }
       setPort(null);
       void cancelActiveTask();
-      resetOverlay();
+      // A task's overlay goes with the panel; one an MCP client shows stays up while it keeps driving the page.
+      if (isAssistantTaskRunning()) hideOverlay();
     });
   });
 }

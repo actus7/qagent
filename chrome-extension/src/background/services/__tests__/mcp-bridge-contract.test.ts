@@ -38,6 +38,11 @@ describe('parseBridgeRequest for actions', () => {
     expect(parsed.method === 'run_action' && parsed.params.input).toEqual({});
   });
 
+  it('accepts the MCP client name that drives the overlay colour', () => {
+    const parsed = parseBridgeRequest(frame('run_action', { action: 'page_info', client: 'claude-code' }));
+    expect(parsed.method === 'run_action' && parsed.params.client).toBe('claude-code');
+  });
+
   it('rejects run_action names that are not plain action names', () => {
     expect(() => parseBridgeRequest(frame('run_action', { action: 'click; rm -rf' }))).toThrow(McpBridgeError);
   });

@@ -38,6 +38,13 @@ export interface CliTaskResult {
 
 export type CliStepEmitter = (taskId: string, state: string, details: string) => void;
 
+/** A run only succeeds with a final answer: a CLI that exits cleanly without one has failed the task. */
+function requireFinalAnswer(result: CliTaskResult, lastFailure: string | null): CliTaskResult {
+  if (!result.ok || result.text.trim()) return result;
+  const detail = lastFailure ? `; last failed step: ${lastFailure}` : '';
+  return { ok: false, text: '', error: `The CLI run finished without a final answer${detail}` };
+}
+
 export interface CliRunnerOptions {
   /** Directory for the per-run MCP config files; they are removed when the run ends. */
   stateDir: string;
@@ -150,10 +157,13 @@ export class CliTaskRunner {
       this.active.set(input.taskId, run);
       let stderr = '';
       let outcome: CliTaskResult | null = null;
+      let lastFailure: string | null = null;
       const apply = (events: CliEvent[]) => {
         for (const event of events) {
-          if (event.type === 'step') emit(input.taskId, event.state, event.details);
-          else outcome = { ok: event.ok, text: event.text, ...(event.error ? { error: event.error } : {}) };
+          if (event.type === 'step') {
+            if (event.state === 'act.fail') lastFailure = event.details;
+            emit(input.taskId, event.state, event.details);
+          } else outcome = { ok: event.ok, text: event.text, ...(event.error ? { error: event.error } : {}) };
         }
       };
       let buffer = '';
@@ -194,7 +204,7 @@ export class CliTaskRunner {
             ? 'The CLI run was cancelled'
             : (fallbackError ?? (stderr.trim() || 'The CLI run failed')),
         };
-        resolvePromise(result);
+        resolvePromise(requireFinalAnswer(result, lastFailure));
       };
       child.on('error', error => finish(error.message));
       child.on('close', () => finish());

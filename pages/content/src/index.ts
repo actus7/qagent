@@ -18,12 +18,15 @@ interface OverlayMessage {
   x?: number;
   y?: number;
   mode?: OverlayMode;
+  driver?: string;
 }
 
 // Pointer tip sits at the top-left of the arrow glyph (see the SVG in createOverlay).
 const CURSOR_TIP_X = 5;
 const CURSOR_TIP_Y = 4;
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+// Fade in on show and out on hide; the host is removed only after the fade-out.
+const OVERLAY_FADE_MS = 300;
 
 let shadowHost: HTMLDivElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
@@ -34,12 +37,20 @@ let cursorEl: HTMLDivElement | null = null;
 let cursorPoint: AgentPoint | null = null;
 // Incremented per glide so a newer pointer message cancels the one in flight.
 let glideToken = 0;
+// Pending removal after a fade-out; cleared when the overlay is shown again before it finishes.
+let removeTimer: ReturnType<typeof setTimeout> | null = null;
 
 function createOverlay(): void {
-  if (shadowHost) return;
+  if (shadowHost) {
+    cancelRemoval();
+    shadowHost.style.opacity = '1';
+    return;
+  }
 
   shadowHost = document.createElement('div');
   shadowHost.id = 'qagent-overlay-host';
+  shadowHost.style.transition = `opacity ${OVERLAY_FADE_MS}ms ease`;
+  shadowHost.style.opacity = '0';
   shadowRoot = shadowHost.attachShadow({ mode: 'closed' });
 
   // Inject styles
@@ -94,18 +105,39 @@ function createOverlay(): void {
   shadowRoot.appendChild(statusBar);
 
   document.documentElement.appendChild(shadowHost);
+  // Read a layout property so the hidden host is styled first; otherwise the fade-in has no start state.
+  void shadowHost.offsetHeight;
+  shadowHost.style.opacity = '1';
+}
+
+function cancelRemoval(): void {
+  if (removeTimer === null) return;
+  clearTimeout(removeTimer);
+  removeTimer = null;
 }
 
 function destroyOverlay(): void {
-  if (shadowHost) {
-    shadowHost.remove();
-    shadowHost = null;
-    shadowRoot = null;
-    statusTextEl = null;
-    borderEl = null;
-    cursorEl = null;
-    cursorPoint = null;
-    glideToken++;
+  if (!shadowHost || removeTimer !== null) return;
+  shadowHost.style.opacity = '0';
+  removeTimer = setTimeout(removeOverlay, OVERLAY_FADE_MS);
+}
+
+function removeOverlay(): void {
+  removeTimer = null;
+  shadowHost?.remove();
+  shadowHost = null;
+  shadowRoot = null;
+  statusTextEl = null;
+  borderEl = null;
+  cursorEl = null;
+  cursorPoint = null;
+  glideToken++;
+}
+
+/** Sets who drives the page; the overlay CSS derives its colours from this (see overlay.css). */
+function updateDriver(driver: string | undefined): void {
+  if (shadowHost && driver) {
+    shadowHost.dataset.driver = driver;
   }
 }
 
@@ -195,6 +227,7 @@ interface OverlayStateResponse {
   active?: boolean;
   statusText?: string | null;
   mode?: OverlayMode;
+  driver?: string;
 }
 
 async function syncOverlayStateFromBackground(): Promise<void> {
@@ -209,6 +242,7 @@ async function syncOverlayStateFromBackground(): Promise<void> {
     }
 
     createOverlay();
+    updateDriver(response.driver);
     if (response.statusText) {
       updateStatus(response.statusText);
     }
@@ -225,6 +259,7 @@ chrome.runtime.onMessage.addListener((message: OverlayMessage, _sender, sendResp
   switch (message.type) {
     case 'qagent:overlay:show':
       createOverlay();
+      updateDriver(message.driver);
       break;
     case 'qagent:overlay:hide':
       destroyOverlay();

@@ -1,7 +1,6 @@
 import { t } from '@extension/i18n';
 import { inferMode, isBackgroundRuntimeMessage } from '@extension/shared';
 import { createLogger } from '../log';
-import { browserContext } from '../state/browserSession';
 import { runtimeStore } from '../state/runtimeStore';
 import { cancelActiveTask } from '../task/taskRunner';
 import { classifyMode } from '../services/mode-classifier';
@@ -83,15 +82,14 @@ export function registerRuntimeMessageListener(): void {
     // Content script asks the background for the current overlay state.
     if (message?.type === 'qagent:overlay:state') {
       const tabId = sender.tab?.id;
-      const { currentExecutor, overlayStatusText, overlayVisible, overlayMode } = runtimeStore.getState();
-      const shouldShowOverlay = Boolean(
-        tabId && overlayVisible && currentExecutor && browserContext.currentTabId === tabId,
-      );
+      const { overlayDriver, overlayStatusText, overlayTabId, overlayVisible, overlayMode } = runtimeStore.getState();
+      const shouldShowOverlay = Boolean(tabId && overlayVisible && overlayTabId === tabId);
 
       sendResponse({
         active: shouldShowOverlay,
         statusText: shouldShowOverlay ? overlayStatusText : null,
         mode: overlayMode,
+        driver: overlayDriver,
       });
       return false;
     }

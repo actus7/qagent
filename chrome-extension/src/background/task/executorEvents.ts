@@ -4,7 +4,7 @@ import type { ExecutionPortEventMessage, SidePanelResponseMessage } from '@exten
 import type { Executor } from '../agent/executor';
 import { ExecutionState } from '../agent/event/types';
 import { createLogger } from '../log';
-import { applyOverlayMode, sendOverlayMessage } from '../overlay/overlayMessaging';
+import { applyOverlayMode, hideOverlay, showOverlay } from '../overlay/overlayMessaging';
 import { postToPanel } from '../port/panelPort';
 import { taskTabGroups } from '../services/tab-groups';
 import { browserContext, isAgentBrowserContext } from '../state/browserSession';
@@ -69,27 +69,16 @@ export function subscribeToExecutorEvents(
 
       switch (event.state) {
         case ExecutionState.TASK_START:
-          runtimeStore.getState().setOverlayStatusText(t('sidepanel_progress_message'));
-          runtimeStore.getState().setOverlayVisible(true);
-          sendOverlayMessage(tabId, { type: 'qagent:overlay:show' });
-          sendOverlayMessage(tabId, {
-            type: 'qagent:overlay:status',
-            text: t('sidepanel_progress_message'),
-          });
+          showOverlay(tabId, 'qagent', t('sidepanel_progress_message'));
           break;
         case ExecutionState.TASK_OK:
         case ExecutionState.TASK_FAIL:
         case ExecutionState.TASK_CANCEL:
-          runtimeStore.getState().resetOverlay();
-          sendOverlayMessage(tabId, { type: 'qagent:overlay:hide' });
+          hideOverlay();
           break;
         case ExecutionState.ACT_START: {
-          const statusText = event.data?.details || 'Working…';
-          runtimeStore.getState().setOverlayStatusText(statusText);
-          sendOverlayMessage(tabId, {
-            type: 'qagent:overlay:status',
-            text: statusText,
-          });
+          // Also moves the overlay to the tab the agent is on now, as the MCP path does.
+          showOverlay(tabId, 'qagent', event.data?.details || 'Working…');
           // Tabs the task opened since the last step join the task's tab group.
           void browserContext
             .getAllTabIds()

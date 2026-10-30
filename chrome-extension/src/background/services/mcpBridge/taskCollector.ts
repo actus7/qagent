@@ -37,6 +37,7 @@ export function createTaskCollector(taskId: string) {
   let lastActStart = '';
   let doneAnswer: string | null = null;
   let streamAnswer: string | null = null;
+  let lastFailure: string | null = null;
 
   const observe = (message: SidePanelResponseMessage): void => {
     if (message.type === 'assistant_delta' && message.taskId === taskId) {
@@ -53,17 +54,28 @@ export function createTaskCollector(taskId: string) {
     }
     if (state === 'act.start') lastActStart = data.details;
     if (state === 'act.ok' && lastActStart === doneActionSchema.name) doneAnswer = data.details;
+    if (state === 'act.fail') lastFailure = truncate(data.details);
     if ((state.startsWith('act.') || state.startsWith('step.')) && steps.length < MAX_STEPS) {
       steps.push({ step: data.step, state, details: truncate(data.details) });
     }
   };
 
   const result = (): TaskRunOutcome => {
-    const status = terminalState ? TERMINAL_STATES[terminalState] : 'unknown';
+    const answer = doneAnswer ?? streamAnswer;
+    const terminal = terminalState ? TERMINAL_STATES[terminalState] : 'unknown';
+    // A task that ends "ok" with no answer after a failed action did not complete.
+    if (terminal === 'completed' && answer === null && lastFailure !== null) {
+      return {
+        status: 'failed',
+        answer,
+        error: `Task ended without an answer. Last failed step: ${lastFailure}`,
+        steps,
+      };
+    }
     return {
-      status,
-      answer: doneAnswer ?? streamAnswer,
-      error: status === 'failed' ? terminalDetails || 'Task failed' : null,
+      status: terminal,
+      answer,
+      error: terminal === 'failed' ? terminalDetails || 'Task failed' : null,
       steps,
     };
   };

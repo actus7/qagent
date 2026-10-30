@@ -55,6 +55,14 @@ describe('action tools', () => {
     assert.deepEqual(run?.params, { action: 'click', input: { index: 3 }, tabId: 7 });
   });
 
+  it('sends the MCP client name with the action so the overlay can show who drives it', async () => {
+    const calls: { method: McpBridgeMethod; params: Record<string, unknown> }[] = [];
+    const host = createQaAgentToolHost(fakeRequester(calls), { clientName: () => 'claude-code' });
+    await host.callTool('page_click', { index: 3 });
+    const run = calls.find(call => call.method === 'run_action');
+    assert.deepEqual(run?.params, { action: 'click', input: { index: 3 }, client: 'claude-code' });
+  });
+
   it('keeps the static tools and reports bridge failures as tool errors', async () => {
     const calls: { method: McpBridgeMethod; params: Record<string, unknown> }[] = [];
     const host = createQaAgentToolHost(fakeRequester(calls, true));

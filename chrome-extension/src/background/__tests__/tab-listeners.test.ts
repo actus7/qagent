@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
     overlayVisible: true,
     overlayStatusText: 'status',
     overlayMode: 'full',
+    overlayTabId: 7,
+    overlayDriver: 'claude',
   },
   browser: { currentTabId: 7, detachPage: vi.fn(async () => undefined), removeAttachedPage: vi.fn() },
 }));
@@ -53,7 +55,7 @@ describe('overlay re-injection on tab updates', () => {
     await completeUpdate(7);
     expect(mocks.sendOverlayMessage).not.toHaveBeenCalled();
     vi.advanceTimersByTime(500);
-    expect(mocks.sendOverlayMessage).toHaveBeenCalledWith(7, { type: 'qagent:overlay:show' });
+    expect(mocks.sendOverlayMessage).toHaveBeenCalledWith(7, { type: 'qagent:overlay:show', driver: 'claude' });
   });
 
   it('cancels the pending re-injection when a newer update arrives for the same tab', async () => {
@@ -75,6 +77,6 @@ describe('overlay re-injection on tab updates', () => {
     await completeUpdate(7);
     await onUpdated(8, { status: 'loading' }, { url: 'https://other.example' });
     vi.advanceTimersByTime(500);
-    expect(mocks.sendOverlayMessage).toHaveBeenCalledWith(7, { type: 'qagent:overlay:show' });
+    expect(mocks.sendOverlayMessage).toHaveBeenCalledWith(7, { type: 'qagent:overlay:show', driver: 'claude' });
   });
 });

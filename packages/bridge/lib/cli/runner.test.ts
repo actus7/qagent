@@ -58,6 +58,25 @@ describe('CliTaskRunner', () => {
     assert.deepEqual(result, { ok: false, text: '', error: 'model rejected the request' });
   });
 
+  it('fails a run that finishes with no answer, and names the last failed step', async () => {
+    const result = await runnerWith('claude-no-answer.jsonl', 'claude').run(
+      { taskId: 't4', runner: 'claude', task: 'check the page' },
+      () => {},
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.text, '');
+    assert.match(result.error ?? '', /without a final answer.*qagent_get_status/);
+  });
+
+  it('fails a codex turn that completes without an agent message', async () => {
+    const result = await runnerWith('codex-no-answer.jsonl').run(
+      { taskId: 't5', runner: 'codex', task: 'check the page' },
+      () => {},
+    );
+    assert.equal(result.ok, false);
+    assert.match(result.error ?? '', /without a final answer.*page_info/);
+  });
+
   it('reports a missing CLI without spawning anything', async () => {
     const runner = new CliTaskRunner({ stateDir, binPath: 'bin.js', resolve: () => null });
     const result = await runner.run({ taskId: 't3', runner: 'claude', task: 'x' }, () => {});

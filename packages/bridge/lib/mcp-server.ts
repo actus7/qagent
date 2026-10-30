@@ -3,7 +3,7 @@
 import { QAgentMcpBridge, type ExtensionHandler } from './bridge';
 import { ControlClient } from './control';
 import { createExtensionHandler } from './daemon';
-import { handleJsonRpcPayload, parseJsonRpcLine, splitFrames, type JsonRpcResponse } from './jsonrpc';
+import { clientNameOf, handleJsonRpcPayload, parseJsonRpcLine, splitFrames, type JsonRpcResponse } from './jsonrpc';
 import { CliTaskRunner } from './cli/runner';
 import { CONTROL_DEFAULT_PORT, MCP_BRIDGE_DEFAULT_HOST, MCP_BRIDGE_DEFAULT_PORT } from './protocol';
 import { readToken, stateDirFrom } from './config';
@@ -86,7 +86,10 @@ export async function runMcpServer(env: NodeJS.ProcessEnv = process.env): Promis
     process.exitCode = 1;
     return;
   }
+  // One stdio server serves one MCP client; its name arrives with `initialize`.
+  let clientName: string | undefined;
   const host = createQaAgentToolHost(requester, {
+    clientName: () => clientName,
     cachedCatalog: readToolsCache(env),
     saveCatalog: entries => {
       try {
@@ -109,6 +112,7 @@ export async function runMcpServer(env: NodeJS.ProcessEnv = process.env): Promis
       writeResponse(parsed.response);
       return;
     }
+    clientName = clientNameOf(parsed.message) ?? clientName;
     const response = await handleJsonRpcPayload(parsed.message, host, SERVER_INFO);
     if (response) writeResponse(response);
   };

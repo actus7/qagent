@@ -6,6 +6,8 @@ const MAX_TASK_CHARS = 8000;
 const MAX_URL_CHARS = 2048;
 const MAX_ID_CHARS = 128;
 const MAX_ACTION_NAME_CHARS = 64;
+// The MCP client name (clientInfo.name). The daemon trims to this length; an unknown name only changes the colour.
+const MAX_CLIENT_NAME_CHARS = 128;
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -33,6 +35,7 @@ const runActionParamsSchema = z
       .regex(/^[a-z][a-z0-9_]*$/, 'action must be a lowercase action name'),
     input: z.record(z.string(), z.unknown()).default({}),
     tabId: z.number().int().positive().optional(),
+    client: z.string().max(MAX_CLIENT_NAME_CHARS).optional(),
   })
   .strict();
 

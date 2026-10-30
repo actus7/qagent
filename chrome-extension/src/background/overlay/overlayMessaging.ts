@@ -1,5 +1,7 @@
 import { createLogger } from '../log';
 import { runtimeStore } from '../state/runtimeStore';
+import type { OverlayDriver } from './overlayDriver';
+import { isAutomatableWebUrl } from '../browser/web-page';
 
 const logger = createLogger('background');
 const OVERLAY_RECEIVER_MISSING_ERROR = 'Could not establish connection. Receiving end does not exist.';
@@ -25,18 +27,7 @@ export function isOverlayReceiverMissingError(error: unknown): boolean {
 async function canInjectOverlayIntoTab(tabId: number): Promise<boolean> {
   try {
     const tab = await chrome.tabs.get(tabId);
-    const url = tab.url?.trim().toLowerCase() ?? '';
-
-    // Keep this aligned with Page valid web page constraints.
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      return false;
-    }
-
-    if (url.startsWith('https://chromewebstore.google.com')) {
-      return false;
-    }
-
-    return true;
+    return isAutomatableWebUrl(tab.url);
   } catch {
     return false;
   }
@@ -97,6 +88,32 @@ export type OverlayMode = 'running' | 'paused' | 'approval';
 export function applyOverlayMode(tabId: number | null, mode: OverlayMode): void {
   runtimeStore.getState().setOverlayMode(mode);
   sendOverlayMessage(tabId, { type: 'qagent:overlay:mode', mode });
+}
+
+/**
+ * Shows the overlay on a tab in its driver's colour and records it. The overlay follows the tab being acted on,
+ * so the tab it leaves gets a hide.
+ */
+export function showOverlay(tabId: number | null, driver: OverlayDriver, statusText: string): void {
+  if (!tabId) return;
+  const store = runtimeStore.getState();
+  const previousTabId = store.overlayTabId;
+  if (previousTabId !== null && previousTabId !== tabId) {
+    sendOverlayMessage(previousTabId, { type: 'qagent:overlay:hide' });
+  }
+  store.setOverlayTabId(tabId);
+  store.setOverlayDriver(driver);
+  store.setOverlayStatusText(statusText);
+  store.setOverlayVisible(true);
+  sendOverlayMessage(tabId, { type: 'qagent:overlay:show', driver });
+  sendOverlayMessage(tabId, { type: 'qagent:overlay:status', text: statusText });
+}
+
+/** Hides the overlay on the tab it sits on and clears the recorded state. */
+export function hideOverlay(): void {
+  const { overlayTabId, resetOverlay } = runtimeStore.getState();
+  resetOverlay();
+  if (overlayTabId !== null) sendOverlayMessage(overlayTabId, { type: 'qagent:overlay:hide' });
 }
 
 // Send a message to the active tab's content script for overlay updates

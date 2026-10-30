@@ -26,12 +26,12 @@ export function registerTabListeners(): void {
     // never eagerly into every tab the user browses.
     if (tabId && changeInfo.status === 'complete' && tab.url?.startsWith('http')) {
       // Re-inject overlay if this tab is being controlled by an active agent
-      const { currentExecutor, overlayStatusText, overlayVisible } = runtimeStore.getState();
-      if (overlayVisible && currentExecutor && browserContext.currentTabId === tabId) {
+      const { overlayDriver, overlayStatusText, overlayTabId, overlayVisible } = runtimeStore.getState();
+      if (overlayVisible && overlayTabId === tabId) {
         // Wait a bit for the content script to be ready
         const timer = setTimeout(() => {
           pendingOverlayReinjects.delete(tabId);
-          sendOverlayMessage(tabId, { type: 'qagent:overlay:show' });
+          sendOverlayMessage(tabId, { type: 'qagent:overlay:show', driver: overlayDriver });
           sendOverlayMessage(tabId, { type: 'qagent:overlay:mode', mode: runtimeStore.getState().overlayMode });
           if (overlayStatusText) {
             sendOverlayMessage(tabId, {

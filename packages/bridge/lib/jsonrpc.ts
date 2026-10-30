@@ -79,6 +79,17 @@ function readId(message: Record<string, unknown>): JsonRpcId {
   return typeof id === 'string' || typeof id === 'number' ? id : null;
 }
 
+// Same limit as the extension's run_action schema; a longer name is cut rather than rejected.
+const MAX_CLIENT_NAME_CHARS = 128;
+
+/** The client name from an `initialize` request (clientInfo.name), or undefined for any other message. */
+export function clientNameOf(message: unknown): string | undefined {
+  if (!isRecord(message) || message.method !== 'initialize' || !isRecord(message.params)) return undefined;
+  const info = message.params.clientInfo;
+  if (!isRecord(info) || typeof info.name !== 'string') return undefined;
+  return info.name.trim().slice(0, MAX_CLIENT_NAME_CHARS) || undefined;
+}
+
 function negotiateProtocolVersion(requested: unknown): string {
   return typeof requested === 'string' && SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
     ? requested

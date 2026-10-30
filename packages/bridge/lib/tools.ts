@@ -155,6 +155,8 @@ export interface ActionToolsOptions {
   cachedCatalog?: ActionCatalogEntry[] | null;
   /** Persists each action list the extension returns. */
   saveCatalog?: (entries: ActionCatalogEntry[]) => void;
+  /** The MCP client's name, sent with each action so the browser overlay shows who is driving it. */
+  clientName?: () => string | undefined;
 }
 
 export interface QAgentToolHost extends McpToolHost {
@@ -198,11 +200,13 @@ export function createQaAgentToolHost(bridge: BridgeRequester, options: ActionTo
 
   async function runAction(action: string, args: Record<string, unknown>): Promise<McpToolResult> {
     const { tabId, ...input } = args;
+    const client = options.clientName?.();
     try {
       const result = (await bridge.request('run_action', {
         action,
         input,
         ...(typeof tabId === 'number' ? { tabId } : {}),
+        ...(client ? { client } : {}),
       })) as { ok?: boolean } | undefined;
       return textResult(JSON.stringify(result, null, 2), result?.ok === false);
     } catch (error) {

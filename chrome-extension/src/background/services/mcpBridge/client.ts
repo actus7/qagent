@@ -18,6 +18,29 @@ const MIN_RETRY_MS = 1000;
 const MAX_RETRY_MS = 30000;
 // Host tools may run a shell command for minutes; the daemon enforces its own limits, this one is a backstop.
 const HOST_REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
+const PROBE_TIMEOUT_MS = 3000;
+// A retry timer dies when the worker sleeps; this alarm wakes the worker while disconnected. Chrome's minimum period
+// for packed extensions is 30 seconds.
+export const RECONNECT_ALARM_NAME = 'qagent-mcp-bridge-reconnect';
+const RECONNECT_ALARM_PERIOD_MIN = 0.5;
+
+/**
+ * Whether the daemon answers on its port. Probing first keeps Chrome from logging every refused WebSocket as an
+ * extension error. The ws server answers plain HTTP with 426, so any response means it is listening; the request is
+ * opaque and reads nothing, and no token is sent.
+ */
+async function bridgeIsListening(config: McpBridgeConfig): Promise<boolean> {
+  try {
+    await fetch(`http://${config.host}:${config.port}/`, {
+      mode: 'no-cors',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 type EventListener = (event: McpBridgeEventFrame) => void;
 
@@ -42,6 +65,8 @@ export class McpBridgeClient {
   private readySocket: WebSocket | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private attempts = 0;
+  // True from the start of a connection attempt until its socket is opened or the probe fails.
+  private connecting = false;
   private config: McpBridgeConfig | null = null;
   private key = '';
   private readonly hostPending = new Map<string, HostPending>();
@@ -94,21 +119,42 @@ export class McpBridgeClient {
     this.connect();
   }
 
+  /** Called by the reconnect alarm. Reconnects now when disconnected, instead of waiting for the lost retry timer. */
+  wake(): void {
+    if (!this.config || this.connecting || this.socket) return;
+    if (this.retryTimer !== null) clearTimeout(this.retryTimer);
+    this.retryTimer = null;
+    this.connect();
+  }
+
   stop(): void {
     if (this.retryTimer !== null) clearTimeout(this.retryTimer);
     this.retryTimer = null;
     const socket = this.socket;
     this.socket = null;
+    this.connecting = false;
     this.config = null;
     this.key = '';
     this.attempts = 0;
+    void chrome.alarms.clear(RECONNECT_ALARM_NAME);
     this.dropReady('BRIDGE_DISCONNECTED: the bridge was stopped');
     socket?.close();
   }
 
   private connect(): void {
     const config = this.config;
-    if (!config) return;
+    if (!config || this.connecting) return;
+    this.connecting = true;
+    void bridgeIsListening(config).then(listening => {
+      // stop() or a new config may have run while the probe was in flight.
+      if (this.config !== config) return;
+      this.connecting = false;
+      if (listening) this.openSocket(config);
+      else this.scheduleRetry();
+    });
+  }
+
+  private openSocket(config: McpBridgeConfig): void {
     const socket = new WebSocket(`ws://${config.host}:${config.port}`);
     const handshake = new BridgeHandshake(config.token);
     let handshakeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -153,6 +199,7 @@ export class McpBridgeClient {
     if (!this.config) return;
     const delay = Math.min(MAX_RETRY_MS, MIN_RETRY_MS * 2 ** this.attempts);
     this.attempts += 1;
+    chrome.alarms.create(RECONNECT_ALARM_NAME, { periodInMinutes: RECONNECT_ALARM_PERIOD_MIN });
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null;
       this.connect();
@@ -175,6 +222,7 @@ export class McpBridgeClient {
       case 'ready':
         this.attempts = 0;
         this.readySocket = socket;
+        void chrome.alarms.clear(RECONNECT_ALARM_NAME);
         void publishBridgeStatus(true);
         logger.info('MCP bridge connected');
         return;
@@ -250,6 +298,11 @@ export const mcpBridgeClient = new McpBridgeClient();
 /** Starts the bridge client and follows settings changes. Call once from the service worker root. */
 export function registerMcpBridge(): void {
   setHostRequester((method, params, timeoutMs) => mcpBridgeClient.hostRequest(method, params, timeoutMs));
+  // Registered at top level so the worker is woken for it. Other alarms are filtered out by name.
+  chrome.alarms.onAlarm.addListener(alarm => {
+    if (alarm.name === RECONNECT_ALARM_NAME) mcpBridgeClient.wake();
+  });
+  // Runs on every worker start (install, browser start, wake-up), so the connection resumes without a manual step.
   const apply = async () => {
     mcpBridgeClient.apply(await mcpBridgeStore.getConfig());
   };

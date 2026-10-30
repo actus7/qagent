@@ -330,6 +330,27 @@ function neutralizeUntrustedTags(content: string): string {
  * @param filterFirst - Whether to sanitize the content before wrapping (default: true)
  * @returns Wrapped content with security warnings
  */
+/** Wraps text unless an action already wrapped its page text, which happens when actions return wrapped content. */
+export function wrapUntrustedOnce(rawContent: string): string {
+  return isSingleWrappedBlock(rawContent) ? rawContent : wrapUntrustedContent(rawContent);
+}
+
+/**
+ * True only when the text is byte for byte what wrapUntrustedContent makes of its own inner part. Everything outside
+ * the tags is then the fixed wrapper, so page text cannot slip instructions in around a forged block; a page that
+ * reproduces the block exactly has only produced a genuine wrapper around its own text.
+ */
+function isSingleWrappedBlock(content: string): boolean {
+  const start = content.indexOf(UNTRUSTED_CONTENT_TAG_START);
+  const end = content.lastIndexOf(UNTRUSTED_CONTENT_TAG_END);
+  if (start < 0 || end < start) return false;
+  // The inner part sits between the tag lines; the template adds exactly one newline after the start tag and before the end tag.
+  const inner = content.slice(start + UNTRUSTED_CONTENT_TAG_START.length + 1, end - 1);
+  if (inner.includes(UNTRUSTED_CONTENT_TAG_START) || inner.includes(UNTRUSTED_CONTENT_TAG_END)) return false;
+  // Filtered as a genuine wrap is, so a forged block cannot skip the external-content filter either.
+  return content === wrapUntrustedContent(inner, true);
+}
+
 export function wrapUntrustedContent(rawContent: string, filterFirst = true): string {
   const filtered = filterFirst ? filterExternalContent(rawContent) : rawContent;
   const contentToWrap = neutralizeUntrustedTags(filtered);
