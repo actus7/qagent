@@ -51,6 +51,8 @@ const ACTION_VERBS = [
   'exclua',
   'edite',
   'atualize',
+  'teste',
+  'testar',
   // en
   'take me',
   'click',
@@ -75,13 +77,15 @@ const ACTION_VERBS = [
   'delete',
   'edit',
   'update',
+  'test',
 ];
 const ACTION_START = new RegExp(String.raw`^\s*${POLITE}(?:${ACTION_VERBS.join('|')})(?![\p{L}])`, 'iu');
 const PLAN_START =
   /^\s*(?:por favor,?\s+)?(?:crie|faça|monte|elabore|make|create|write|draft)\s+(?:um|a)\s+(?:plano|plan)(?![\p{L}])/iu;
 // "Quantas aulas…, use meu navegador": an explicit request to drive the browser wins anywhere in the message.
+// "navegad…" tolerates a typo at the end ("navegadot"), the usual slip on a phone or a quick message.
 const BROWSER_REQUEST =
-  /(?<![\p{L}])(?:use|usa|usando|usar|pelo|no|com o|use o|use my|use the|using the|in the|with the)\s+(?:(?:o|meu|my|the)\s+)?(?:navegador|browser)(?![\p{L}])/iu;
+  /(?<![\p{L}])(?:use|usa|usando|usar|pelo|no|com o|use o|use my|use the|using the|in the|with the)\s+(?:(?:o|meu|my|the)\s+)?(?:navegad\p{L}*|browser)(?![\p{L}])/iu;
 const SHORT_REPLY_WORDS = 3;
 
 const MODES: readonly AssistantMode[] = ['chat', 'plan', 'act'];
