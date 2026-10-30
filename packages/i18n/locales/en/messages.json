@@ -1801,6 +1801,15 @@
   "options_mcp_token_copied": {
     "message": "Copied"
   },
+  "options_mcp_setup": {
+    "message": "Set up an agent"
+  },
+  "options_mcp_setup_desc": {
+    "message": "Copies instructions with the token and port. Paste them into the Claude Code or Codex chat and the agent sets up the bridge and the MCP server on its own."
+  },
+  "options_mcp_setup_copy": {
+    "message": "Copy instructions"
+  },
   "act_host_start": {
     "message": "Running $LABEL$",
     "placeholders": {
@@ -2414,6 +2423,13 @@
     "message": "Clicked $TARGET$",
     "placeholders": {
       "target": { "content": "$1", "example": "button \"Save\"" }
+    }
+  },
+  "act_clickTarget_hit": {
+    "message": "Clicked $TARGET$, hit $HIT$",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Save\"" },
+      "hit": { "content": "$2", "example": "button \"Save\"" }
     }
   },
   "act_needLocator": {

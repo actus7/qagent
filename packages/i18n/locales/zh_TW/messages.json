@@ -1797,6 +1797,15 @@
   "options_mcp_token_copied": {
     "message": "已複製"
   },
+  "options_mcp_setup": {
+    "message": "設定代理"
+  },
+  "options_mcp_setup_desc": {
+    "message": "複製含有權杖與連接埠的說明。貼到 Claude Code 或 Codex 的對話中，代理會自行設定橋接與 MCP 伺服器。"
+  },
+  "options_mcp_setup_copy": {
+    "message": "複製說明"
+  },
   "act_host_start": {
     "message": "正在執行 $LABEL$",
     "placeholders": {
@@ -2396,6 +2405,13 @@
     "message": "已點擊 $TARGET$",
     "placeholders": {
       "target": { "content": "$1", "example": "button \"Save\"" }
+    }
+  },
+  "act_clickTarget_hit": {
+    "message": "已點擊 $TARGET$，命中 $HIT$",
+    "placeholders": {
+      "target": { "content": "$1", "example": "button \"Save\"" },
+      "hit": { "content": "$2", "example": "button \"Save\"" }
     }
   },
   "act_needLocator": {
