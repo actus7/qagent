@@ -1,6 +1,7 @@
 import { ActionResult, type AgentContext } from '@src/background/agent/types';
 import { t } from '@extension/i18n';
 import type { z } from 'zod';
+import { wrapUntrustedContent } from '../messages/utils';
 import { Actors, ExecutionState } from '../event/types';
 import { Action } from './action';
 import { isCompletedDownload } from '../../services/downloads';
@@ -124,12 +125,14 @@ async function clickByTarget(context: AgentContext, target: TargetSpec, intent: 
   context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
   const page = await context.browserContext.getCurrentPage();
   if (!page.clickByTarget) return engineUnsupportedResult(context);
+  let hit: string;
   try {
-    await page.clickByTarget(target);
+    hit = await page.clickByTarget(target);
   } catch (error) {
     return actionFailedResult(context, error);
   }
-  const msg = t('act_clickTarget_ok', [describeTargetSpec(target)]);
+  // The hit text is page content, so it is wrapped like the other page-derived text the model reads.
+  const msg = t('act_clickTarget_hit', [describeTargetSpec(target), wrapUntrustedContent(hit)]);
   context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
   return new ActionResult({ extractedContent: msg, includeInMemory: true });
 }

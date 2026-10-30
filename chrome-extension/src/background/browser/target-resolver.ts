@@ -30,8 +30,10 @@ export function describeTargetSpec(spec: TargetSpec): string {
 }
 
 /**
- * Candidates that satisfy role, text and (optionally) visibility, innermost first.
- * An outer match that wraps another match is dropped, so `text: "Save"` picks the button, not its wrapper.
+ * Candidates that satisfy role and text, best first: an exact text match beats one that only contains the text,
+ * and a visible candidate beats a hidden one. Only the best tier is kept, in document order, so `nth` counts
+ * among the best matches. An outer match that wraps another match is dropped, so `text: "Save"` picks the button,
+ * not its wrapper.
  */
 export function matchTargetIndexes(
   candidates: TargetCandidate[],
@@ -40,18 +42,22 @@ export function matchTargetIndexes(
 ): number[] {
   const wantedRole = spec.role?.trim().toLowerCase();
   const wantedText = spec.text?.trim().toLowerCase();
-  const matched: number[] = [];
+  const matched: { index: number; rank: number }[] = [];
   candidates.forEach((candidate, index) => {
     if (!options.includeHidden && !candidate.visible) return;
     if (wantedRole && candidate.role !== wantedRole && candidate.tag !== wantedRole) return;
-    if (wantedText && !candidate.text.toLowerCase().includes(wantedText)) return;
-    matched.push(index);
+    const text = candidate.text.toLowerCase();
+    if (wantedText && !text.includes(wantedText)) return;
+    const exact = wantedText && text === wantedText ? 1 : 0;
+    matched.push({ index, rank: exact * 2 + (candidate.visible ? 1 : 0) });
   });
+  const best = Math.max(...matched.map(match => match.rank));
+  const top = matched.filter(match => match.rank === best).map(match => match.index);
   const outer = new Set<number>();
-  for (const index of matched) {
+  for (const index of top) {
     for (const ancestor of candidates[index].ancestors) outer.add(ancestor);
   }
-  return matched.filter(index => !outer.has(index));
+  return top.filter(index => !outer.has(index));
 }
 
 /**

@@ -25,6 +25,7 @@ import { wrapUntrustedContent } from '../agent/messages/utils';
 import { ExtensionConflictError } from '../agent/agents/errors';
 import { showAgentPointer } from '../overlay/overlayMessaging';
 import { isDebuggerConflictError } from './debugger-conflict';
+import { isAutomatableWebUrl } from './web-page';
 import { markNewClickableElements } from './dom/clickable/service';
 import { build_initial_state, CachedStateClickableElementsHashes, parseSelectorIndex } from './page-state';
 import { parseKeyCombination, convertKey, isMacUserAgent } from './page-keys';
@@ -154,13 +155,7 @@ export default class Page {
     this._config = { ...DEFAULT_BROWSER_CONTEXT_CONFIG, ...config };
     this._state = build_initial_state(tabId, url, title);
     // chrome://newtab/, chrome://newtab/extensions, https://chromewebstore.google.com/ are not valid web pages, can't be attached
-    const lowerCaseUrl = url.trim().toLowerCase();
-    this._validWebPage =
-      (tabId &&
-        lowerCaseUrl &&
-        lowerCaseUrl.startsWith('http') &&
-        !lowerCaseUrl.startsWith('https://chromewebstore.google.com')) ||
-      false;
+    this._validWebPage = Boolean(tabId) && isAutomatableWebUrl(url);
   }
 
   get tabId(): number {
@@ -1073,11 +1068,17 @@ ${wrapUntrustedContent(dialog.message())}`,
     throw new Error(`Target ${describeTargetSpec(spec)} is no longer on the page`);
   }
 
-  async clickByTarget(spec: TargetSpec): Promise<void> {
+  /** Clicks the element a target resolves to. Returns what was hit (tag and text), so a mismatch is visible. */
+  async clickByTarget(spec: TargetSpec): Promise<string> {
     const element = await this.resolveTargetHandle(spec);
+    const hit = await element.evaluate((el: Element) => {
+      const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+      return `${el.tagName.toLowerCase()} "${text.length > 60 ? `${text.slice(0, 60)}...` : text}"`;
+    });
     await this._scrollIntoViewIfNeeded(element);
     await this._showAgentPointer(element);
     await this._clickHandle(element, `Failed to click ${describeTargetSpec(spec)}`);
+    return hit;
   }
 
   async inputTextByTarget(spec: TargetSpec, text: string, clearBeforeTyping: boolean): Promise<void> {

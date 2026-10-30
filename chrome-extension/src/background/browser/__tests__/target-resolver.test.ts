@@ -30,6 +30,41 @@ describe('matchTargetIndexes', () => {
   });
 });
 
+describe('matchTargetIndexes ranking', () => {
+  // A Neon-like sidebar: links in document order, plus a navigation container that holds all of them.
+  const nav: TargetCandidate = { tag: 'nav', role: 'navigation', text: 'Tables SQL Editor Roles Databases', visible: true, ancestors: [] };
+  const tables: TargetCandidate = { tag: 'a', role: 'link', text: 'Tables', visible: true, ancestors: [0] };
+  const sqlEditor: TargetCandidate = { tag: 'a', role: 'link', text: 'SQL Editor', visible: true, ancestors: [0] };
+  const roles: TargetCandidate = { tag: 'a', role: 'link', text: 'Roles', visible: true, ancestors: [0] };
+  const databases: TargetCandidate = { tag: 'a', role: 'link', text: 'Databases', visible: true, ancestors: [0] };
+  const sidebar = [nav, tables, sqlEditor, roles, databases];
+
+  it('picks the Databases link from a sidebar that also contains the word in another link', () => {
+    expect(pickTargetIndex(sidebar, { text: 'Databases', role: 'link' })).toBe(4);
+    expect(matchTargetIndexes(sidebar, { text: 'Databases' })).toEqual([4]);
+  });
+
+  it('prefers an exact text match over a link that only contains the text', () => {
+    // "Tables" carries a tooltip or icon title that says "Databases", and it comes first in the document.
+    const tablesWithTooltip: TargetCandidate = { ...tables, text: 'Tables Databases', ancestors: [] };
+    const flat = [tablesWithTooltip, { ...databases, ancestors: [] }];
+    expect(matchTargetIndexes(flat, { text: 'Databases', role: 'link' })).toEqual([1]);
+    expect(pickTargetIndex(flat, { text: 'Databases', role: 'link' })).toBe(1);
+  });
+
+  it('ranks a visible exact match above a hidden duplicate when hidden candidates are included', () => {
+    const collapsed: TargetCandidate = { ...databases, visible: false, ancestors: [] };
+    const flat = [collapsed, { ...databases, ancestors: [] }];
+    expect(matchTargetIndexes(flat, { text: 'Databases' }, { includeHidden: true })).toEqual([1]);
+  });
+
+  it('still keeps nth within the best-ranked matches, in document order', () => {
+    const first: TargetCandidate = { ...databases, ancestors: [] };
+    const second: TargetCandidate = { ...databases, ancestors: [] };
+    expect(pickTargetIndex([first, tables, second], { text: 'Databases', nth: 1 })).toBe(2);
+  });
+});
+
 describe('pickTargetIndex', () => {
   it('returns the nth match, zero-based', () => {
     const first: TargetCandidate = { tag: 'button', role: 'button', text: 'Add', visible: true, ancestors: [] };

@@ -101,7 +101,7 @@ export interface BrowserPageLike {
   // Page structure, targets, waiting and frames. Like the pointer methods, chrome-debugger only.
   getPageFacts?(options: PageInfoOptions): Promise<PageFacts>;
   findProgressSignals?(): Promise<ProgressReport>;
-  clickByTarget?(target: TargetSpec): Promise<void>;
+  clickByTarget?(target: TargetSpec): Promise<string>;
   inputTextByTarget?(target: TargetSpec, text: string, clearBeforeTyping: boolean): Promise<void>;
   getTextOf?(target?: TargetSpec): Promise<string>;
   waitForTarget?(target: TargetSpec, state: TargetState, timeoutMs: number): Promise<number>;
