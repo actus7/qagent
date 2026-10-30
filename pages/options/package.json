@@ -1,7 +1,7 @@
 {
   "name": "@extension/options",
   "author": "Alex Schmitt",
-  "version": "0.1.13",
+  "version": "0.3.0",
   "description": "chrome extension - options",
   "private": true,
   "sideEffects": true,

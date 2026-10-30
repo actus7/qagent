@@ -1,7 +1,7 @@
 {
   "name": "@extension/vite-config",
   "author": "Alex Schmitt",
-  "version": "0.1.13",
+  "version": "0.3.0",
   "description": "chrome extension - vite base configuration",
   "main": "index.mjs",
   "type": "module",
